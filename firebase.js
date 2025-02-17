@@ -1,17 +1,16 @@
-// firebase.js
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, getDocs } from "firebase/firestore";
 
-// 🔥 Your Firebase config (replace with your actual Firebase credentials)
+// Load Firebase config from environment variables
 const firebaseConfig = {
-    apiKey: "AIzaSyDRsxJ0pscSNeeOOlgA3Db_2e9D9OQEH0w",
-    authDomain: "job-bot-82f01.firebaseapp.com",
-    projectId: "job-bot-82f01",
-    storageBucket: "job-bot-82f01.firebasestorage.app",
-    messagingSenderId: "341586999516",
-    appId: "1:341586999516:web:b8e475b8ca1833b7ae1c19",
-    measurementId: "G-ZFES9RKVMV"
-  };
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+};
 
 // ✅ Initialize Firebase
 const app = initializeApp(firebaseConfig);
