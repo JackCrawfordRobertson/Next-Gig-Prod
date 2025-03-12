@@ -1,0 +1,21 @@
+# Web scraping
+requests
+beautifulsoup4
+selenium
+cloudscraper
+python-Levenshtein
+
+# Scheduler
+schedule
+
+# Email handling
+sendgrid
+
+# Firebase database
+firebase-admin
+
+# Chrome WebDriver manager
+webdriver-manager
+
+# Environment Variables
+python-dotenv

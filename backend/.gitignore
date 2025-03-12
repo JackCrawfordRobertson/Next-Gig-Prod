@@ -1,0 +1,22 @@
+# Ignore Python virtual environment
+venv/
+__pycache__/
+
+# Ignore database file
+jobs.db
+
+# Ignore environment variables
+.env
+
+# Ignore logs
+*.log
+*.json
+serviceAccountKey.json
+
+# Ignore compiled files
+*.pycfirebase_key.json
+firebase_key.json
+firebase-adminsdk-XXXXX.json
+serviceAccountKey.json
+*.json
+serviceAccountKey.json
