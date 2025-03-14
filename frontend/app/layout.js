@@ -1,15 +1,14 @@
-import { Inter } from "next/font/google";
+// app/layout.jsx (Server Component by default)
 import "./globals.css";
-import SessionProvider from "@/components/SessionProvider";
-import SidebarLayout from "@/components/Sidebar";
+import { Inter } from "next/font/google";
+import SessionProvider from "@/components/SessionProvider"; // your next-auth session provider
 
 const inter = Inter({
-  variable: "--font-inter",
   subsets: ["latin"],
   display: "swap",
 });
 
-// ✅ Metadata stays outside of Client Components
+// Static metadata for the entire app
 export const metadata = {
   title: "Next Gig",
   description: "Aggregated job listings from various sources",
@@ -19,10 +18,13 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
+  // This is a Server Component
+  // We only do minimal logic here, e.g. setting up fonts, global styles
   return (
-    <html lang="en">
-      <body className={`${inter.variable} antialiased`}>
-        <SessionProvider> {/* ✅ Ensures NextAuth session is available */}
+    <html lang="en" className={inter.className}>
+      <body className="antialiased">
+        {/* Provide NextAuth session to ALL routes (public + private) */}
+        <SessionProvider>
           {children}
         </SessionProvider>
       </body>

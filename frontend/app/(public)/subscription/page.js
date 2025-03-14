@@ -1,0 +1,139 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import dynamic from "next/dynamic";
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+
+// Import PayPalButton dynamically to prevent SSR hydration issues
+const PayPalButton = dynamic(() => import("@/components/PayPalButton"), { ssr: false });
+
+// Test user for development mode
+const MOCK_USER = {
+    user: {
+        id: "test-user-123",
+        email: "testuser@example.com",
+    },
+};
+
+// Dynamically import the page to **force client-side rendering**
+const SubscriptionPage = dynamic(() => Promise.resolve(SubscriptionComponent), { ssr: false });
+
+function SubscriptionComponent() {
+    const router = useRouter();
+    const { data: session, status } =
+        process.env.NODE_ENV === "development"
+            ? { data: MOCK_USER, status: "authenticated" }
+            : useSession();
+
+    const [clientReady, setClientReady] = useState(false);
+
+    useEffect(() => {
+        console.log("Rendering SubscriptionPage...");
+        setClientReady(true);
+    }, []);
+
+    useEffect(() => {
+        console.log("Session data:", session);
+    }, [session]);
+
+    if (!clientReady || status === "loading") {
+        return <div className="flex items-center justify-center h-screen text-lg">Loading...</div>;
+    }
+
+    const handleSubscriptionSuccess = async () => {
+        try {
+            console.log("Updating Firestore subscription...");
+            await updateDoc(doc(db, "users", session.user.id), {
+                subscribed: true,
+                subscriptionPlan: "paypal",
+                subscriptionStartDate: new Date().toISOString(),
+            });
+
+            router.push("/dashboard");
+        } catch (err) {
+            console.error("Error updating subscription:", err);
+            alert("Subscription update failed.");
+        }
+    };
+
+    return (
+        <div className="min-h-screen w-full bg-transparent flex flex-col items-center justify-center py-6 px-4">
+            <Card className="max-w-2xl w-full shadow-lg border border-gray-200">
+                <CardHeader>
+                    <CardTitle className="text-center text-3xl font-bold">Support What Matters</CardTitle>
+                </CardHeader>
+
+                <CardContent className="space-y-6">
+                    <p className="text-center text-gray-600 text-lg">
+                        The price of keeping the lights on. The cost of getting jobs straight to your inbox.
+                    </p>
+
+                    <Separator />
+
+                    {/* Responsive Layout: Two-column on desktop, stacked & centered on mobile */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                        
+                        {/* Left Column: Text Content (Centered on Mobile) */}
+                        <div className="text-center md:text-left space-y-4">
+                            <h2 className="text-2xl font-semibold">One Simple Plan</h2>
+                            <p className="text-gray-700">No gimmicks. No fluff. Just jobs.</p>
+                            <ul className="list-disc list-inside space-y-2 text-gray-600">
+                                <li>Personalised job alerts</li>
+                                <li>Direct to your inbox</li>
+                                <li>Support the platform</li>
+                            </ul>
+
+                            {/* Price and CTA */}
+                            <div className="flex justify-center md:justify-start items-baseline space-x-2">
+                                <h1 className="text-3xl font-bold">£1.25</h1>
+                                <p className="text-gray-500">/ month</p>
+                            </div>
+                        </div>
+
+                        {/* Right Column: PayPal Logo (Hidden on Mobile) */}
+                        <div className="hidden md:flex justify-center items-center h-full w-full">
+                            <img src="/paypall.png" alt="Pay with PayPal" className="w-36" />
+                        </div>
+                    </div>
+
+                    <p className="text-center text-gray-600 text-sm mt-2">
+                        7 days free. Cancel anytime.<br />
+                        But why would you? Let the 7 days show you.
+                    </p>
+
+                    <Separator />
+                </CardContent>
+
+                <CardFooter className="flex flex-col items-center space-y-4 w-full">
+                    {session?.user?.id ? (
+                        <div className="w-full">
+                            <PayPalButton userId={session.user.id} onSuccess={handleSubscriptionSuccess} />
+                        </div>
+                    ) : (
+                        <div className="text-center w-full">
+                            <p className="text-gray-600 mb-4">Please log in to subscribe.</p>
+                            <Button className="w-full" onClick={() => router.push("/login")}>
+                                Go to Login
+                            </Button>
+                        </div>
+                    )}
+
+                    <p className="text-center text-gray-500 text-sm">
+                        By subscribing, you agree to our
+                        <a href="/terms" className="underline mx-1">Terms of Service</a>
+                        and
+                        <a href="/privacy" className="underline mx-1">Privacy Policy</a>.
+                    </p>
+                </CardFooter>
+            </Card>
+        </div>
+    );
+}
+
+export default SubscriptionPage;
