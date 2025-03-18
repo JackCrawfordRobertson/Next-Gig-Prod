@@ -3,7 +3,6 @@ import random
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
-import config  # ✅ Import job keywords & location
 
 # ✅ LinkedIn Request Headers (mimics a browser to avoid detection)
 HEADERS = {
@@ -15,56 +14,59 @@ HEADERS = {
     "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 }
 
-# ✅ Define filtering rules
+# ✅ Filtering rules
 EXCLUDED_KEYWORDS = ["video", "social media", "director", "senior"]  # 🚨 Excludes senior roles
-REQUIRED_LOCATIONS = ["London", "London Area"]  # 🚨 Only accept jobs in these locations
+DATE_THRESHOLD = datetime.today() - timedelta(days=14)  # 🚨 Only accept jobs posted in last 14 days
 
 # ✅ Convert relative date ("1 week ago", "3 weeks ago") to actual date
 def parse_relative_date(date_text):
     today = datetime.today()
 
     if "week ago" in date_text or "weeks ago" in date_text:
-        weeks = int(date_text.split()[0])  # Extract number
+        weeks = int(date_text.split()[0])
         return today - timedelta(weeks=weeks)
 
     if "month ago" in date_text or "months ago" in date_text:
-        months = int(date_text.split()[0])  # Extract number
-        return today - timedelta(weeks=4 * months)  # Approximate month as 4 weeks
+        months = int(date_text.split()[0])
+        return today - timedelta(weeks=4 * months)
 
-    return today  # Default: If no clear match, assume today
+    return today  # Default: If no match, assume today
 
-# ✅ Function to fetch all jobs with strict filtering
-def fetch_all_linkedin_jobs(max_jobs=5, max_per_title=5):
+# ✅ Fetch LinkedIn jobs dynamically
+def fetch_all_linkedin_jobs(job_titles, locations, max_jobs=5, max_per_title=5):
     """
-    Fetches LinkedIn job listings for all keywords in config.py.
+    Fetches LinkedIn job listings for dynamically provided job titles and locations.
     Limits to max_per_title per job role and max_jobs per keyword.
     """
     all_jobs = []
 
-    for keyword in config.JOB_KEYWORDS:
-        print(f"\n🔍 Searching for: {keyword.strip()} in {config.LOCATION}")
+    for location in locations:
+        print(f"\n🌍 Scraping jobs in {location}...")
 
-        jobs = fetch_linkedin_jobs(
-            search_term=keyword.strip(),
-            location=config.LOCATION,
-            max_jobs=max_jobs, 
-            max_per_title=max_per_title
-        )
+        for job_title in job_titles:
+            print(f"🔍 Searching LinkedIn for: {job_title} in {location}")
 
-        if jobs:
-            print(f"✅ Found {len(jobs)} jobs for {keyword.strip()}!")
-            all_jobs.extend(jobs)
-        else:
-            print(f"❌ No jobs found for {keyword.strip()}.")
+            jobs = fetch_linkedin_jobs(
+                search_term=job_title,
+                location=location,
+                max_jobs=max_jobs,
+                max_per_title=max_per_title
+            )
+
+            if jobs:
+                print(f"✅ Found {len(jobs)} jobs for {job_title} in {location}")
+                all_jobs.extend(jobs)
+            else:
+                print(f"❌ No jobs found for {job_title} in {location}")
 
     print(f"\n✅ Scraped {len(all_jobs)} total jobs from LinkedIn.")
     return all_jobs
 
-# ✅ Function to fetch LinkedIn jobs for a single keyword
+# ✅ Fetch LinkedIn jobs for a single job title and location
 def fetch_linkedin_jobs(search_term, location, max_jobs=5, max_per_title=5):
     """
-    Fetches job listings from LinkedIn for a specific job title.
-    Limits results to a maximum per job title and per keyword.
+    Fetches LinkedIn job listings for a specific job title and location.
+    Limits results to a maximum per job title and keyword.
     Filters out jobs posted more than 14 days ago.
     """
     jobs = []
@@ -72,30 +74,26 @@ def fetch_linkedin_jobs(search_term, location, max_jobs=5, max_per_title=5):
     seen_job_ids = set()
     job_title_counts = {}  # ✅ Track count per job title
 
-    # ✅ Get today's date & threshold for 14 days ago
-    today = datetime.today()
-    date_threshold = today - timedelta(days=14)
-
     while len(jobs) < max_jobs and start < 1000:
         url = (
             f"https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?"
-            f"keywords={search_term}&location={location}&start={start}"
+            f"keywords={search_term.replace(' ', '%20')}&location={location.replace(' ', '%20')}&start={start}"
         )
 
         response = requests.get(url, headers=HEADERS, timeout=10)
         if response.status_code != 200:
-            print(f"❌ LinkedIn request failed with status code: {response.status_code}")
+            print(f"❌ LinkedIn request failed: {response.status_code}")
             break
 
         soup = BeautifulSoup(response.text, "html.parser")
         job_cards = soup.find_all("div", class_="base-search-card")
 
         if not job_cards:
-            print(f"❌ No job listings found for {search_term}.")
+            print(f"❌ No job listings found for {search_term} in {location}.")
             break
 
         for job_card in job_cards:
-            if len(jobs) >= max_jobs:  # ✅ Stop if we already hit the keyword limit
+            if len(jobs) >= max_jobs:
                 print(f"🚫 Stopping search for {search_term} (max {max_jobs} jobs found)")
                 break
 
@@ -129,31 +127,25 @@ def fetch_linkedin_jobs(search_term, location, max_jobs=5, max_per_title=5):
 
             # ✅ Extract & Validate Job Posting Date
             date_tag = job_card.find("time", class_="job-search-card__listdate")
-            job_date = today  # Default to today if no date found
+            job_date = datetime.today()
 
             if date_tag:
-                if date_tag.has_attr("datetime"):  # ✅ Use ISO format date if available
+                if date_tag.has_attr("datetime"):
                     job_date = datetime.strptime(date_tag["datetime"], "%Y-%m-%d")
-                else:  # ✅ Handle "1 week ago" format
+                else:
                     relative_date_text = date_tag.get_text(strip=True).lower()
                     job_date = parse_relative_date(relative_date_text)
 
-                if job_date < date_threshold:
-                    print(f"⏳ Skipping job: {title} at {company_name} (Posted {job_date.date()}, over 14 days old)")
-                    continue  # 🚨 Skip old job listings
+                if job_date < DATE_THRESHOLD:
+                    print(f"⏳ Skipping old job: {title} at {company_name} (Posted {job_date.date()})")
+                    continue
 
-            # ✅ FILTER OUT JOBS NOT IN LONDON
-            if not any(loc in job_location for loc in REQUIRED_LOCATIONS):
-                print(f"⏳ Skipping job: {title} at {company_name} (Location: {job_location}, not in London)")
-                continue  # 🚨 Skip job if not in London
+            # ✅ FILTER OUT SENIOR ROLES
+            if any(word.lower() in title.lower() for word in EXCLUDED_KEYWORDS):
+                print(f"⚠️ Skipping job: {title} at {company_name} (Filtered out)")
+                continue
 
-            # ✅ FILTER OUT SENIOR ROLES (Director, Senior)
-            for word in EXCLUDED_KEYWORDS:
-                if word.lower() in title.lower():
-                    print(f"⚠️ Skipping job: {title} at {company_name} (Filtered Out: Title contains '{word}')")
-                    continue  # 🚨 Skip job
-
-            # ✅ **LIMIT JOBS PER TITLE (Max 5 per unique title)**
+            # ✅ LIMIT JOBS PER TITLE
             if job_title_counts.get(title, 0) >= max_per_title:
                 print(f"⚠️ Skipping extra '{title}' jobs (Already found {max_per_title})")
                 continue
@@ -165,15 +157,14 @@ def fetch_linkedin_jobs(search_term, location, max_jobs=5, max_per_title=5):
                 "location": job_location,
                 "url": job_url,
                 "salary": salary,
-                "date_posted": job_date.strftime("%Y-%m-%d"),  # ✅ Store formatted date
-                "date_added": datetime.utcnow().strftime("%Y-%m-%d"),  # ✅ New field
-                "has_applied": False,  # ✅ New field
+                "date_posted": job_date.strftime("%Y-%m-%d"),
+                "date_added": datetime.utcnow().strftime("%Y-%m-%d"),
+                "has_applied": False,
             })
 
-            # ✅ Update count for this title
             job_title_counts[title] = job_title_counts.get(title, 0) + 1
 
-        start += 25  # ✅ Always paginate in increments of 25
+        start += 25  # ✅ Paginate in increments of 25
         time.sleep(random.uniform(3, 6))  # ✅ Avoid detection
 
     return jobs

@@ -1,9 +1,9 @@
-// components/Sidebar/index.jsx
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation"; // 1) Import usePathname
 import {
   Sidebar,
   SidebarProvider,
@@ -16,12 +16,13 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export default function SidebarLayout({ children }) {
   const { data: session } = useSession();
+  const pathname = usePathname(); // 2) Get current URL path
 
   return (
     <ThemeProvider>
       <SidebarProvider>
         <div className="flex h-screen w-screen overflow-hidden">
-          <Sidebar className="h-full w-64 flex flex-col border-r shadow-lg">
+          <Sidebar className="h-full w-64 flex flex-col border-r shadow-lg ">
             <SidebarContent className="flex flex-col flex-1">
               <div className="p-6 border-b flex justify-between items-center">
                 <h1 className="text-xl font-bold tracking-wide flex items-center gap-2">
@@ -30,30 +31,57 @@ export default function SidebarLayout({ children }) {
                 </h1>
                 <ThemeToggle />
               </div>
+
               <SidebarMenu className="p-4 space-y-3">
                 <SidebarMenuItem>
-                  <Link href="/dashboard" className="block px-4 py-2 rounded transition">
+                  {/* 3) Conditionally apply 'active' classes if pathname matches */}
+                  <Link
+                    href="/dashboard"
+                    className={`block px-4 py-2 rounded transition ${
+                      pathname === "/dashboard" ? "bg-primary text-white" : ""
+                    }`}
+                  >
                     Dashboard
                   </Link>
                 </SidebarMenuItem>
+
                 <SidebarMenuItem>
-                  <Link href="/linkedin" className="block px-4 py-2 rounded transition">
+                  <Link
+                    href="/linkedin"
+                    className={`block px-4 py-2 rounded transition ${
+                      pathname === "/linkedin" ? "bg-primary text-white" : ""
+                    }`}
+                  >
                     LinkedIn Jobs
                   </Link>
                 </SidebarMenuItem>
+
                 <SidebarMenuItem>
-                  <Link href="/unjobs" className="block px-4 py-2 rounded transition">
+                  <Link
+                    href="/unjobs"
+                    className={`block px-4 py-2 rounded transition ${
+                      pathname === "/unjobs" ? "bg-primary text-white" : ""
+                    }`}
+                  >
                     UN Jobs
                   </Link>
                 </SidebarMenuItem>
+
                 <SidebarMenuItem>
-                  <Link href="/workable" className="block px-4 py-2 rounded transition">
+                  <Link
+                    href="/workable"
+                    className={`block px-4 py-2 rounded transition ${
+                      pathname === "/workable" ? "bg-primary text-white" : ""
+                    }`}
+                  >
                     Workable
                   </Link>
                 </SidebarMenuItem>
               </SidebarMenu>
+
               <div className="h-[1px] mx-6 my-4 border-t"></div>
-              {/* Profile and SignOut at bottom */}
+
+              {/* Profile and Sign Out at the bottom */}
               <div className="mt-auto p-6 flex flex-col items-center gap-3">
                 {session?.user?.image ? (
                   <div className="w-14 h-14 rounded-full border overflow-hidden shadow-md">
@@ -80,9 +108,8 @@ export default function SidebarLayout({ children }) {
               </div>
             </SidebarContent>
           </Sidebar>
-          <main className="flex-1 h-full overflow-auto p-0">
-            {children}
-          </main>
+
+          <main className="flex-1 h-full overflow-auto p-0">{children}</main>
         </div>
       </SidebarProvider>
     </ThemeProvider>

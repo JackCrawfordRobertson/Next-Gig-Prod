@@ -4,9 +4,10 @@ from firebase_admin import firestore
 db = firestore.client()
 
 def store_jobs(user_id, jobs):
-    """Store scraped job data in Firestore under the user's account."""
+    """
+    Store a dictionary of { sourceName: [jobObjects] } in Firestore for the user.
+    """
     user_ref = db.collection("users").document(user_id)
-
-    # ✅ Save jobs under users/{userId}/jobs
+    # Put them in a 'jobs' field or a subcollection. Example below uses a field:
     user_ref.update({"jobs": jobs})
-    print(f"✅ Jobs stored for {user_id}")
+    print(f"✅ Stored {sum(len(lst) for lst in jobs.values())} jobs for {user_id}")

@@ -53,11 +53,8 @@ export default function DashboardPage() {
   }));
 
   return (
-    <div className="h-screen w-full flex flex-col gap-6 p-6">
-      {/* ✅ Dashboard Header */}
-      <CardHeader>
-        <CardTitle className="text-xl font-bold">Job Dashboard</CardTitle>
-      </CardHeader>
+    <div className="h-screen w-full flex flex-col gap-6 p-6 bg-transparent">
+     
 
       {loading ? (
         <p className="text-center text-gray-500">Loading jobs...</p>

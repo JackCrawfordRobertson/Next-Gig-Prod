@@ -1,19 +1,27 @@
 import json
 from fetch import ifyoucould, unjobs, workable, linkedin
 
-def fetch_jobs(job_titles, location):
+def fetch_jobs(job_titles, locations):
     """Fetch job listings dynamically based on user input."""
-    print(f"\n⏳ Running job scrapers for {job_titles} in {location}...")
+    print(f"\n⏳ Running job scrapers for {job_titles} in {locations}...")
 
     jobs = {
-        "linkedin": linkedin.fetch_all_linkedin_jobs(job_titles, location),
-        "ifyoucould": ifyoucould.fetch_ifyoucould_jobs(job_titles, location),
-        "unjobs": unjobs.fetch_unjobs(job_titles, location),
-        "workable": workable.fetch_workable_jobs(job_titles, location),
+        "linkedin": [],
+        # "ifyoucould": [],
+        # "unjobs": [],
+        # "workable": [],
     }
 
-    return jobs  # ✅ Returning jobs dynamically
+    for location in locations:
+        print(f"🌍 Scraping jobs in {location}...")
 
-def run_scrapers(job_titles, location):
+        jobs["linkedin"].extend(linkedin.fetch_all_linkedin_jobs(job_titles, location))
+        # jobs["ifyoucould"].extend(ifyoucould.fetch_ifyoucould_jobs(job_titles, location))
+        # jobs["unjobs"].extend(unjobs.fetch_unjobs(job_titles, location))
+        # jobs["workable"].extend(workable.fetch_workable_jobs(job_titles, location))
+
+    return jobs  
+
+def run_scrapers(job_titles, locations):
     """Run all scrapers based on user input."""
-    return fetch_jobs(job_titles, location)  # ✅ Now uses user preferences
+    return fetch_jobs(job_titles, locations)  
