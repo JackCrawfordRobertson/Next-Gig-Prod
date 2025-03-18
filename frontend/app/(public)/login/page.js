@@ -3,21 +3,21 @@
 import { useState, useEffect } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FcGoogle } from "react-icons/fc"; // ✅ Google icon for button
 
 export default function LoginPage() {
   const router = useRouter();
   const isDev = process.env.NODE_ENV === "development"; // ← Check dev vs production
 
-  // Get the real session (production usage)
+  // Get session data from NextAuth
   const { data: realSession, status } = useSession();
-
-  // In dev mode, mock a session as if not logged in
-  // so we can always see the login form
-  const session = isDev ? null : realSession;
+  const session = isDev ? null : realSession; // Mock session in dev mode
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,31 +25,68 @@ export default function LoginPage() {
   // Redirect authenticated users (production only)
   useEffect(() => {
     if (!isDev && status === "authenticated") {
-      router.push("/dashboard");
+      checkUserExists(session?.user?.email);
     }
-  }, [status, router, isDev]);
+  }, [status, session]);
 
-  // Handle login with email/password
-  const handleLogin = async () => {
+  // ✅ Check if user exists in Firestore, redirect accordingly
+  const checkUserExists = async (email) => {
+    if (!email) return;
+
+    const userRef = doc(db, "users", email);
+    const userSnap = await getDoc(userRef);
+
+    if (userSnap.exists()) {
+      // ✅ Existing user, send to dashboard
+      router.push("/dashboard");
+    } else {
+      // ❌ New user, send to complete profile
+      router.push("/complete-profile");
+    }
+  };
+
+  // ✅ Handle Google Sign-In
+  const handleGoogleLogin = async () => {
     if (isDev) {
-      // In dev, just skip real sign-in
-      console.log("DEV MODE: Skipping real signIn. Your inputs:");
-      console.log({ email, password });
-      alert("Dev mode - Login flow skipped. Check console logs.");
+      console.log("DEV MODE: Skipping real Google login");
       return;
     }
 
-    // Production logic: sign in with NextAuth
     try {
-      await signIn("credentials", { email, password });
+      const result = await signIn("google", { redirect: false });
+      if (result?.error) {
+        throw new Error(result.error);
+      }
+
+      // ✅ Check Firestore for user info after login
+      checkUserExists(result?.user?.email);
+    } catch (error) {
+      console.error("Google Sign-In Error:", error);
+      alert("Google Sign-In failed. Please try again.");
+    }
+  };
+
+  // ✅ Handle Email/Password Login
+  const handleLogin = async () => {
+    if (isDev) {
+      console.log("DEV MODE: Skipping real email login. Your inputs:", { email, password });
+      return;
+    }
+
+    try {
+      const result = await signIn("credentials", { email, password, redirect: false });
+      if (result?.error) {
+        throw new Error(result.error);
+      }
+
       router.push("/dashboard");
     } catch (error) {
       alert("Login failed. Please check your credentials.");
     }
   };
 
+  // ✅ Show Welcome Page if Logged In
   if (session) {
-    // If session exists (production only), show a "Welcome" and sign-out
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-100 p-6">
         <Card className="w-full max-w-md shadow-lg">
@@ -66,7 +103,7 @@ export default function LoginPage() {
     );
   }
 
-  // Otherwise, show the sign-in form
+  // ✅ Sign-In Form
   return (
     <div className="flex min-h-screen items-center justify-center bg-transparent p-6">
       <Card className="w-full max-w-md shadow-lg">
@@ -77,16 +114,22 @@ export default function LoginPage() {
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button onClick={() => (isDev ? console.log("Dev mode Google login") : signIn("google"))} className="w-full">
-            Sign in with Google
+          {/* Google Sign-In Button */}
+          <Button 
+            onClick={handleGoogleLogin} 
+            className="w-full flex items-center justify-center gap-2 bg-white border border-gray-300 text-black hover:bg-gray-100"
+          >
+            <FcGoogle size={20} /> Sign in with Google
           </Button>
 
+          {/* Divider */}
           <div className="relative my-4 flex items-center">
             <div className="flex-grow border-t border-gray-300"></div>
             <span className="px-2 text-gray-500 text-sm">OR</span>
             <div className="flex-grow border-t border-gray-300"></div>
           </div>
 
+          {/* Email & Password Login */}
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input

@@ -2690,6 +2690,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"dialog-polyfill@npm:^0.4.7":
+  version: 0.4.10
+  resolution: "dialog-polyfill@npm:0.4.10"
+  checksum: 10c0/6c91bd23086303e5ee45b59ab0736436b7486a1985a3f1a560ae5495f41cc44f6b4e19333f0c3c18a6f0bffb7712d82b9107e313de5e7140ef4645b81f6fd088
+  languageName: node
+  linkType: hard
+
 "didyoumean@npm:^1.2.2":
   version: 1.2.2
   resolution: "didyoumean@npm:1.2.2"
@@ -2953,6 +2960,18 @@ __metadata:
     "@firebase/util": "npm:1.11.0"
     "@firebase/vertexai": "npm:1.1.0"
   checksum: 10c0/627b5b81d6b1405061a8372a795a972c12a0e6d064cd9cc281403ab568fd84e1cf8db08bd2fc002ac8ec05a88bdc42f934f311be530e40d02c0153022d5b2f4f
+  languageName: node
+  linkType: hard
+
+"firebaseui@npm:^6.1.0":
+  version: 6.1.0
+  resolution: "firebaseui@npm:6.1.0"
+  dependencies:
+    dialog-polyfill: "npm:^0.4.7"
+    material-design-lite: "npm:^1.2.0"
+  peerDependencies:
+    firebase: ^9.1.3 || ^10.0.0
+  checksum: 10c0/9ca3eb0c6b3378bbb0ffc53228cb25772e8248b31ca96f4f9ca9e40c94689fcd4bbd7c9dce7154f1e8812e7109cdd44aaa5349eded43694eb12b481cf06cd49b
   languageName: node
   linkType: hard
 
@@ -3429,6 +3448,7 @@ __metadata:
     clsx: "npm:^2.1.1"
     date-fns: "npm:^4.1.0"
     firebase: "npm:^11.4.0"
+    firebaseui: "npm:^6.1.0"
     framer-motion: "npm:^12.5.0"
     gsap: "npm:^3.12.7"
     lucide-react: "npm:^0.475.0"
@@ -3439,6 +3459,7 @@ __metadata:
     postcss: "npm:^8"
     react: "npm:^19.0.0"
     react-dom: "npm:^19.0.0"
+    react-icons: "npm:^5.5.0"
     recharts: "npm:^2.15.1"
     shadcn-ui: "npm:^0.9.4"
     tailwind-merge: "npm:^3.0.1"
@@ -3637,6 +3658,13 @@ __metadata:
     promise-retry: "npm:^2.0.1"
     ssri: "npm:^12.0.0"
   checksum: 10c0/c40efb5e5296e7feb8e37155bde8eb70bc57d731b1f7d90e35a092fde403d7697c56fb49334d92d330d6f1ca29a98142036d6480a12681133a0a1453164cb2f0
+  languageName: node
+  linkType: hard
+
+"material-design-lite@npm:^1.2.0":
+  version: 1.3.0
+  resolution: "material-design-lite@npm:1.3.0"
+  checksum: 10c0/cbe7c9c540a23f3913fddfa292ae5df607441cc47353bafe90bce8d279ba47e3e881548db30a44f1fddbabba9b2c51a8bd6a06c866a99725e8cdd5dd10978b5d
   languageName: node
   linkType: hard
 
@@ -4467,6 +4495,15 @@ __metadata:
   peerDependencies:
     react: ^19.0.0
   checksum: 10c0/a36ce7ab507b237ae2759c984cdaad4af4096d8199fb65b3815c16825e5cfeb7293da790a3fc2184b52bfba7ba3ff31c058c01947aff6fd1a3701632aabaa6a9
+  languageName: node
+  linkType: hard
+
+"react-icons@npm:^5.5.0":
+  version: 5.5.0
+  resolution: "react-icons@npm:5.5.0"
+  peerDependencies:
+    react: "*"
+  checksum: 10c0/a24309bfc993c19cbcbfc928157e53a137851822779977b9588f6dd41ffc4d11ebc98b447f4039b0d309a858f0a42980f6bfb4477fb19f9f2d1bc2e190fcf79c
   languageName: node
   linkType: hard
 
