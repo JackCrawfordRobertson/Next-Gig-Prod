@@ -7,8 +7,8 @@ def fetch_jobs(job_titles, locations):
 
     jobs = {
         "linkedin": [],
-        # "ifyoucould": [],
-        # "unjobs": [],
+        "ifyoucould": [],
+        "unjobs": [],
         # "workable": [],
     }
 
@@ -16,8 +16,8 @@ def fetch_jobs(job_titles, locations):
         print(f"🌍 Scraping jobs in {location}...")
 
         jobs["linkedin"].extend(linkedin.fetch_all_linkedin_jobs(job_titles, location))
-        # jobs["ifyoucould"].extend(ifyoucould.fetch_ifyoucould_jobs(job_titles, location))
-        # jobs["unjobs"].extend(unjobs.fetch_unjobs(job_titles, location))
+        jobs["ifyoucould"].extend(ifyoucould.fetch_ifyoucould_jobs(job_titles, location))
+        jobs["unjobs"].extend(unjobs.fetch_unjobs(job_titles, location))
         # jobs["workable"].extend(workable.fetch_workable_jobs(job_titles, location))
 
     return jobs  

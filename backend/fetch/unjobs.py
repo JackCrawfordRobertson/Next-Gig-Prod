@@ -12,6 +12,9 @@ import config  # Import job keywords & location
 
 BASE_URL = "https://unjobs.org/search/{query}"  # ✅ Correct search format
 
+# ✅ Filtering rules
+EXCLUDED_KEYWORDS = ["senior", "director", "lead", "head"]
+
 # User-Agent Rotation
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
@@ -19,8 +22,32 @@ USER_AGENTS = [
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.77 Safari/537.36",
 ]
 
-def fetch_unjobs():
-    """Scrapes job listings from UN Jobs using CloudScraper."""
+def parse_job_location(location):
+    """
+    Normalize location for more flexible matching.
+    Converts to lowercase and handles common variations.
+    """
+    location = location.lower().strip()
+    # Add more location normalization if needed
+    replacements = {
+        'united kingdom': 'uk',
+        'greater london': 'london',
+    }
+    for full, short in replacements.items():
+        location = location.replace(full, short)
+    return location
+
+def fetch_unjobs(job_titles=None, locations=None):
+    """
+    Scrapes job listings from UN Jobs using CloudScraper with flexible matching.
+    
+    :param job_titles: List of job titles to match against
+    :param locations: List of locations to match against
+    """
+    # Use provided job titles and locations, or default to config
+    job_titles = job_titles or config.JOB_KEYWORDS
+    locations = locations or ['london', 'remote', 'uk']
+
     print("🔍 Scraping UN Jobs...")
 
     scraper = cloudscraper.create_scraper()  # ✅ Bypasses Cloudflare
@@ -28,7 +55,7 @@ def fetch_unjobs():
 
     all_jobs = []
 
-    for job_keyword in config.JOB_KEYWORDS:
+    for job_keyword in job_titles:
         query = job_keyword.lower().replace(" ", "-")  
         search_url = BASE_URL.format(query=query)  
         print(f"\n🌍 Searching for '{job_keyword}' → {search_url}")
@@ -56,7 +83,6 @@ def fetch_unjobs():
 
             soup = BeautifulSoup(response.text, "html.parser")
 
-            # ✅ Extract job listings
             job_elements = soup.select("a.jtitle")  # Finds job titles & links
 
             print(f"📌 Found {len(job_elements)} job elements for '{job_keyword}'.")
@@ -65,31 +91,38 @@ def fetch_unjobs():
                 title = job_element.text.strip()
                 url = job_element["href"]
 
-                # ✅ Ensure absolute URL
                 if not url.startswith("https://"):
                     url = "https://unjobs.org" + url  
 
-                # ✅ Filter by Keywords (Loosely Matches Job Titles)
-                if not any(kw.lower() in title.lower() for kw in config.JOB_KEYWORDS):
-                    continue  
+                if any(keyword.lower() in title.lower() for keyword in EXCLUDED_KEYWORDS):
+                    print(f"⚠️ Skipping senior role: {title}")
+                    continue
 
-                # ✅ Filter by Location (Must Contain "London")
-                if "London" not in title:
-                    continue  
+                title_match = any(
+                    search_title.lower() in title.lower() 
+                    for search_title in job_titles
+                )
 
-                print(f"🆕 Job Found: {title}")
-                print(f"🔗 Job Link: {url}")
+                location_match = any(
+                    search_loc.lower() in title.lower() 
+                    for search_loc in locations
+                )
 
-                all_jobs.append({
-                    "title": title,
-                    "company": "UN Jobs",
-                    "location": "London",
-                    "url": url,
-                    "date_added": datetime.utcnow().strftime("%Y-%m-%d"),  # ✅ New field
-                    "has_applied": False,  # ✅ New field
-                })
+                if title_match and location_match:
+                    print(f"🆕 Job Found: {title}")
+                    print(f"🔗 Job Link: {url}")
 
-            # ✅ Find "Next >" button for pagination
+                    all_jobs.append({
+                        "title": title,
+                        "company": "UN Jobs",
+                        "location": "London",  # Default location as original script
+                        "url": url,
+                        "date_added": datetime.utcnow().strftime("%Y-%m-%d"),
+                        "has_applied": False,
+                    })
+                else:
+                    print(f"❌ Job Skipped: {title}")
+
             next_button = soup.select_one("a.ts")
             if next_button:
                 next_url = next_button["href"]
@@ -109,7 +142,6 @@ def fetch_unjobs():
                 print(f"✅ No more pages for '{job_keyword}'. Moving to next search.")
                 break  # Stop loop if no more pages
 
-    # ✅ Print results at the end for debugging
     print("\n🔍 FINAL JOB LISTINGS:")
     for job in all_jobs:
         print(f"📝 {job['title']}")
@@ -121,6 +153,13 @@ def fetch_unjobs():
     print(f"✅ Finished scraping UN Jobs. Total jobs found: {len(all_jobs)}")
     return all_jobs
 
-# ✅ Test Run
 if __name__ == "__main__":
-    fetch_unjobs()
+    # Example of running with specific job titles and locations
+    jobs = fetch_unjobs(
+        job_titles=['Frontend Engineer', 'UX Designer'],
+        locations=['London', 'Remote']
+    )
+    
+    # Print out matched jobs for verification
+    for job in jobs:
+        print(job)

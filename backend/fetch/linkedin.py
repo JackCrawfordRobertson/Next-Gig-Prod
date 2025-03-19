@@ -14,11 +14,8 @@ HEADERS = {
     "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 }
 
-# ✅ Filtering rules
-EXCLUDED_KEYWORDS = ["video", "social media", "director", "senior"]  # 🚨 Excludes senior roles
-DATE_THRESHOLD = datetime.today() - timedelta(days=14)  # 🚨 Only accept jobs posted in last 14 days
-
-# ✅ Convert relative date ("1 week ago", "3 weeks ago") to actual date
+EXCLUDED_KEYWORDS = ["director", "senior"] 
+DATE_THRESHOLD = datetime.today() - timedelta(days=14) 
 def parse_relative_date(date_text):
     today = datetime.today()
 
@@ -30,15 +27,17 @@ def parse_relative_date(date_text):
         months = int(date_text.split()[0])
         return today - timedelta(weeks=4 * months)
 
-    return today  # Default: If no match, assume today
+    return today 
 
-# ✅ Fetch LinkedIn jobs dynamically
 def fetch_all_linkedin_jobs(job_titles, locations, max_jobs=5, max_per_title=5):
     """
     Fetches LinkedIn job listings for dynamically provided job titles and locations.
     Limits to max_per_title per job role and max_jobs per keyword.
     """
     all_jobs = []
+
+    if not isinstance(locations, list):
+        locations = [locations]
 
     for location in locations:
         print(f"\n🌍 Scraping jobs in {location}...")
@@ -48,7 +47,7 @@ def fetch_all_linkedin_jobs(job_titles, locations, max_jobs=5, max_per_title=5):
 
             jobs = fetch_linkedin_jobs(
                 search_term=job_title,
-                location=location,
+                location=location, 
                 max_jobs=max_jobs,
                 max_per_title=max_per_title
             )
