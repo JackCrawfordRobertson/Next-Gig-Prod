@@ -1,6 +1,6 @@
 // app/(public)/layout.js
 import SidebarLayout from "@/components/Sidebar";
-import ArrowsBackground from "@/components/AnimatedBlocks";
+import ArrowsBackgroundWrapper from "@/components/AnimatedBlocks/ArrowsBackgroundCompiler";
 
 export const metadata = {
     title: "Get Started",
@@ -9,7 +9,7 @@ export const metadata = {
 export default function PublicLayout({children}) {
     return (
         <div className="relative min-h-screen overflow-hidden">
-            <ArrowsBackground />
+            <ArrowsBackgroundWrapper />
             <SidebarLayout>{children}</SidebarLayout>;
         </div>
     );

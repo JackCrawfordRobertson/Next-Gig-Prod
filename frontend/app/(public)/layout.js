@@ -1,5 +1,5 @@
 // app/(public)/layout.js
-import ArrowsBackground from "@/components/AnimatedBlocks";
+import ArrowsBackgroundWrapper from "@/components/AnimatedBlocks/ArrowsBackgroundCompiler";
 
 
 // Server-only metadata
@@ -11,10 +11,9 @@ export default function PublicLayout({ children }) {
   return (
     <div className="relative min-h-screen overflow-hidden">
 
-      <ArrowsBackground />
+      <ArrowsBackgroundWrapper />
 
  
-       {/* Just render children without any fade/transition */}
        <main className="relative z-10">
         {children}
       </main>
