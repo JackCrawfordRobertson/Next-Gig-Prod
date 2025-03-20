@@ -33,13 +33,12 @@
     "clsx": "^2.1.1",
     "cmdk": "1.0.0",
     "date-fns": "^4.1.0",
-    "firebase": "^10.9.0",
-    "firebase-admin": "^12.0.0",
+    "firebase": "^10.14.1",
+    "firebase-admin": "^11.11.1",
     "firebaseui": "^6.1.0",
     "framer-motion": "^12.5.0",
     "gsap": "^3.12.7",
     "lucide-react": "^0.475.0",
-    "netlify": "^13.3.3",
     "next": "15.1.7",
     "next-auth": "^4.24.11",
     "next-themes": "^0.4.4",
@@ -52,6 +51,7 @@
     "three": "^0.174.0"
   },
   "devDependencies": {
+    "netlify-cli": "^19.0.3",
     "postcss": "^8",
     "shadcn-ui": "^0.9.4",
     "tailwindcss": "^3.4.1"
@@ -59,7 +59,8 @@
   "resolutions": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "firebase": "^10.9.0"
+    "firebase": "^10.14.1",
+    "firebase-admin": "^11.11.1"
   },
   "packageManager": "yarn@4.6.0+sha512.5383cc12567a95f1d668fbe762dfe0075c595b4bfff433be478dbbe24e05251a8e8c3eb992a986667c1d53b6c3a9c85b8398c35a960587fbd9fa3a0915406728"
 }
