@@ -2412,6 +2412,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@netlify/plugin-nextjs@npm:^5.10.1":
+  version: 5.10.1
+  resolution: "@netlify/plugin-nextjs@npm:5.10.1"
+  checksum: 10c0/39e5ba2842cbd60421cf83a25101622148125e2035dc0ebcb4731503fea91956cf1f7ada479cb343578f95f937cf576de1a6ee7a4135e696efffa07003455448
+  languageName: node
+  linkType: hard
+
 "@netlify/plugins-list@npm:^6.80.0":
   version: 6.80.0
   resolution: "@netlify/plugins-list@npm:6.80.0"
@@ -9736,6 +9743,7 @@ __metadata:
   resolution: "job-scraper-frontend@workspace:."
   dependencies:
     "@fingerprintjs/fingerprintjs": "npm:^4.6.1"
+    "@netlify/plugin-nextjs": "npm:^5.10.1"
     "@next-auth/firebase-adapter": "npm:^2.0.1"
     "@paypal/react-paypal-js": "npm:^8.8.2"
     "@radix-ui/react-alert-dialog": "npm:^1.1.6"

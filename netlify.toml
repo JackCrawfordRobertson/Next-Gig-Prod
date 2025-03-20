@@ -1,19 +1,17 @@
 [build]
-  # Set the base directory to your frontend folder
   base = "frontend"
-  
-  # Build command using Yarn with update-lockfile mode
-  command = "yarn install --mode=update-lockfile && yarn build"
-  
-  # The publish directory relative to the base
+  command = "yarn install && yarn build" 
   publish = ".next"
 
-[build.environment]
-  # Node.js version compatible with Next.js 15.1.7
-  NODE_VERSION = "20.10.0"
-  
-  # Explicitly set Yarn version to match your project
-  YARN_VERSION = "4.6.0"
-  
-  # Next.js specific environment variables
+# This plugin is essential for Next.js with App Router and Server Components
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Optional: Set environment variables for different contexts
+[context.production.environment]
   NEXT_TELEMETRY_DISABLED = "1"
+  NODE_ENV = "production"
+
+[context.deploy-preview.environment]
+  NEXT_TELEMETRY_DISABLED = "1"
+  NODE_ENV = "production"
