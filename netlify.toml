@@ -2,8 +2,8 @@
   # Set the base directory to your frontend folder
   base = "frontend"
   
-  # Build command
-  command = "npm install && npm run build"
+  # Build command with legacy peer deps flag
+  command = "npm install --legacy-peer-deps && npm run build"
   
   # The publish directory relative to the base
   publish = ".next"
