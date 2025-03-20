@@ -334,6 +334,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@fingerprintjs/fingerprintjs@npm:^4.6.1":
+  version: 4.6.1
+  resolution: "@fingerprintjs/fingerprintjs@npm:4.6.1"
+  dependencies:
+    tslib: "npm:^2.4.1"
+  checksum: 10c0/bc06928ef414e77c33d2b88666df89a9c80f48060b9548f4be273449a82862a6f309a12d718f00f7c566e68a23e9822988a3610aa238c559196a25840e403446
+  languageName: node
+  linkType: hard
+
 "@firebase/analytics-compat@npm:0.2.18":
   version: 0.2.18
   resolution: "@firebase/analytics-compat@npm:0.2.18"
@@ -1326,6 +1335,37 @@ __metadata:
   version: 1.2.1
   resolution: "@panva/hkdf@npm:1.2.1"
   checksum: 10c0/1fabdec9bd2c19b8e88a3fa6fd0c25e25823c5000d9efdf4b6dfe32e9f370f8b9603cf776d120d160bec15fba17e079974cc34f0f52cebb24602cd832dfde19c
+  languageName: node
+  linkType: hard
+
+"@paypal/paypal-js@npm:^8.1.2":
+  version: 8.2.0
+  resolution: "@paypal/paypal-js@npm:8.2.0"
+  dependencies:
+    promise-polyfill: "npm:^8.3.0"
+  checksum: 10c0/84cd3ca6db0f8a2f1686a8a78b53fa26429b5660175e49750fc2d68c4324b1a52b367b155a5bd8cd0eaf8aae66832308c491ff5047197bccd510a07e0b72b3c7
+  languageName: node
+  linkType: hard
+
+"@paypal/react-paypal-js@npm:^8.8.2":
+  version: 8.8.2
+  resolution: "@paypal/react-paypal-js@npm:8.8.2"
+  dependencies:
+    "@paypal/paypal-js": "npm:^8.1.2"
+    "@paypal/sdk-constants": "npm:^1.0.122"
+  peerDependencies:
+    react: ^16.8.0 || ^17 || ^18 || ^19
+    react-dom: ^16.8.0 || ^17 || ^18 || ^19
+  checksum: 10c0/a2438b9def69fe6e3332db6ac338d1532e4b369c6d87bcc9e0f410cac0906a66010877654884cb3c38191c9a45b4f3deb746aba4e99b2e68c7fdee1baf1db0ec
+  languageName: node
+  linkType: hard
+
+"@paypal/sdk-constants@npm:^1.0.122":
+  version: 1.0.153
+  resolution: "@paypal/sdk-constants@npm:1.0.153"
+  dependencies:
+    hi-base32: "npm:^0.5.0"
+  checksum: 10c0/4f09c480fa93f9861c7bcb9307dbdc8521d459b08e3af240763a6bae02df04b6c4bbc37b3591ebdd435e0793ab16cbcc6d28cc9b3f799b75e70f9f45beb7f3fc
   languageName: node
   linkType: hard
 
@@ -3821,6 +3861,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"hi-base32@npm:^0.5.0":
+  version: 0.5.1
+  resolution: "hi-base32@npm:0.5.1"
+  checksum: 10c0/45adb99249b04108fd689cb344f4b625b49d0518327117c34c403dbaf4723aaefb2a1bde6d7a0288ff0f835970d0f844a3ae103534dc237c99b8552a0e689177
+  languageName: node
+  linkType: hard
+
 "hls.js@npm:^1.5.17":
   version: 1.5.20
   resolution: "hls.js@npm:1.5.20"
@@ -4091,7 +4138,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "job-scraper-frontend@workspace:."
   dependencies:
+    "@fingerprintjs/fingerprintjs": "npm:^4.6.1"
     "@next-auth/firebase-adapter": "npm:^2.0.1"
+    "@paypal/react-paypal-js": "npm:^8.8.2"
     "@radix-ui/react-alert-dialog": "npm:^1.1.6"
     "@radix-ui/react-avatar": "npm:^1.1.3"
     "@radix-ui/react-dialog": "npm:^1.1.6"
@@ -4104,6 +4153,7 @@ __metadata:
     "@radix-ui/react-tooltip": "npm:^1.1.8"
     "@react-three/drei": "npm:^10.0.4"
     "@react-three/fiber": "npm:^9.1.0"
+    buffer: "npm:^6.0.3"
     class-variance-authority: "npm:^0.7.1"
     classnames: "npm:^2.5.1"
     clsx: "npm:^2.1.1"
@@ -5122,6 +5172,13 @@ __metadata:
   version: 5.0.0
   resolution: "proc-log@npm:5.0.0"
   checksum: 10c0/bbe5edb944b0ad63387a1d5b1911ae93e05ce8d0f60de1035b218cdcceedfe39dbd2c697853355b70f1a090f8f58fe90da487c85216bf9671f9499d1a897e9e3
+  languageName: node
+  linkType: hard
+
+"promise-polyfill@npm:^8.3.0":
+  version: 8.3.0
+  resolution: "promise-polyfill@npm:8.3.0"
+  checksum: 10c0/97141f07a31a6be135ec9ed53700a3423a771cabec0ba5e08fcb2bf8cfda855479ff70e444fceb938f560be42b450cd032c14f4a940ed2ad1e5b4dcb78368dce
   languageName: node
   linkType: hard
 
@@ -6167,7 +6224,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tslib@npm:^2.0.0, tslib@npm:^2.0.1, tslib@npm:^2.1.0, tslib@npm:^2.4.0, tslib@npm:^2.8.0":
+"tslib@npm:^2.0.0, tslib@npm:^2.0.1, tslib@npm:^2.1.0, tslib@npm:^2.4.0, tslib@npm:^2.4.1, tslib@npm:^2.8.0":
   version: 2.8.1
   resolution: "tslib@npm:2.8.1"
   checksum: 10c0/9c4759110a19c53f992d9aae23aac5ced636e99887b51b9e61def52611732872ff7668757d4e4c61f19691e36f4da981cd9485e869b4a7408d689f6bf1f14e62

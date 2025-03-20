@@ -1,4 +1,16 @@
 [build]
-  base = "frontend/"
-  command = "npm run build"
-  publish = "frontend/.next/"
+  # Set the base directory to your frontend folder
+  base = "frontend"
+  
+  # Build command
+  command = "npm install && npm run build"
+  
+  # The publish directory relative to the base
+  publish = ".next"
+
+[build.environment]
+  # Set Node version that's compatible with your Next.js version
+  NODE_VERSION = "18.17.0"
+  
+  # Next.js specific environment variables
+  NEXT_TELEMETRY_DISABLED = "1"

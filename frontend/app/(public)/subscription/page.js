@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, collection, addDoc, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import dynamic from "next/dynamic";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { getFingerprint, checkForFraudPatterns } from "@/lib/fingerprint";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 // Import PayPalButton dynamically to prevent SSR hydration issues
 const PayPalButton = dynamic(() => import("@/components/PayPalButton"), { ssr: false });
@@ -21,7 +23,7 @@ const MOCK_USER = {
     },
 };
 
-// Dynamically import the page to **force client-side rendering**
+// Dynamically import the page to force client-side rendering
 const SubscriptionPage = dynamic(() => Promise.resolve(SubscriptionComponent), { ssr: false });
 
 function SubscriptionComponent() {
@@ -32,12 +34,46 @@ function SubscriptionComponent() {
             : useSession();
 
     const [clientReady, setClientReady] = useState(false);
+    const [fingerprint, setFingerprint] = useState(null);
+    const [fraudCheck, setFraudCheck] = useState({ status: "pending", isSuspicious: false });
+    const [errorMessage, setErrorMessage] = useState("");
 
+    // Initialize the component and generate fingerprint
     useEffect(() => {
         console.log("Rendering SubscriptionPage...");
         setClientReady(true);
-    }, []);
 
+        // Generate fingerprint on component mount
+        const initFingerprint = async () => {
+            try {
+                const fp = await getFingerprint();
+                setFingerprint(fp);
+                console.log("Fingerprint generated:", fp);
+                
+                // If user is authenticated, check for fraud patterns
+                if (session?.user?.id && fp) {
+                    const fraudResult = await checkForFraudPatterns(db, fp);
+                    setFraudCheck({
+                        status: "completed",
+                        isSuspicious: fraudResult.isSuspicious,
+                        data: fraudResult.existingSubscriptions,
+                    });
+                    
+                    if (fraudResult.isSuspicious) {
+                        console.warn("Suspicious activity detected:", fraudResult);
+                        setErrorMessage("We've detected that you may already have an active subscription. If you believe this is an error, please contact support.");
+                    }
+                }
+            } catch (err) {
+                console.error("Error during fingerprint generation:", err);
+                setFraudCheck({ status: "error", error: err.message });
+            }
+        };
+
+        initFingerprint();
+    }, [session]);
+
+    // Log session data when it changes
     useEffect(() => {
         console.log("Session data:", session);
     }, [session]);
@@ -46,19 +82,43 @@ function SubscriptionComponent() {
         return <div className="flex items-center justify-center h-screen text-lg">Loading...</div>;
     }
 
-    const handleSubscriptionSuccess = async () => {
+    const handleSubscriptionSuccess = async (subscriptionData) => {
         try {
-            console.log("Updating Firestore subscription...");
+            console.log("Subscription successful:", subscriptionData);
+            
+            // Calculate trial end date (7 days from now)
+            const trialEndDate = new Date();
+            trialEndDate.setDate(trialEndDate.getDate() + 7);
+            
+            // Update user document with subscription info
             await updateDoc(doc(db, "users", session.user.id), {
                 subscribed: true,
+                onTrial: true,
                 subscriptionPlan: "paypal",
+                subscriptionId: subscriptionData.subscriptionId,
                 subscriptionStartDate: new Date().toISOString(),
+                trialEndDate: trialEndDate.toISOString(),
+            });
+            
+            // Create a subscription record for tracking and fraud prevention
+            await addDoc(collection(db, "subscriptions"), {
+                userId: session.user.id,
+                subscriptionId: subscriptionData.subscriptionId,
+                plan: "paypal",
+                status: "trial",
+                startDate: new Date().toISOString(),
+                trialEndDate: trialEndDate.toISOString(),
+                fingerprint: fingerprint,
+                paymentMethod: "paypal",
+                price: 1.25,
+                currency: "GBP",
+                createdAt: new Date().toISOString(),
             });
 
             router.push("/dashboard");
         } catch (err) {
             console.error("Error updating subscription:", err);
-            alert("Subscription update failed.");
+            setErrorMessage("Subscription update failed. Please try again or contact support.");
         }
     };
 
@@ -75,6 +135,14 @@ function SubscriptionComponent() {
                     </p>
 
                     <Separator />
+
+                    {/* Display error message if fraud is detected */}
+                    {errorMessage && (
+                        <Alert variant="destructive" className="mb-4">
+                            <AlertTitle>Subscription Error</AlertTitle>
+                            <AlertDescription>{errorMessage}</AlertDescription>
+                        </Alert>
+                    )}
 
                     {/* Responsive Layout: Two-column on desktop, stacked & centered on mobile */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
@@ -103,7 +171,7 @@ function SubscriptionComponent() {
                     </div>
 
                     <p className="text-center text-gray-600 text-sm mt-2">
-                        7 days free. Cancel anytime.<br />
+                        <strong>7 days free.</strong> Cancel anytime.<br />
                         But why would you? Let the 7 days show you.
                     </p>
 
@@ -113,7 +181,16 @@ function SubscriptionComponent() {
                 <CardFooter className="flex flex-col items-center space-y-4 w-full">
                     {session?.user?.id ? (
                         <div className="w-full">
-                            <PayPalButton userId={session.user.id} onSuccess={handleSubscriptionSuccess} />
+                            {fraudCheck.isSuspicious ? (
+                                <Button className="w-full" variant="outline" disabled>
+                                    Subscription Unavailable
+                                </Button>
+                            ) : (
+                                <PayPalButton 
+                                    userId={session.user.id} 
+                                    onSuccess={handleSubscriptionSuccess} 
+                                />
+                            )}
                         </div>
                     ) : (
                         <div className="text-center w-full">

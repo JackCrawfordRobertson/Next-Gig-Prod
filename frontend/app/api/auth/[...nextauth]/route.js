@@ -1,8 +1,8 @@
-// app/api/auth/[...nextauth]/route.js
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 export const authOptions = {
   providers: [
@@ -38,9 +38,56 @@ export const authOptions = {
   callbacks: {
     async session({ session, token }) {
       session.user.id = token.sub;
+      
+      // Fetch subscription information from Firestore
+      try {
+        const userDoc = await getDoc(doc(db, "users", token.sub));
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          
+          // Add subscription data to the session
+          session.user.subscribed = userData.subscribed || false;
+          session.user.onTrial = userData.onTrial || false;
+          session.user.subscriptionPlan = userData.subscriptionPlan;
+          session.user.subscriptionId = userData.subscriptionId;
+          session.user.subscriptionActive = userData.subscriptionActive || false;
+          
+          // Add trial information if relevant
+          if (userData.trialEndDate) {
+            session.user.trialEndDate = userData.trialEndDate;
+            
+            // Calculate if trial is still active based on the end date
+            const trialEndDate = new Date(userData.trialEndDate);
+            const now = new Date();
+            session.user.trialActive = trialEndDate > now;
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user subscription data:", error);
+        // Don't fail the session if we can't get subscription data
+        // Just proceed with the basic user info
+      }
+      
       return session;
     },
+    
+    async jwt({ token, user }) {
+      if (user) {
+        token.sub = user.id;
+      }
+      return token;
+    }
   },
+  pages: {
+    signIn: '/login',
+    error: '/login',
+  },
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  debug: process.env.NODE_ENV === "development",
 };
 
 const handler = NextAuth(authOptions);
