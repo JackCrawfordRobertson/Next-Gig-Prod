@@ -2,15 +2,15 @@
   # Set the base directory to your frontend folder
   base = "frontend"
   
-  # Build command with legacy peer deps flag
+  # Build command
   command = "npm install --legacy-peer-deps && npm run build"
   
   # The publish directory relative to the base
   publish = ".next"
 
 [build.environment]
-  # Set Node version that's compatible with your Next.js version
-  NODE_VERSION = "18.17.0"
+  # Update to a Node.js version compatible with Next.js 15.1.7
+  NODE_VERSION = "20.10.0"
   
   # Next.js specific environment variables
   NEXT_TELEMETRY_DISABLED = "1"
