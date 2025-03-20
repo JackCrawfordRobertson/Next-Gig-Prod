@@ -2,15 +2,18 @@
   # Set the base directory to your frontend folder
   base = "frontend"
   
-  # Build command
-  command = "npm install --legacy-peer-deps && npm run build"
+  # Build command using Yarn with update-lockfile mode
+  command = "yarn install --mode=update-lockfile && yarn build"
   
   # The publish directory relative to the base
   publish = ".next"
 
 [build.environment]
-  # Update to a Node.js version compatible with Next.js 15.1.7
+  # Node.js version compatible with Next.js 15.1.7
   NODE_VERSION = "20.10.0"
+  
+  # Explicitly set Yarn version to match your project
+  YARN_VERSION = "4.6.0"
   
   # Next.js specific environment variables
   NEXT_TELEMETRY_DISABLED = "1"
