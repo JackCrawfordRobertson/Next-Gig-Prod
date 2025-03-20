@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, doc, updateDoc, getDocs, collection } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
 // Load Firebase config from environment variables
@@ -13,7 +13,10 @@ const firebaseConfig = {
     measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
-// ✅ Initialize Firebase
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+// Export Firestore functions
+export { doc, updateDoc, getDocs, collection };

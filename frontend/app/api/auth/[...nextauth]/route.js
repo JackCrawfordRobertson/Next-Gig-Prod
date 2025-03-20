@@ -1,3 +1,4 @@
+// app/api/auth/[...nextauth]/route.js
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { signInWithEmailAndPassword } from "firebase/auth";
@@ -12,6 +13,14 @@ export const authOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
+        // For development mode with mock data
+        if (process.env.NODE_ENV === "development" && 
+            credentials.email === "alice@example.com" && 
+            credentials.password === "password") {
+          return { id: "demo-user-id", email: "alice@example.com" };
+        }
+        
+        // Regular production path
         try {
           const userCredential = await signInWithEmailAndPassword(
             auth,

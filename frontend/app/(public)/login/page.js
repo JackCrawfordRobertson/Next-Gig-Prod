@@ -7,8 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserPlus } from "lucide-react"; // ✅ Icon for "Create Account"
-import { Separator } from "@/components/ui/separator"; // ✅ ShadCN Separator
+import { UserPlus } from "lucide-react";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -19,45 +18,37 @@ export default function LoginPage() {
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
 
-    // Redirect authenticated users to dashboard
+    // Redirect authenticated users directly to dashboard
     useEffect(() => {
-        if (!isDev && status === "authenticated") {
+        if (status === "authenticated") {
             router.push("/dashboard");
         }
-    }, [status, router, isDev]);
+    }, [status, router]);
 
-    // ✅ Handle Email/Password Login
+    // Handle Email/Password Login
     const handleLogin = async () => {
         try {
-            const result = await signIn("credentials", { email, password, redirect: false });
+            setIsLoading(true);
+            const result = await signIn("credentials", { 
+                email, 
+                password, 
+                redirect: false 
+            });
+            
             if (result?.error) throw new Error(result.error);
-
+            
+            // Directly push to dashboard on successful login
             router.push("/dashboard");
         } catch (error) {
             alert("Login failed. Please check your details and try again.");
+        } finally {
+            setIsLoading(false);
         }
     };
 
-    // ✅ Show Welcome Page if Logged In
-    if (session) {
-        return (
-            <div className="flex min-h-screen items-center justify-center bg-gray-100 p-6">
-                <Card className="w-full max-w-md shadow-lg">
-                    <CardHeader>
-                        <CardTitle>Welcome back, {session.user.email}</CardTitle>
-                    </CardHeader>
-                    <CardFooter className="flex justify-center">
-                        <Button onClick={() => signOut()} variant="destructive">
-                            Sign Out
-                        </Button>
-                    </CardFooter>
-                </Card>
-            </div>
-        );
-    }
-
-    // ✅ Sign-In Form
+    // Only render the login form, no "Welcome" screen
     return (
         <div className="flex min-h-screen items-center justify-center bg-transparent p-6">
             <Card className="w-full max-w-md shadow-lg">
@@ -67,7 +58,6 @@ export default function LoginPage() {
                 </CardHeader>
 
                 <CardContent className="space-y-4">
-                    {/* Email & Password Login */}
                     <div className="space-y-2">
                         <Label htmlFor="email">Email</Label>
                         <Input
@@ -92,21 +82,25 @@ export default function LoginPage() {
                 </CardContent>
 
                 <CardFooter className="flex flex-col gap-2 w-full">
-                    <Button onClick={handleLogin} className="w-full">
-                        Sign In
+                    <Button 
+                        onClick={handleLogin} 
+                        className="w-full"
+                        disabled={isLoading}
+                    >
+                        {isLoading ? "Signing in..." : "Sign In"}
                     </Button>
 
-            {/* ✅ Full-width divider using divs */}
-<div className="relative flex items-center w-full">
-    <div className="flex-grow border-t border-gray-300"></div>
-    <span className="px-2 text-gray-500 text-sm">OR</span>
-    <div className="flex-grow border-t border-gray-300"></div>
-</div>
+                    <div className="relative flex items-center w-full">
+                        <div className="flex-grow border-t border-gray-300"></div>
+                        <span className="px-2 text-gray-500 text-sm">OR</span>
+                        <div className="flex-grow border-t border-gray-300"></div>
+                    </div>
 
                     <Button
                         onClick={() => router.push("/complete-profile")}
                         variant="secondary"
                         className="w-full flex items-center justify-center gap-2"
+                        disabled={isLoading}
                     >
                         <UserPlus size={18} /> Create Account
                     </Button>
