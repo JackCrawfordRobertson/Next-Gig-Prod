@@ -117,21 +117,21 @@ export default function DashboardPage() {
     async function fetchUserData() {
         try {
             if (status === "loading") return;
- 
+
             console.log("User session:", session?.user?.email);
             console.log("Environment:", process.env.NODE_ENV);
             console.log("Firebase config:", {
                 projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
                 authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
             });
- 
+
             if (isDev) {
                 // In development, fetch from our mock API
                 const response = await fetch("/api/user");
                 if (!response.ok) throw new Error("Failed to fetch user data");
                 const userData = await response.json();
                 setUserData(userData);
- 
+
                 // Extract and flatten job data
                 const allJobs = [
                     ...(userData.linkedin || []).map((job) => ({
@@ -161,67 +161,95 @@ export default function DashboardPage() {
                           ]
                         : []),
                 ];
- 
+
                 setJobs(allJobs);
             } else {
                 // In production, use Firestore directly
                 console.log("Fetching jobs from Firestore");
                 const userEmail = session?.user?.email;
- 
+
                 if (userEmail) {
                     console.log(`Fetching user data for: ${userEmail}`);
                     
-                    // Get the user document using their email
-                    const userQuery = query(collection(db, "users"), where("email", "==", userEmail));
-                    const userSnapshot = await getDocs(userQuery);
-                    
-                    if (userSnapshot.empty) {
-                        console.log("No user document found with this email");
-                        setJobs([]);
-                    } else {
-                        const userData = userSnapshot.docs[0].data();
-                        console.log("User data found:", userData);
+                    // Get the user document using their email - simpler approach without query
+                    try {
+                        console.log("Fetching users collection");
+                        const usersSnapshot = await getDocs(collection(db, "users"));
+                        console.log(`Found ${usersSnapshot.docs.length} user documents`);
                         
-                        // Check if jobs exist in the user document
-                        if (userData.jobs) {
-                            console.log("Jobs found in user document:", userData.jobs);
-                            
-                            // Extract and flatten job data
-                            const allJobs = [
-                                ...(userData.jobs.linkedin || []).map((job) => ({
-                                    ...job,
-                                    source: "LinkedIn",
-                                    id: `linkedin-${job.id || Math.random().toString(36).substring(2, 9)}`,
-                                })),
-                                ...(userData.jobs.ifyoucould || []).map((job) => ({
-                                    ...job,
-                                    source: "If You Could",
-                                    id: `ifyoucould-${job.id || Math.random().toString(36).substring(2, 9)}`,
-                                })),
-                                ...(userData.jobs.unjobs || []).map((job) => ({
-                                    ...job,
-                                    source: "UN Jobs",
-                                    id: `unjobs-${job.id || Math.random().toString(36).substring(2, 9)}`,
-                                })),
-                                ...(userData.jobs.workable || []).map((job) => ({
-                                    ...job,
-                                    source: "Workable",
-                                    id: `workable-${job.id || Math.random().toString(36).substring(2, 9)}`,
-                                })),
-                            ];
-                            
-                            console.log(`Total jobs extracted from user document: ${allJobs.length}`);
-                            setJobs(allJobs);
-                        } else {
-                            console.log("No jobs field found in user document");
+                        const userDoc = usersSnapshot.docs.find(doc => doc.data().email === userEmail);
+                        
+                        if (!userDoc) {
+                            console.log("No user document found with this email");
                             setJobs([]);
+                        } else {
+                            const userData = userDoc.data();
+                            console.log("User data found:", userData);
+                            
+                            // Check if jobs exist in the user document
+                            if (userData.jobs) {
+                                console.log("Jobs found in user document:", userData.jobs);
+                                
+                                // Extract and flatten job data
+                                const allJobs = [
+                                    ...(userData.jobs.linkedin || []).map((job) => ({
+                                        ...job,
+                                        source: "LinkedIn",
+                                        id: `linkedin-${job.id || Math.random().toString(36).substring(2, 9)}`,
+                                    })),
+                                    ...(userData.jobs.ifyoucould || []).map((job) => ({
+                                        ...job,
+                                        source: "If You Could",
+                                        id: `ifyoucould-${job.id || Math.random().toString(36).substring(2, 9)}`,
+                                    })),
+                                    ...(userData.jobs.unjobs || []).map((job) => ({
+                                        ...job,
+                                        source: "UN Jobs",
+                                        id: `unjobs-${job.id || Math.random().toString(36).substring(2, 9)}`,
+                                    })),
+                                    ...(userData.jobs.workable || []).map((job) => ({
+                                        ...job,
+                                        source: "Workable",
+                                        id: `workable-${job.id || Math.random().toString(36).substring(2, 9)}`,
+                                    })),
+                                ];
+                                
+                                console.log(`Total jobs extracted from user document: ${allJobs.length}`);
+                                setJobs(allJobs);
+                            } else {
+                                console.log("No jobs field found in user document");
+                                setJobs([]);
+                            }
                         }
+                    } catch (error) {
+                        console.error("Error querying users:", error);
+                        
+                        // Fall back to the original approach
+                        console.log("Falling back to original collection approach");
+                        const jobSources = ["linkedin", "ifyoucould", "unjobs", "workable"];
+                        let allJobs = [];
+
+                        for (const source of jobSources) {
+                            console.log(`Fetching ${source} jobs from Firestore`);
+                            const querySnapshot = await getDocs(collection(db, source));
+                            console.log(`${source} query snapshot:`, querySnapshot.docs.length, "documents found");
+                            
+                            const sourceJobs = querySnapshot.docs.map((doc) => ({
+                                ...doc.data(),
+                                id: `${source}-${doc.id}`,
+                                source: source.charAt(0).toUpperCase() + source.slice(1),
+                            }));
+                            allJobs = [...allJobs, ...sourceJobs];
+                        }
+
+                        console.log(`Total jobs fetched from Firestore: ${allJobs.length}`);
+                        setJobs(allJobs);
                     }
                 } else {
                     // Original code as fallback if no user email
                     const jobSources = ["linkedin", "ifyoucould", "unjobs", "workable"];
                     let allJobs = [];
- 
+
                     for (const source of jobSources) {
                         console.log(`Fetching ${source} jobs from Firestore`);
                         const querySnapshot = await getDocs(collection(db, source));
@@ -253,7 +281,7 @@ export default function DashboardPage() {
                         }));
                         allJobs = [...allJobs, ...sourceJobs];
                     }
- 
+
                     console.log(`Total jobs fetched from Firestore: ${allJobs.length}`);
                     setJobs(allJobs);
                 }
@@ -264,9 +292,9 @@ export default function DashboardPage() {
             setLoading(false);
         }
     }
- 
+
     fetchUserData();
- }, [status, isDev, session]);
+}, [status, isDev, session]);
 
    // Additional logging for jobs data
    useEffect(() => {
