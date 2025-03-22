@@ -386,9 +386,22 @@ export default function DashboardPage() {
 
    return (
        <div className="h-screen w-full flex flex-col bg-transparent overflow-hidden p-2 sm:p-4">
-           {loading ? (
-               <p className="text-center text-gray-500">Loading jobs...</p>
-           ) : (
+          
+          {loading ? (
+    <div className="flex items-center justify-center h-full">
+        <div className="text-center space-y-3">
+            <div className="inline-flex items-center gap-2">
+                <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                <div className="w-3 h-3 bg-primary rounded-full animate-bounce"></div>
+            </div>
+            <p className="text-muted-foreground animate-pulse">Loading your jobs...</p>
+        </div>
+    </div>
+) : (
+          
+          
+          
                <div className="flex flex-col h-full space-y-3 sm:space-y-4">
                    {/* Stats Row - Scrollable on mobile, grid on desktop */}
                    <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

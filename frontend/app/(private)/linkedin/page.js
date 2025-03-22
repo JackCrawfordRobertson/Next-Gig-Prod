@@ -198,7 +198,7 @@ export default function LinkedInPage() {
             fetchJobs();
         }
     }, [currentWeek, status, isDev, session]);
-    
+
     // Handle job card click to open URL
     const handleJobClick = (job) => {
         console.log('Job clicked:', job.title);
@@ -255,7 +255,16 @@ export default function LinkedInPage() {
     const goToNextWeek = () => setCurrentWeek(addWeeks(currentWeek, 1));
 
     if (loading) {
-        return <div className="flex items-center justify-center h-screen">Loading...</div>;
+        return  <div className="flex items-center justify-center h-full">
+        <div className="text-center space-y-3">
+            <div className="inline-flex items-center gap-2">
+                <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                <div className="w-3 h-3 bg-primary rounded-full animate-bounce"></div>
+            </div>
+            <p className="text-muted-foreground animate-pulse">Loading your jobs...</p>
+        </div>
+    </div>;
     }
 
     // Desktop layout (unchanged)
@@ -341,21 +350,26 @@ export default function LinkedInPage() {
                         </CardHeader>
                         <CardContent className="p-0 pt-2 h-[calc(100vh-170px)]">
                             <ScrollArea className="h-full pb-8">
-                                <div className="flex flex-col gap-3 px-3 pb-16">
-                                    {jobs.length > 0 ? (
-                                        jobs.map((job, index) => (
-                                            <MobileJobCard 
-                                                key={index} 
-                                                job={job} 
-                                                onClick={() => handleJobClick(job)}
-                                            />
-                                        ))
-                                    ) : (
-                                        <div className="flex items-center justify-center h-32 bg-muted/50 rounded-lg">
-                                            <p className="text-muted-foreground">No jobs available</p>
-                                        </div>
-                                    )}
-                                </div>
+                               <div className="flex flex-col gap-3 px-3 pb-16">
+    {jobs.length > 0 ? (
+        jobs.map((job, index) => (
+            <MobileJobCard 
+                key={index} 
+                job={job} 
+                onClick={() => handleJobClick(job)}
+            />
+        ))
+    ) : (
+        <div className="flex items-center justify-center h-40 bg-muted/50 rounded-lg p-4">
+            <div className="text-center">
+                <p className="text-muted-foreground mb-2">No jobs available yet</p>
+                <p className="text-sm text-muted-foreground">
+                    As a new account holder, your first jobs will be added within 8 hours of account creation.
+                </p>
+            </div>
+        </div>
+    )}
+</div>
                             </ScrollArea>
                         </CardContent>
                     </Card>
@@ -519,9 +533,12 @@ function JobColumn({title, jobs, onJobClick}) {
                                 </Card>
                             ))
                         ) : (
-                            <div className="flex items-center justify-center h-32 bg-muted/50 rounded-lg">
-                                <p className="text-muted-foreground">No jobs available</p>
-                            </div>
+                            <div className="text-center">
+                            <p className="text-muted-foreground mb-2">No jobs available yet</p>
+                            <p className="text-sm text-muted-foreground">
+                                As a new account holder, your first jobs will be added within 8 hours of account creation.
+                            </p>
+                        </div>
                         )}
                     </div>
                 </ScrollArea>

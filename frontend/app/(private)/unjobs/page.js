@@ -266,8 +266,17 @@ export default function UNJobsPage() {
   const goToNextWeek = () => setCurrentWeek(addWeeks(currentWeek, 1));
 
   if (loading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
-  }
+    return  <div className="flex items-center justify-center h-full">
+    <div className="text-center space-y-3">
+        <div className="inline-flex items-center gap-2">
+            <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+            <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+            <div className="w-3 h-3 bg-primary rounded-full animate-bounce"></div>
+        </div>
+        <p className="text-muted-foreground animate-pulse">Loading your jobs...</p>
+    </div>
+</div>;
+}
 
   // Desktop layout
   const DesktopLayout = () => (
@@ -365,9 +374,12 @@ export default function UNJobsPage() {
                       />
                     ))
                   ) : (
-                    <div className="flex items-center justify-center h-32 bg-muted/50 rounded-lg">
-                      <p className="text-muted-foreground">No jobs available</p>
-                    </div>
+                    <div className="text-center">
+                <p className="text-muted-foreground mb-2">No jobs available yet</p>
+                <p className="text-sm text-muted-foreground">
+                    As a new account holder, your first jobs will be added within 8 hours of account creation.
+                </p>
+            </div>
                   )}
                 </div>
               </ScrollArea>
@@ -533,9 +545,12 @@ function JobColumn({ title, jobs, onJobClick }) {
                 </Card>
               ))
             ) : (
-              <div className="flex items-center justify-center h-32 bg-muted/50 rounded-lg">
-                <p className="text-muted-foreground">No jobs available</p>
-              </div>
+              <div className="text-center">
+                <p className="text-muted-foreground mb-2">No jobs available yet</p>
+                <p className="text-sm text-muted-foreground">
+                    As a new account holder, your first jobs will be added within 8 hours of account creation.
+                </p>
+            </div>
             )}
           </div>
         </ScrollArea>
