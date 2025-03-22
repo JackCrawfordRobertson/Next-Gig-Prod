@@ -274,14 +274,17 @@ export default function ProfileSettingsPage() {
   }
   
   return (
-    <div className="container py-10">
+    <div className="container  px-10 py-10">
       <div className="space-y-6">
+      <Card className="p-4">
         <div>
+          
           <h1 className="text-3xl font-bold">Profile Settings</h1>
           <p className="text-muted-foreground">
             Manage your profile information and subscription settings
           </p>
         </div>
+        </Card>
         
         <Tabs defaultValue="general" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
@@ -320,8 +323,8 @@ export default function ProfileSettingsPage() {
                             name="firstName"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>First Name</FormLabel>
-                                <FormControl>
+                                <FormLabel >First Name</FormLabel>
+                                <FormControl className="bg-white">
                                   <Input placeholder="Enter your first name" {...field} />
                                 </FormControl>
                                 <FormMessage />
@@ -335,7 +338,7 @@ export default function ProfileSettingsPage() {
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>Last Name</FormLabel>
-                                <FormControl>
+                                <FormControl className="bg-white">
                                   <Input placeholder="Enter your last name" {...field} />
                                 </FormControl>
                                 <FormMessage />
@@ -349,7 +352,7 @@ export default function ProfileSettingsPage() {
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>Email</FormLabel>
-                                <FormControl>
+                                <FormControl className="bg-white">
                                   <Input type="email" placeholder="name@example.com" {...field} />
                                 </FormControl>
                                 <FormMessage />
@@ -377,10 +380,10 @@ export default function ProfileSettingsPage() {
                         name="jobTitles"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Job Titles</FormLabel>
-                            <div className="flex flex-wrap gap-2 mb-2">
+                            <FormLabel  >Job Titles</FormLabel>
+                            <div className="flex flex-wrap gap-2 mb-2 bg-white">
                               {field.value?.map((title, index) => (
-                                <div key={index} className="flex items-center bg-secondary text-secondary-foreground rounded-full px-3 py-1 text-sm">
+                                <div key={index} className="flex items-center bg-secondary text-secondary-foreground rounded-full px-3 py-1 text-sm ">
                                   {title}
                                   <button
                                     type="button"
@@ -523,9 +526,9 @@ export default function ProfileSettingsPage() {
                       control={form.control}
                       name="address.firstLine"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem >
                           <FormLabel>Address Line 1</FormLabel>
-                          <FormControl>
+                          <FormControl className="bg-white">
                             <Input placeholder="123 Main Street" {...field} />
                           </FormControl>
                           <FormMessage />
@@ -539,7 +542,7 @@ export default function ProfileSettingsPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Address Line 2</FormLabel>
-                          <FormControl>
+                          <FormControl className="bg-white">
                             <Input placeholder="Apartment, suite, etc. (optional)" {...field} />
                           </FormControl>
                           <FormMessage />
@@ -554,7 +557,7 @@ export default function ProfileSettingsPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>City</FormLabel>
-                            <FormControl>
+                            <FormControl className="bg-white">
                               <Input placeholder="London" {...field} />
                             </FormControl>
                             <FormMessage />
@@ -568,7 +571,7 @@ export default function ProfileSettingsPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Postcode</FormLabel>
-                            <FormControl>
+                            <FormControl className="bg-white">
                               <Input placeholder="SW1A 1AA" {...field} />
                             </FormControl>
                             <FormMessage />
