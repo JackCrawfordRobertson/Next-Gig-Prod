@@ -90,27 +90,73 @@ export default function LinkedInPage() {
             try {
                 console.log('Fetching LinkedIn jobs');
                 let jobsData = [];
-
+    
                 if (isDev) {
                     // In development, fetch from our mock API
                     const response = await fetch("/api/user");
                     if (!response.ok) throw new Error("Failed to fetch user data");
                     const userData = await response.json();
-
+    
                     // Extract LinkedIn jobs from mock user data
                     jobsData = userData.linkedin || [];
                     console.log('Fetched jobs from mock API:', jobsData.length);
                 } else {
                     // In production, use Firestore directly
-                    const querySnapshot = await getDocs(collection(db, "linkedin"));
-                    jobsData = querySnapshot.docs.map((doc) => ({
-                        id: doc.id,
-                        ...doc.data(),
-                        has_applied: doc.data().has_applied ?? false,
-                    }));
-                    console.log('Fetched jobs from Firestore:', jobsData.length);
+                    console.log("Fetching jobs from Firestore");
+                    const userEmail = session?.user?.email;
+    
+                    if (userEmail) {
+                        console.log(`Fetching user data for: ${userEmail}`);
+                        
+                        try {
+                            console.log("Fetching users collection");
+                            const usersSnapshot = await getDocs(collection(db, "users"));
+                            console.log(`Found ${usersSnapshot.docs.length} user documents`);
+                            
+                            const userDoc = usersSnapshot.docs.find(doc => doc.data().email === userEmail);
+                            
+                            if (!userDoc) {
+                                console.log("No user document found with this email");
+                                jobsData = [];
+                            } else {
+                                const userData = userDoc.data();
+                                console.log("User data found:", userData);
+                                
+                                // Check if jobs exist in the user document
+                                if (userData.jobs?.linkedin) {
+                                    console.log("LinkedIn jobs found in user document");
+                                    jobsData = userData.jobs.linkedin.map(job => ({
+                                        ...job,
+                                        id: `linkedin-${job.id || Math.random().toString(36).substring(2, 9)}`,
+                                    }));
+                                } else {
+                                    console.log("No LinkedIn jobs found in user document");
+                                    jobsData = [];
+                                }
+                            }
+                        } catch (error) {
+                            console.error("Error querying users:", error);
+                            
+                            // Fall back to the original approach
+                            console.log("Falling back to original collection approach");
+                            const querySnapshot = await getDocs(collection(db, "linkedin"));
+                            jobsData = querySnapshot.docs.map((doc) => ({
+                                id: doc.id,
+                                ...doc.data(),
+                                has_applied: doc.data().has_applied ?? false,
+                            }));
+                        }
+                    } else {
+                        // Fallback if no user email
+                        const querySnapshot = await getDocs(collection(db, "linkedin"));
+                        jobsData = querySnapshot.docs.map((doc) => ({
+                            id: doc.id,
+                            ...doc.data(),
+                            has_applied: doc.data().has_applied ?? false,
+                        }));
+                    }
                 }
-
+    
                 setJobs(jobsData);
 
                 // Process job statistics
