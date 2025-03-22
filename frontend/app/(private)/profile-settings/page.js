@@ -56,11 +56,6 @@ import { useToast } from '@/hooks/use-toast'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
 
 const profileFormSchema = z.object({
   firstName: z.string().min(2, {
@@ -274,19 +269,18 @@ export default function ProfileSettingsPage() {
   }
   
   return (
-    <div className="container  px-10 py-10">
-      <div className="space-y-6">
-      <Card className="p-4">
-        <div>
-          
-          <h1 className="text-3xl font-bold">Profile Settings</h1>
-          <p className="text-muted-foreground">
-            Manage your profile information and subscription settings
-          </p>
-        </div>
+    <div className="container min-h-screen flex flex-col px-10 py-10">
+      <div className="space-y-6 flex-grow">
+        <Card className="p-4">
+          <div>          
+            <h1 className="text-3xl font-bold">Profile Settings</h1>
+            <p className="text-muted-foreground">
+              Manage your profile information and subscription settings
+            </p>
+          </div>
         </Card>
-        
-        <Tabs defaultValue="general" className="w-full">
+          
+        <Tabs defaultValue="general" className="w-full h-full flex flex-col">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="address">Address</TabsTrigger>
@@ -294,7 +288,7 @@ export default function ProfileSettingsPage() {
             <TabsTrigger value="privacy">Privacy</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="general" className="space-y-4 mt-4">
+          <TabsContent value="general" className="space-y-4 mt-4 flex-grow">
             <Card>
               <CardHeader>
                 <CardTitle>Profile Information</CardTitle>
@@ -302,8 +296,8 @@ export default function ProfileSettingsPage() {
                   Update your personal information and profile picture
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="flex flex-col md:flex-row gap-6 mb-6">
+              <CardContent className="flex-grow">
+              <div className="flex flex-col md:flex-row gap-6 mb-6">
                   <div className="flex flex-col items-center space-y-2">
                     <Avatar className="w-24 h-24">
                       <AvatarImage src={userData?.profilePicture || ""} alt={userData?.firstName} />
@@ -379,7 +373,7 @@ export default function ProfileSettingsPage() {
                         control={form.control}
                         name="jobTitles"
                         render={({ field }) => (
-                          <FormItem>
+                          <FormItem >
                             <FormLabel  >Job Titles</FormLabel>
                             <div className="flex flex-wrap gap-2 mb-2 bg-white">
                               {field.value?.map((title, index) => (
@@ -402,6 +396,7 @@ export default function ProfileSettingsPage() {
                             <div className="flex gap-2">
                               <Input
                                 placeholder="Add a job title"
+                                className="bg-white"
                                 id="newJobTitle"
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') {
@@ -463,6 +458,7 @@ export default function ProfileSettingsPage() {
                             </div>
                             <div className="flex gap-2">
                               <Input
+                              className="bg-white"
                                 placeholder="Add a job location"
                                 id="newJobLocation"
                                 onKeyDown={(e) => {
@@ -776,6 +772,7 @@ export default function ProfileSettingsPage() {
             
             <FormField
               control={form.control}
+              
               name="profileVisibility"
               render={({ field }) => (
                 <FormItem className="flex flex-col xs:flex-row items-start xs:items-center justify-between gap-4">
@@ -790,7 +787,7 @@ export default function ProfileSettingsPage() {
                     defaultValue={field.value}
                   >
                     <FormControl>
-                      <SelectTrigger className="w-32">
+                      <SelectTrigger className="w-32 bg-white">
                         <SelectValue placeholder="Select" />
                       </SelectTrigger>
                     </FormControl>
