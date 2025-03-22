@@ -197,8 +197,8 @@ export default function LinkedInPage() {
         if (status !== "loading") {
             fetchJobs();
         }
-    }, [currentWeek, status, isDev]);
-
+    }, [currentWeek, status, isDev, session]);
+    
     // Handle job card click to open URL
     const handleJobClick = (job) => {
         console.log('Job clicked:', job.title);

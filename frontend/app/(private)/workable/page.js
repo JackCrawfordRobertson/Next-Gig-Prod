@@ -99,7 +99,7 @@ export default function WorkablePage() {
   useEffect(() => {
     async function fetchJobs() {
       try {
-        console.log('Fetching jobs');
+        console.log('Fetching Workable jobs');
         let jobsData = [];
         
         if (isDev) {
@@ -113,13 +113,59 @@ export default function WorkablePage() {
           console.log('Fetched jobs from mock API:', jobsData.length);
         } else {
           // In production, use Firestore directly
-          const querySnapshot = await getDocs(collection(db, "jobs_workable"));
-          jobsData = querySnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-            has_applied: doc.data().has_applied ?? false,
-          }));
-          console.log('Fetched jobs from Firestore:', jobsData.length);
+          console.log("Fetching jobs from Firestore");
+          const userEmail = session?.user?.email;
+
+          if (userEmail) {
+            console.log(`Fetching user data for: ${userEmail}`);
+            
+            try {
+              console.log("Fetching users collection");
+              const usersSnapshot = await getDocs(collection(db, "users"));
+              console.log(`Found ${usersSnapshot.docs.length} user documents`);
+              
+              const userDoc = usersSnapshot.docs.find(doc => doc.data().email === userEmail);
+              
+              if (!userDoc) {
+                console.log("No user document found with this email");
+                jobsData = [];
+              } else {
+                const userData = userDoc.data();
+                console.log("User data found:", userData);
+                
+                // Check if jobs exist in the user document
+                if (userData.jobs?.workable) {
+                  console.log("Workable jobs found in user document");
+                  jobsData = userData.jobs.workable.map(job => ({
+                    ...job,
+                    id: `workable-${job.id || Math.random().toString(36).substring(2, 9)}`,
+                  }));
+                } else {
+                  console.log("No Workable jobs found in user document");
+                  jobsData = [];
+                }
+              }
+            } catch (error) {
+              console.error("Error querying users:", error);
+              
+              // Fall back to the original approach
+              console.log("Falling back to original collection approach");
+              const querySnapshot = await getDocs(collection(db, "jobs_workable"));
+              jobsData = querySnapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+                has_applied: doc.data().has_applied ?? false,
+              }));
+            }
+          } else {
+            // Fallback if no user email
+            const querySnapshot = await getDocs(collection(db, "jobs_workable"));
+            jobsData = querySnapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+              has_applied: doc.data().has_applied ?? false,
+            }));
+          }
         }
 
         setJobs(jobsData);
@@ -162,7 +208,7 @@ export default function WorkablePage() {
     if (status !== "loading") {
       fetchJobs();
     }
-  }, [currentWeek, status, isDev]);
+  }, [currentWeek, status, isDev, session]);
 
   // Handle job card click to open URL
   const handleJobClick = (job) => {
