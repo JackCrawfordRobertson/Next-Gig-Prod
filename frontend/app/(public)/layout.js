@@ -4,7 +4,7 @@ import ArrowsBackgroundWrapper from "@/components/AnimatedBlocks/ArrowsBackgroun
 
 // Server-only metadata
 export const metadata = {
-  title: "Get Started",
+  title: "Login",
 };
 
 export default function PublicLayout({ children }) {

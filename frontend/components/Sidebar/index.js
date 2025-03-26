@@ -34,6 +34,15 @@ export default function SidebarLayout({ children }) {
   const [mobileUserMenuOpen, setMobileUserMenuOpen] = useState(false);
   const [desktopUserMenuOpen, setDesktopUserMenuOpen] = useState(false);
 
+  // Add this function before your component
+  const getTimeBasedGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return "Morning";
+    if (hour >= 12 && hour < 18) return "Afternoon";
+    if (hour >= 18 && hour < 22) return "Evening";
+    return "Good night";
+  };
+
   // Desktop Sidebar Component
   const DesktopSidebar = () => (
     <Sidebar className="h-full w-64 flex flex-col border-r max-md:hidden bg-white">
@@ -116,13 +125,14 @@ export default function SidebarLayout({ children }) {
                   src={session?.user?.profilePicture || "/Memoji.png"}
                   alt="User Avatar"
                 />
-                <AvatarFallback className="bg-purple-100 text-purple-800">
-                  {session?.user?.name ? session.user.name.charAt(0) : "U"}
-                </AvatarFallback>
+               <AvatarFallback className="bg-purple-100 text-purple-800">
+  {session?.user?.firstName ? session.user.firstName.charAt(0) : 
+   (session?.user?.name ? session.user.name.charAt(0) : "U")}
+</AvatarFallback>
               </Avatar>
               <div className="text-left">
                 <p className="text-sm font-medium text-gray-700">
-                  {session?.user?.name || "User"}
+                  {getTimeBasedGreeting()}, {session?.user?.firstName || "User"}
                 </p>
                 <p className="text-xs text-gray-500">
                   {session?.user?.email || "user@example.com"}

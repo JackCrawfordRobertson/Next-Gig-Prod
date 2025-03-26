@@ -18,5 +18,17 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
+// Determine the appropriate app URL based on environment
+const isDevelopment = process.env.NODE_ENV === "development";
+const appUrl = isDevelopment 
+    ? "http://localhost:3000" 
+    : "https://next.gig.jack-robertson.co.uk";
+
+// Configure ActionCodeSettings for password reset
+export const actionCodeSettings = {
+    url: `${appUrl}/login`,
+    handleCodeInApp: false,
+};
+
 // Export Firestore functions
-export { doc, updateDoc, getDocs, collection, getDoc };  // Add getDoc here
+export { doc, updateDoc, getDocs, collection, getDoc };

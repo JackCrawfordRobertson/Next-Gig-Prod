@@ -7,13 +7,10 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   
-  // Skip ESLint during build 
+  // Skip ESLint during build
   eslint: {
     ignoreDuringBuilds: true,
   },
-  
-  // Optional: These settings can help with SSR performance and compatibility
-  swcMinify: true,
   
   // Optional: If you're using images
   images: {

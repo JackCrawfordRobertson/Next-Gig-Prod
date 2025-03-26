@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { signIn, signOut, useSession } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UserPlus } from "lucide-react";
+import { showToast } from "@/lib/toast";
+import Link from "next/link";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -18,7 +20,9 @@ export default function LoginPage() {
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [resetEmail, setResetEmail] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [showResetForm, setShowResetForm] = useState(false);
 
     // Redirect authenticated users directly to dashboard
     useEffect(() => {
@@ -39,73 +43,170 @@ export default function LoginPage() {
             
             if (result?.error) throw new Error(result.error);
             
+            // Show success toast
+            showToast("Successfully logged in", "success");
+            
             // Directly push to dashboard on successful login
             router.push("/dashboard");
         } catch (error) {
-            alert("Login failed. Please check your details and try again.");
+            showToast("Login failed. Please check your details and try again.", "error");
         } finally {
             setIsLoading(false);
         }
     };
 
-    // Only render the login form, no "Welcome" screen
-    return (
-        <div className="flex min-h-screen items-center justify-center bg-transparent p-6">
-            <Card className="w-full max-w-md shadow-lg">
-                <CardHeader>
-                    <CardTitle>Log In</CardTitle>
-                    <p className="text-gray-500 text-sm">Get back to where you left off.</p>
-                </CardHeader>
+    // Handle Password Reset Request
+    const handleResetPassword = async () => {
+        if (!resetEmail) {
+            showToast("Please enter your email address", "error");
+            return;
+        }
+        
+        try {
+            setIsLoading(true);
+            
+            const response = await fetch("/api/auth/reset-password", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: resetEmail }),
+            });
+            
+            if (!response.ok) throw new Error("Failed to send reset email");
+            
+            showToast("If an account exists with this email, you will receive a password reset link shortly.", "success");
+            setShowResetForm(false);
+        } catch (error) {
+            showToast("An error occurred. Please try again later", "error");
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-                <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input
-                            id="email"
-                            type="email"
-                            placeholder="you@example.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                        />
+    // Display password reset form
+    if (showResetForm) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-transparent p-6">
+                <Card className="w-full max-w-md shadow-lg">
+                    <CardHeader>
+                        <CardTitle>Reset Password</CardTitle>
+                        <p className="text-gray-500 text-sm">Enter your email to receive a password reset link</p>
+                    </CardHeader>
+
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="resetEmail">Email</Label>
+                            <Input
+                                id="resetEmail"
+                                type="email"
+                                placeholder="you@example.com"
+                                value={resetEmail}
+                                onChange={(e) => setResetEmail(e.target.value)}
+                            />
+                        </div>
+                    </CardContent>
+
+                    <CardFooter className="flex flex-col gap-2 w-full">
+                        <Button 
+                            onClick={handleResetPassword} 
+                            className="w-full"
+                            disabled={isLoading}
+                        >
+                            {isLoading ? "Sending..." : "Send Reset Link"}
+                        </Button>
+                        
+                        <Button
+                            variant="ghost"
+                            onClick={() => setShowResetForm(false)}
+                            className="w-full"
+                        >
+                            Back to Login
+                        </Button>
+                    </CardFooter>
+                </Card>
+            </div>
+        );
+    }
+
+// Login form
+return (
+    <div className="flex min-h-screen items-center justify-center bg-transparent p-6">
+        <Card className="w-full max-w-md shadow-lg">
+            <CardHeader>
+                <CardTitle>Log In</CardTitle>
+                <p className="text-gray-500 text-sm">Get back to where you left off.</p>
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                        id="email"
+                        type="email"
+                        placeholder="you@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                    />
+                </div>
+
+                <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                        id="password"
+                        type="password"
+                        placeholder="Enter your password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                    />
+                 
+                </div>
+            </CardContent>
+
+            <CardFooter className="flex flex-col gap-2 w-full">
+                <Button 
+                    onClick={handleLogin} 
+                    className="w-full"
+                    disabled={isLoading}
+                >
+                    {isLoading ? "Signing in..." : "Sign In"}
+                </Button>
+
+                <div className="relative flex items-center w-full">
+                    <div className="flex-grow border-t border-gray-300"></div>
+                    <span className="px-2 text-gray-500 text-sm">OR</span>
+                    <div className="flex-grow border-t border-gray-300"></div>
+                </div>
+
+                <Button
+                    onClick={() => router.push("/complete-profile")}
+                    variant="secondary"
+                    className="w-full flex items-center justify-center gap-2"
+                    disabled={isLoading}
+                >
+                    <UserPlus size={18} /> Create Account
+                </Button>
+
+                <div className="text-left">
+                        <Button 
+                            variant="link" 
+                            className="p-0 mt-1 h-auto text-sm"
+                            onClick={() => setShowResetForm(true)}
+                        >
+                            Forgot password?
+                        </Button>
                     </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="password">Password</Label>
-                        <Input
-                            id="password"
-                            type="password"
-                            placeholder="Enter your password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                        />
-                    </div>
-                </CardContent>
-
-                <CardFooter className="flex flex-col gap-2 w-full">
-                    <Button 
-                        onClick={handleLogin} 
-                        className="w-full"
-                        disabled={isLoading}
-                    >
-                        {isLoading ? "Signing in..." : "Sign In"}
-                    </Button>
-
-                    <div className="relative flex items-center w-full">
-                        <div className="flex-grow border-t border-gray-300"></div>
-                        <span className="px-2 text-gray-500 text-sm">OR</span>
-                        <div className="flex-grow border-t border-gray-300"></div>
-                    </div>
-
-                    <Button
-                        onClick={() => router.push("/complete-profile")}
-                        variant="secondary"
-                        className="w-full flex items-center justify-center gap-2"
-                        disabled={isLoading}
-                    >
-                        <UserPlus size={18} /> Create Account
-                    </Button>
-                </CardFooter>
-            </Card>
-        </div>
-    );
+                
+                <div className="text-center mt-1 text-xs text-gray-500">
+                    By logging in, you agree to our{" "}
+                    <Link href="/terms" className="text-primary hover:underline">
+                        Terms & Conditions
+                    </Link>{" "}
+                    and{" "}
+                    <Link href="/privacy" className="text-primary hover:underline">
+                        Privacy Policy
+                    </Link>
+                </div>
+            </CardFooter>
+        </Card>
+    </div>
+);
 }

@@ -3,7 +3,7 @@ import SidebarLayout from "@/components/Sidebar";
 import ArrowsBackgroundWrapper from "@/components/AnimatedBlocks/ArrowsBackgroundCompiler";
 
 export const metadata = {
-    title: "Get Started",
+    title: "Next Gig",
 };
 
 export default function PublicLayout({children}) {

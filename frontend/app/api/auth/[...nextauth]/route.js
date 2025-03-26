@@ -46,6 +46,9 @@ export const authOptions = {
         if (userDoc.exists()) {
           const userData = userDoc.data();
           
+          // Add user profile data to the session
+          session.user.firstName = userData.firstName || '';
+          
           // Add subscription data to the session
           session.user.subscribed = userData.subscribed || false;
           session.user.onTrial = userData.onTrial || false;

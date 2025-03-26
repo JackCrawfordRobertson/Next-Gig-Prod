@@ -2,6 +2,7 @@
 import "./globals.css";
 import { Inter } from "next/font/google";
 import SessionProvider from "@/components/SessionProvider"; // your next-auth session provider
+import { ToastProvider } from "@/components/ui/toast-provider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -27,6 +28,7 @@ export default function RootLayout({ children }) {
         <SessionProvider>
           {children}
         </SessionProvider>
+        <ToastProvider />
       </body>
     </html>
   );

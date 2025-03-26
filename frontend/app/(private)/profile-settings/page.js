@@ -1,18 +1,17 @@
 // src/app/privacy/profile-settings/page.js
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useSession } from "next-auth/react"
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
-import * as z from 'zod'
-import { format } from 'date-fns'
-import { db, doc, getDoc, updateDoc } from '@/lib/firebase'
-import { initializeApp } from 'firebase/app'
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { format } from "date-fns";
+import { db, doc, getDoc, updateDoc } from "@/lib/firebase";
+import { initializeApp } from "firebase/app";
 
-
-import { Button } from '@/components/ui/button'
+import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
@@ -21,7 +20,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form'
+} from "@/components/ui/form";
 import {
   Card,
   CardContent,
@@ -29,16 +28,16 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,90 +48,93 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
-import { Separator } from '@/components/ui/separator'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useToast } from '@/hooks/use-toast'
-import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+} from "@/components/ui/alert-dialog";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { showToast } from "@/lib/toast";
 
 const profileFormSchema = z.object({
   firstName: z.string().min(2, {
-    message: 'First name must be at least 2 characters.',
+    message: "First name must be at least 2 characters.",
   }),
   lastName: z.string().min(2, {
-    message: 'Last name must be at least 2 characters.',
+    message: "Last name must be at least 2 characters.",
   }),
   email: z.string().email({
-    message: 'Please enter a valid email address.',
+    message: "Please enter a valid email address.",
   }),
   jobTitles: z.array(z.string()).optional(),
   jobLocations: z.array(z.string()).optional(),
-  address: z.object({
-    firstLine: z.string().optional(),
-    secondLine: z.string().optional(),
-    city: z.string().optional(),
-    postcode: z.string().optional(),
-  }).optional(),
+  address: z
+    .object({
+      firstLine: z.string().optional(),
+      secondLine: z.string().optional(),
+      city: z.string().optional(),
+      postcode: z.string().optional(),
+    })
+    .optional(),
   marketingConsent: z.boolean().optional(),
   profileVisibility: z.string().optional(),
   notifications: z.boolean().optional(),
-})
+});
 
 export default function ProfileSettingsPage() {
-    const router = useRouter()
-    const { toast } = useToast() // Use the toast hook instead of importing directly
-    const [isPending, setIsPending] = useState(false)
-    const [userData, setUserData] = useState(null)
-    const [subscriptionData, setSubscriptionData] = useState(null)
-    const [isLoading, setIsLoading] = useState(true)
-  
-    const { data: session, status } = useSession({
-      required: true,
-      onUnauthenticated() {
-        router.push('/login')
-      },
-    })
-  
+  const router = useRouter();
+  const { toast } = useToast(); // Use the toast hook instead of importing directly
+  const [isPending, setIsPending] = useState(false);
+  const [userData, setUserData] = useState(null);
+  const [subscriptionData, setSubscriptionData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const { data: session, status } = useSession({
+    required: true,
+    onUnauthenticated() {
+      router.push("/login");
+    },
+  });
+
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        if (status !== "authenticated") return
-        
-        const userId = session.user.id // or however you access the user ID in your session
-        
+        if (status !== "authenticated") return;
+
+        const userId = session.user.id; // or however you access the user ID in your session
+
         // Fetch user data
-        const userDocRef = doc(db, "users", userId)
-        const userDoc = await getDoc(userDocRef)
-        
+        const userDocRef = doc(db, "users", userId);
+        const userDoc = await getDoc(userDocRef);
+
         if (userDoc.exists()) {
-          setUserData(userDoc.data())
+          setUserData(userDoc.data());
         }
-        
+
         // Fetch subscription data
-        const subscriptionDocRef = doc(db, "subscriptions", userId)
-        const subscriptionDoc = await getDoc(subscriptionDocRef)
-        
+        const subscriptionDocRef = doc(db, "subscriptions", userId);
+        const subscriptionDoc = await getDoc(subscriptionDocRef);
+
         if (subscriptionDoc.exists()) {
-          setSubscriptionData(subscriptionDoc.data())
+          setSubscriptionData(subscriptionDoc.data());
         }
-        
-        setIsLoading(false)
+
+        setIsLoading(false);
       } catch (error) {
-        console.error("Error fetching user data:", error)
+        console.error("Error fetching user data:", error);
         toast({
           title: "Error",
           description: "Failed to load profile data. Please try again.",
           variant: "destructive",
-        })
-        setIsLoading(false)
+        });
+        setIsLoading(false);
       }
-    }
-    
-    fetchUserData()
-  }, [status, session, router])
-  
+    };
+
+    fetchUserData();
+  }, [status, session, router]);
+
   const form = useForm({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
@@ -151,8 +153,8 @@ export default function ProfileSettingsPage() {
       profileVisibility: "private",
       notifications: true,
     },
-  })
-  
+  });
+
   useEffect(() => {
     if (userData && !isLoading) {
       form.reset({
@@ -170,22 +172,22 @@ export default function ProfileSettingsPage() {
         marketingConsent: userData.marketingConsent || false,
         profileVisibility: userData.profileVisibility || "private",
         notifications: userData.notifications || true,
-      })
+      });
     }
-  }, [userData, isLoading, form])
-  
+  }, [userData, isLoading, form]);
+
   const onSubmit = async (data) => {
-    setIsPending(true)
-    
+    setIsPending(true);
+
     try {
       if (status !== "authenticated") {
-        router.push('/login')
-        return
+        router.push("/login");
+        return;
       }
-      
-      const userId = session.user.id
-      const userDocRef = doc(db, "users", userId)
-      
+
+      const userId = session.user.id;
+      const userDocRef = doc(db, "users", userId);
+
       await updateDoc(userDocRef, {
         firstName: data.firstName,
         lastName: data.lastName,
@@ -202,61 +204,60 @@ export default function ProfileSettingsPage() {
         profileVisibility: data.profileVisibility,
         notifications: data.notifications,
         updatedAt: new Date().toISOString(),
-      })
-      
+      });
+
       toast({
         title: "Profile updated",
         description: "Your profile settings have been updated successfully.",
-      })
+      });
     } catch (error) {
-      console.error("Error updating profile:", error)
+      console.error("Error updating profile:", error);
       toast({
         title: "Error",
         description: "Failed to update profile. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsPending(false)
+      setIsPending(false);
     }
-  }
-  
+  };
+
   const handleCancelSubscription = async () => {
-    setIsPending(true)
-    
+    setIsPending(true);
+
     try {
       if (status !== "authenticated") {
-        router.push('/login')
-        return
+        router.push("/login");
+        return;
       }
-      
-      const userId = session.user.id
-      
+
+      const userId = session.user.id;
+
       // Here you would typically call your backend API to cancel the subscription
       // This is a placeholder for that logic
-      
+
       toast({
         title: "Subscription cancelled",
         description: "Your subscription has been cancelled successfully.",
-      })
-      
+      });
+
       // Update local state
       setSubscriptionData({
         ...subscriptionData,
         status: "cancelled",
-      })
-      
+      });
     } catch (error) {
-      console.error("Error cancelling subscription:", error)
+      console.error("Error cancelling subscription:", error);
       toast({
         title: "Error",
         description: "Failed to cancel subscription. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsPending(false)
+      setIsPending(false);
     }
-  }
-  
+  };
+
   if (isLoading) {
     return (
       <div className="container py-10 flex justify-center items-center min-h-[60vh]">
@@ -265,21 +266,21 @@ export default function ProfileSettingsPage() {
           <p className="mt-4 text-muted-foreground">Loading your profile...</p>
         </div>
       </div>
-    )
+    );
   }
-  
+
   return (
-    <div className="container min-h-screen flex flex-col px-10 py-10">
-      <div className="space-y-6 flex-grow">
+    <div className="w-full min-h-screen flex flex-col px-10 py-10">
+      <div className="space-y-6 flex-1 flex flex-col">
         <Card className="p-4">
-          <div>          
+          <div>
             <h1 className="text-3xl font-bold">Profile Settings</h1>
             <p className="text-muted-foreground">
               Manage your profile information and subscription settings
             </p>
           </div>
         </Card>
-          
+
         <Tabs defaultValue="general" className="w-full h-full flex flex-col">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="general">General</TabsTrigger>
@@ -287,9 +288,9 @@ export default function ProfileSettingsPage() {
             <TabsTrigger value="subscription">Subscription</TabsTrigger>
             <TabsTrigger value="privacy">Privacy</TabsTrigger>
           </TabsList>
-          
-          <TabsContent value="general" className="space-y-4 mt-4 flex-grow">
-            <Card>
+
+          <TabsContent value="general" className="space-y-4 mt-4 flex-1">
+            <Card className="flex flex-col h-full">
               <CardHeader>
                 <CardTitle>Profile Information</CardTitle>
                 <CardDescription>
@@ -297,35 +298,47 @@ export default function ProfileSettingsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex-grow">
-              <div className="flex flex-col md:flex-row gap-6 mb-6">
+                <div className="flex flex-col md:flex-row gap-6 mb-6">
                   <div className="flex flex-col items-center space-y-2">
                     <Avatar className="w-24 h-24">
-                      <AvatarImage src={userData?.profilePicture || ""} alt={userData?.firstName} />
+                      <AvatarImage
+                        src={userData?.profilePicture || ""}
+                        alt={userData?.firstName}
+                      />
                       <AvatarFallback>
-                        {userData?.firstName?.charAt(0)}{userData?.lastName?.charAt(0)}
+                        {userData?.firstName?.charAt(0)}
+                        {userData?.lastName?.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
-                    <Button variant="outline" size="sm">Change Picture</Button>
+                    <Button variant="outline" size="sm">
+                      Change Picture
+                    </Button>
                   </div>
-                  
+
                   <div className="flex-1">
                     <Form {...form}>
-                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                      <form
+                        onSubmit={form.handleSubmit(onSubmit)}
+                        className="space-y-6"
+                      >
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <FormField
                             control={form.control}
                             name="firstName"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel >First Name</FormLabel>
+                                <FormLabel>First Name</FormLabel>
                                 <FormControl className="bg-white">
-                                  <Input placeholder="Enter your first name" {...field} />
+                                  <Input
+                                    placeholder="Enter your first name"
+                                    {...field}
+                                  />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
-                          
+
                           <FormField
                             control={form.control}
                             name="lastName"
@@ -333,13 +346,16 @@ export default function ProfileSettingsPage() {
                               <FormItem>
                                 <FormLabel>Last Name</FormLabel>
                                 <FormControl className="bg-white">
-                                  <Input placeholder="Enter your last name" {...field} />
+                                  <Input
+                                    placeholder="Enter your last name"
+                                    {...field}
+                                  />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
-                          
+
                           <FormField
                             control={form.control}
                             name="email"
@@ -347,7 +363,11 @@ export default function ProfileSettingsPage() {
                               <FormItem>
                                 <FormLabel>Email</FormLabel>
                                 <FormControl className="bg-white">
-                                  <Input type="email" placeholder="name@example.com" {...field} />
+                                  <Input
+                                    type="email"
+                                    placeholder="name@example.com"
+                                    {...field}
+                                  />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -358,34 +378,44 @@ export default function ProfileSettingsPage() {
                     </Form>
                   </div>
                 </div>
-                
+
                 <Separator className="my-6" />
-                
+
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-medium">Professional Information</h3>
-                    <p className="text-sm text-muted-foreground">Update your job information and locations</p>
+                    <h3 className="text-lg font-medium">
+                      Professional Information
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Update your job information and locations
+                    </p>
                   </div>
-                  
+
                   <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                    <form
+                      onSubmit={form.handleSubmit(onSubmit)}
+                      className="space-y-6"
+                    >
                       <FormField
                         control={form.control}
                         name="jobTitles"
                         render={({ field }) => (
-                          <FormItem >
-                            <FormLabel  >Job Titles</FormLabel>
-                            <div className="flex flex-wrap gap-2 mb-2 bg-white">
+                          <FormItem>
+                            <FormLabel>Job Titles</FormLabel>
+                            <div className="flex flex-wrap gap-2 mb-2 ">
                               {field.value?.map((title, index) => (
-                                <div key={index} className="flex items-center bg-secondary text-secondary-foreground rounded-full px-3 py-1 text-sm ">
+                                <div
+                                  key={index}
+                                  className="flex items-center bg-secondary text-secondary-foreground rounded-full px-3 py-1 text-sm "
+                                >
                                   {title}
                                   <button
                                     type="button"
                                     className="ml-2"
                                     onClick={() => {
-                                      const newJobTitles = [...field.value]
-                                      newJobTitles.splice(index, 1)
-                                      field.onChange(newJobTitles)
+                                      const newJobTitles = [...field.value];
+                                      newJobTitles.splice(index, 1);
+                                      field.onChange(newJobTitles);
                                     }}
                                   >
                                     ✕
@@ -399,12 +429,12 @@ export default function ProfileSettingsPage() {
                                 className="bg-white"
                                 id="newJobTitle"
                                 onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    e.preventDefault()
-                                    const value = e.target.value.trim()
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    const value = e.target.value.trim();
                                     if (value && !field.value.includes(value)) {
-                                      field.onChange([...field.value, value])
-                                      e.target.value = ''
+                                      field.onChange([...field.value, value]);
+                                      e.target.value = "";
                                     }
                                   }
                                 }}
@@ -413,11 +443,12 @@ export default function ProfileSettingsPage() {
                                 type="button"
                                 variant="outline"
                                 onClick={() => {
-                                  const input = document.getElementById('newJobTitle')
-                                  const value = input.value.trim()
+                                  const input =
+                                    document.getElementById("newJobTitle");
+                                  const value = input.value.trim();
                                   if (value && !field.value.includes(value)) {
-                                    field.onChange([...field.value, value])
-                                    input.value = ''
+                                    field.onChange([...field.value, value]);
+                                    input.value = "";
                                   }
                                 }}
                               >
@@ -431,7 +462,7 @@ export default function ProfileSettingsPage() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={form.control}
                         name="jobLocations"
@@ -440,15 +471,18 @@ export default function ProfileSettingsPage() {
                             <FormLabel>Job Locations</FormLabel>
                             <div className="flex flex-wrap gap-2 mb-2">
                               {field.value?.map((location, index) => (
-                                <div key={index} className="flex items-center bg-secondary text-secondary-foreground rounded-full px-3 py-1 text-sm">
+                                <div
+                                  key={index}
+                                  className="flex items-center bg-secondary text-secondary-foreground rounded-full px-3 py-1 text-sm"
+                                >
                                   {location}
                                   <button
                                     type="button"
                                     className="ml-2"
                                     onClick={() => {
-                                      const newJobLocations = [...field.value]
-                                      newJobLocations.splice(index, 1)
-                                      field.onChange(newJobLocations)
+                                      const newJobLocations = [...field.value];
+                                      newJobLocations.splice(index, 1);
+                                      field.onChange(newJobLocations);
                                     }}
                                   >
                                     ✕
@@ -458,16 +492,16 @@ export default function ProfileSettingsPage() {
                             </div>
                             <div className="flex gap-2">
                               <Input
-                              className="bg-white"
+                                className="bg-white"
                                 placeholder="Add a job location"
                                 id="newJobLocation"
                                 onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    e.preventDefault()
-                                    const value = e.target.value.trim()
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    const value = e.target.value.trim();
                                     if (value && !field.value.includes(value)) {
-                                      field.onChange([...field.value, value])
-                                      e.target.value = ''
+                                      field.onChange([...field.value, value]);
+                                      e.target.value = "";
                                     }
                                   }
                                 }}
@@ -476,11 +510,12 @@ export default function ProfileSettingsPage() {
                                 type="button"
                                 variant="outline"
                                 onClick={() => {
-                                  const input = document.getElementById('newJobLocation')
-                                  const value = input.value.trim()
+                                  const input =
+                                    document.getElementById("newJobLocation");
+                                  const value = input.value.trim();
                                   if (value && !field.value.includes(value)) {
-                                    field.onChange([...field.value, value])
-                                    input.value = ''
+                                    field.onChange([...field.value, value]);
+                                    input.value = "";
                                   }
                                 }}
                               >
@@ -494,10 +529,10 @@ export default function ProfileSettingsPage() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <div className="flex justify-end">
                         <Button type="submit" disabled={isPending}>
-                          {isPending ? 'Saving...' : 'Save Changes'}
+                          {isPending ? "Saving..." : "Save Changes"}
                         </Button>
                       </div>
                     </form>
@@ -506,7 +541,7 @@ export default function ProfileSettingsPage() {
               </CardContent>
             </Card>
           </TabsContent>
-          
+
           <TabsContent value="address" className="space-y-4 mt-4">
             <Card>
               <CardHeader>
@@ -517,12 +552,15 @@ export default function ProfileSettingsPage() {
               </CardHeader>
               <CardContent>
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <form
+                    onSubmit={form.handleSubmit(onSubmit)}
+                    className="space-y-6"
+                  >
                     <FormField
                       control={form.control}
                       name="address.firstLine"
                       render={({ field }) => (
-                        <FormItem >
+                        <FormItem>
                           <FormLabel>Address Line 1</FormLabel>
                           <FormControl className="bg-white">
                             <Input placeholder="123 Main Street" {...field} />
@@ -531,7 +569,7 @@ export default function ProfileSettingsPage() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="address.secondLine"
@@ -539,13 +577,16 @@ export default function ProfileSettingsPage() {
                         <FormItem>
                           <FormLabel>Address Line 2</FormLabel>
                           <FormControl className="bg-white">
-                            <Input placeholder="Apartment, suite, etc. (optional)" {...field} />
+                            <Input
+                              placeholder="Apartment, suite, etc. (optional)"
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <FormField
                         control={form.control}
@@ -560,7 +601,7 @@ export default function ProfileSettingsPage() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={form.control}
                         name="address.postcode"
@@ -575,10 +616,10 @@ export default function ProfileSettingsPage() {
                         )}
                       />
                     </div>
-                    
+
                     <div className="flex justify-end">
                       <Button type="submit" disabled={isPending}>
-                        {isPending ? 'Saving...' : 'Save Changes'}
+                        {isPending ? "Saving..." : "Save Changes"}
                       </Button>
                     </div>
                   </form>
@@ -586,7 +627,7 @@ export default function ProfileSettingsPage() {
               </CardContent>
             </Card>
           </TabsContent>
-          
+
           <TabsContent value="subscription" className="space-y-4 mt-4">
             <Card>
               <CardHeader>
@@ -601,49 +642,78 @@ export default function ProfileSettingsPage() {
                     <div className="border rounded-lg p-4">
                       <div className="flex justify-between items-center mb-2">
                         <h3 className="font-semibold">Current Plan</h3>
-                        <span className={`text-sm rounded-full px-3 py-1 ${
-                          subscriptionData.status === 'trial' 
-                            ? 'bg-yellow-100 text-yellow-800' 
-                            : subscriptionData.status === 'active' 
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {subscriptionData.status === 'trial' ? 'Trial' : 
-                           subscriptionData.status === 'active' ? 'Active' : 
-                           subscriptionData.status}
+                        <span
+                          className={`text-sm rounded-full px-3 py-1 ${
+                            subscriptionData.status === "trial"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : subscriptionData.status === "active"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {subscriptionData.status === "trial"
+                            ? "Trial"
+                            : subscriptionData.status === "active"
+                            ? "Active"
+                            : subscriptionData.status}
                         </span>
                       </div>
-                      <p className="text-2xl font-bold capitalize">{subscriptionData.plan} Plan</p>
+                      <p className="text-2xl font-bold capitalize">
+                        {subscriptionData.plan} Plan
+                      </p>
                       <p className="text-muted-foreground">
-                        {subscriptionData.currency === 'GBP' ? '£' : 
-                         subscriptionData.currency === 'USD' ? '$' : 
-                         subscriptionData.currency === 'EUR' ? '€' : ''}
+                        {subscriptionData.currency === "GBP"
+                          ? "£"
+                          : subscriptionData.currency === "USD"
+                          ? "$"
+                          : subscriptionData.currency === "EUR"
+                          ? "€"
+                          : ""}
                         {subscriptionData.price} per month
                       </p>
-                      
-                      {subscriptionData.status === 'trial' && (
+
+                      {subscriptionData.status === "trial" && (
                         <div className="mt-2 p-2 bg-yellow-50 text-yellow-800 rounded-md text-sm">
-                          <p>Trial ends on {new Date(subscriptionData.trialEndDate).toLocaleDateString('en-GB')}</p>
+                          <p>
+                            Trial ends on{" "}
+                            {new Date(
+                              subscriptionData.trialEndDate
+                            ).toLocaleDateString("en-GB")}
+                          </p>
                         </div>
                       )}
-                      
+
                       <p className="text-muted-foreground text-sm mt-2">
-                        Next billing date: {new Date(
-                          subscriptionData.status === 'trial' 
-                            ? subscriptionData.trialEndDate 
+                        Next billing date:{" "}
+                        {new Date(
+                          subscriptionData.status === "trial"
+                            ? subscriptionData.trialEndDate
                             : new Date(subscriptionData.startDate).setMonth(
-                                new Date(subscriptionData.startDate).getMonth() + 1
+                                new Date(
+                                  subscriptionData.startDate
+                                ).getMonth() + 1
                               )
-                        ).toLocaleDateString('en-GB')}
+                        ).toLocaleDateString("en-GB")}
                       </p>
                     </div>
-                    
+
                     <div className="border rounded-lg p-4">
                       <h3 className="font-semibold mb-2">Payment Method</h3>
                       <div className="flex items-center gap-2">
                         <div className="bg-gray-100 rounded p-1">
-                          {subscriptionData.paymentMethod === 'paypal' ? (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600">
+                          {subscriptionData.paymentMethod === "paypal" ? (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="text-blue-600"
+                            >
                               <path d="M7 11c1.5 0 3.5-1 3.5-4.5S8.33 2 6.5 2H2v12.5h2V9h.5L7 15h2l-3-4Z" />
                               <path d="M22 8c0 3.5-2 4.5-3.5 4.5h-4c-1.5 0-2.5-1-2.5-2.5s1-2.5 2.5-2.5H19" />
                               <path d="M22 2v3" />
@@ -651,20 +721,33 @@ export default function ProfileSettingsPage() {
                               <path d="M22 9v6" />
                             </svg>
                           ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <rect width="20" height="14" x="2" y="5" rx="2"/>
-                              <line x1="2" x2="22" y1="10" y2="10"/>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <rect width="20" height="14" x="2" y="5" rx="2" />
+                              <line x1="2" x2="22" y1="10" y2="10" />
                             </svg>
                           )}
                         </div>
                         <div>
-                          <p className="font-medium capitalize">{subscriptionData.paymentMethod}</p>
+                          <p className="font-medium capitalize">
+                            {subscriptionData.paymentMethod}
+                          </p>
                           {subscriptionData.fingerprint && (
                             <p className="text-sm text-muted-foreground">
-                              {subscriptionData.paymentMethod === 'paypal' 
+                              {subscriptionData.paymentMethod === "paypal"
                                 ? `ID: ${subscriptionData.subscriptionId}`
-                                : `Card ending in ${subscriptionData.fingerprint.substring(subscriptionData.fingerprint.length - 4)}`
-                              }
+                                : `Card ending in ${subscriptionData.fingerprint.substring(
+                                    subscriptionData.fingerprint.length - 4
+                                  )}`}
                             </p>
                           )}
                         </div>
@@ -676,8 +759,12 @@ export default function ProfileSettingsPage() {
                   </>
                 ) : (
                   <div className="border rounded-lg p-8 text-center">
-                    <h3 className="font-semibold mb-4">No Active Subscription</h3>
-                    <p className="text-muted-foreground mb-6">You don't currently have an active subscription.</p>
+                    <h3 className="font-semibold mb-4">
+                      No Active Subscription
+                    </h3>
+                    <p className="text-muted-foreground mb-6">
+                      You don't currently have an active subscription.
+                    </p>
                     <Button>Subscribe Now</Button>
                   </div>
                 )}
@@ -691,17 +778,21 @@ export default function ProfileSettingsPage() {
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure you want to cancel?</AlertDialogTitle>
+                        <AlertDialogTitle>
+                          Are you sure you want to cancel?
+                        </AlertDialogTitle>
                         <AlertDialogDescription>
-                          Your subscription will be cancelled immediately and you will lose access to premium features 
-                          {subscriptionData.status === 'trial' 
-                            ? ' at the end of your trial period.'
-                            : ' at the end of your current billing period.'
-                          }
+                          Your subscription will be cancelled immediately and
+                          you will lose access to premium features
+                          {subscriptionData.status === "trial"
+                            ? " at the end of your trial period."
+                            : " at the end of your current billing period."}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Continue Subscription</AlertDialogCancel>
+                        <AlertDialogCancel>
+                          Continue Subscription
+                        </AlertDialogCancel>
                         <AlertDialogAction onClick={handleCancelSubscription}>
                           Cancel Subscription
                         </AlertDialogAction>
@@ -712,18 +803,23 @@ export default function ProfileSettingsPage() {
               )}
             </Card>
           </TabsContent>
-          <TabsContent value="privacy" className="space-y-4 mt-4">
-  <Card>
+          <TabsContent value="privacy" className="space-y-4 mt-4 flex-1">
+  <Card className="flex flex-col h-full">
     <CardHeader>
       <CardTitle>Privacy Settings</CardTitle>
       <CardDescription>
         Manage your privacy preferences and data settings
       </CardDescription>
     </CardHeader>
-    <CardContent className="space-y-6">
+    <CardContent className="space-y-6 flex-1">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-6"
+        >
           <div className="space-y-4">
+          <Separator />
+
             <FormField
               control={form.control}
               name="notifications"
@@ -744,99 +840,82 @@ export default function ProfileSettingsPage() {
                 </FormItem>
               )}
             />
-            
+
             <Separator />
-            
-            <FormField
-              control={form.control}
-              name="marketingConsent"
-              render={({ field }) => (
-                <FormItem className="flex items-center justify-between">
-                  <div>
-                    <FormLabel>Marketing Communications</FormLabel>
-                    <FormDescription>
-                      Receive promotional emails and offers
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            
-            <Separator />
-            
-            <FormField
-              control={form.control}
-              
-              name="profileVisibility"
-              render={({ field }) => (
-                <FormItem className="flex flex-col xs:flex-row items-start xs:items-center justify-between gap-4">
-                  <div>
-                    <FormLabel>Profile Visibility</FormLabel>
-                    <FormDescription>
-                      Control who can see your profile information
-                    </FormDescription>
-                  </div>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="w-32 bg-white">
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="public">Public</SelectItem>
-                      <SelectItem value="private">Private</SelectItem>
-                      <SelectItem value="contacts">Contacts Only</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormItem>
-              )}
-            />
-            
-            <Separator />
-            
+
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-medium">Two-Factor Authentication</h3>
-                <p className="text-sm text-muted-foreground">Add an extra layer of security to your account</p>
+                <p className="text-sm text-muted-foreground">
+                  Add an extra layer of security to your account
+                </p>
               </div>
-              <Button variant="outline" size="sm">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  showToast({
+                    title: "Feature Coming Soon",
+                    description: "Two-factor authentication will be available shortly."
+                  });
+                }}
+              >
                 Enable 2FA
               </Button>
             </div>
-            
+
             <Separator />
-            
+
             <div>
               <h3 className="font-medium mb-2">Data Management</h3>
               <div className="space-y-2">
-                <Button variant="outline" size="sm" className="w-full justify-start">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={() => {
+                    showToast({
+                      title: "Data Export Requested",
+                      description: "Your data export has been queued. You'll receive an email when it's ready.",
+                      variant: "success"
+                    });
+                  }}
+                >
                   Request Data Export
                 </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="w-full justify-start text-destructive">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-start text-destructive"
+                    >
                       Delete Account
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogTitle>
+                        Are you absolutely sure?
+                      </AlertDialogTitle>
                       <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete your account and remove your data from our servers.
+                        This action cannot be undone. This will
+                        permanently delete your account and remove
+                        your data from our servers.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction className="bg-destructive text-destructive-foreground">
+                      <AlertDialogAction 
+                        className="bg-destructive text-destructive-foreground"
+                        onClick={() => {
+                          showToast({
+                            title: "Account Deletion Initiated",
+                            description: "Your account deletion process has begun. You'll receive a confirmation email.",
+                            variant: "error"
+                          });
+                        }}
+                      >
                         Delete Account
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -845,10 +924,13 @@ export default function ProfileSettingsPage() {
               </div>
             </div>
           </div>
-          
+
           <div className="flex justify-end">
-            <Button type="submit" disabled={isPending}>
-              {isPending ? 'Saving...' : 'Save Privacy Settings'}
+            <Button 
+              type="submit" 
+              disabled={isPending}
+            >
+              {isPending ? "Saving..." : "Save Privacy Settings"}
             </Button>
           </div>
         </form>
@@ -859,5 +941,5 @@ export default function ProfileSettingsPage() {
         </Tabs>
       </div>
     </div>
-  )
+  );
 }
