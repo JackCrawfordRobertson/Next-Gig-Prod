@@ -23,6 +23,7 @@ import {
   Globe,
   Building,
   LogOut,
+  Palette,
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useState } from "react";
@@ -86,6 +87,17 @@ export default function SidebarLayout({ children }) {
             >
               <Briefcase className="w-5 h-5 mr-3 text-gray-500" />
               <span>LinkedIn Jobs</span>
+              <ChevronRight className="w-5 h-5 text-gray-400 ml-auto" />
+            </Link>
+          </SidebarMenuItem>
+
+          <SidebarMenuItem>
+            <Link
+              href="/ifyoucould"
+              className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
+            >
+              <Palette className="w-5 h-5 mr-3 text-gray-500" />
+              <span>If You Could</span>
               <ChevronRight className="w-5 h-5 text-gray-400 ml-auto" />
             </Link>
           </SidebarMenuItem>
@@ -192,6 +204,15 @@ export default function SidebarLayout({ children }) {
         <span className="text-xs mt-1">LinkedIn</span>
       </Link>
       <Link
+        href="/ifyoucould"
+        className={`flex flex-col items-center ${
+          pathname === "/ifyoucould" ? "text-primary" : "text-gray-500"
+        }`}
+      >
+        <Palette className="w-6 h-6" />
+        <span className="text-xs mt-1">IfYouCould</span>
+      </Link>
+      <Link
         href="/unjobs"
         className={`flex flex-col items-center ${
           pathname === "/unjobs" ? "text-primary" : "text-gray-500"
@@ -199,15 +220,6 @@ export default function SidebarLayout({ children }) {
       >
         <Globe className="w-6 h-6" />
         <span className="text-xs mt-1">UN Jobs</span>
-      </Link>
-      <Link
-        href="/workable"
-        className={`flex flex-col items-center ${
-          pathname === "/workable" ? "text-primary" : "text-gray-500"
-        }`}
-      >
-        <Building className="w-6 h-6" />
-        <span className="text-xs mt-1">Workable</span>
       </Link>
 
       {/* Profile with dropdown menu */}

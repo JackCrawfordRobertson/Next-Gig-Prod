@@ -1,5 +1,5 @@
 // src/lib/firebase-mock.js
-import mockUsers from "@/mock/users";
+import mockUsers from "@/app/mock/users";
 
 // Mock Firestore functions
 export const getDoc = async (docRef) => {

@@ -1,6 +1,9 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, updateDoc, getDocs, collection, getDoc } from "firebase/firestore";
+import { getFirestore, doc as firestoreDoc, updateDoc, getDocs, collection, getDoc as firestoreGetDoc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+
+// Import mock implementations when in development/test mode
+import * as mockFirebase from "@/lib/firebase-mock.js";
 
 // Load Firebase config from environment variables
 const firebaseConfig = {
@@ -30,5 +33,8 @@ export const actionCodeSettings = {
     handleCodeInApp: false,
 };
 
-// Export Firestore functions
-export { doc, updateDoc, getDocs, collection, getDoc };
+// Export the appropriate functions based on environment
+export const doc = isDevelopment ? mockFirebase.doc : firestoreDoc;
+export const getDoc = isDevelopment ? mockFirebase.getDoc : firestoreGetDoc;
+export { updateDoc, getDocs, collection };
+export const setDoc = isDevelopment ? mockFirebase.setDoc : null; // Add real setDoc if needed

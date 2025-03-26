@@ -17,17 +17,19 @@ import {
   XAxis,
   YAxis,
   ResponsiveContainer,
+  Tooltip,
 } from "recharts";
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Building, 
-  MapPin, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  Building,
+  MapPin,
   Clock,
   CheckCircle2,
   XCircle,
   BarChart3,
-  List
+  List,
+  DollarSign,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { startOfWeek, endOfWeek, format, subWeeks, addWeeks } from "date-fns";
@@ -72,8 +74,8 @@ export default function WorkablePage() {
       const timeAway = Date.now() - lastClickTimeRef.current;
       console.log('Time away (ms):', timeAway);
       
-      // If they spent enough time on the job page (15+ seconds), probably viewed it in detail
-      if (timeAway > 5000 && selectedJobRef.current) { // Using 5 seconds for testing
+      // If they spent enough time on the job page (5+ seconds), probably viewed it in detail
+      if (timeAway > 5000 && selectedJobRef.current) {
         console.log('Showing apply dialog');
         setSelectedJob(selectedJobRef.current);
         setShowApplyDialog(true);
@@ -266,43 +268,147 @@ export default function WorkablePage() {
   const goToNextWeek = () => setCurrentWeek(addWeeks(currentWeek, 1));
 
   if (loading) {
-    return  <div className="flex items-center justify-center h-full">
-    <div className="text-center space-y-3">
+    return <div className="flex items-center justify-center h-full">
+      <div className="text-center space-y-3">
         <div className="inline-flex items-center gap-2">
-            <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-            <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-            <div className="w-3 h-3 bg-primary rounded-full animate-bounce"></div>
+          <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+          <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+          <div className="w-3 h-3 bg-primary rounded-full animate-bounce"></div>
         </div>
         <p className="text-muted-foreground animate-pulse">Loading your jobs...</p>
-    </div>
-</div>;
-}
+      </div>
+    </div>;
+  }
 
-  // Desktop layout (unchanged)
+  function FixedSizeChart({ data, height = 200, width = 350 }) {
+    return (
+      <div style={{ 
+        width: '100%', 
+        height: `${height}px`, 
+        position: 'relative',
+        minHeight: `${height}px` // Enforce minimum height
+      }}>
+        <ChartContainer config={chartConfig}>
+          <BarChart
+            width={typeof width === "number" ? width : parseInt(width, 10) || 350}
+            height={height}
+            data={data}
+            margin={{ top: 10, right: 10, left: -5, bottom: 5 }}
+          >
+            <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.4} />
+            <XAxis
+              dataKey="day"
+              tickLine={false}
+              axisLine={false}
+              tick={{ fontSize: 9 }}
+              tickFormatter={(day) => day.substring(0, 3)}
+            />
+            <YAxis stroke="hsl(var(--foreground))" tick={{ fontSize: 9 }} width={25} />
+            <ChartTooltip
+              cursor={false}
+              content={<ChartTooltipContent indicator="dashed" />}
+            />
+            <Bar dataKey="count" fill="hsl(var(--chart-2))" radius={3} />
+          </BarChart>
+        </ChartContainer>
+      </div>
+    );
+  }
+
+  // Desktop layout with added stats widgets
   const DesktopLayout = () => (
     <div className="hidden md:flex h-full w-full flex-row gap-6">
-      {/* Left: Workable Jobs Column */}
       <div className="w-1/3 h-full">
-        <JobColumn 
-          title="Workable Jobs" 
-          jobs={jobs} 
+        <JobColumn
+          title="Workable Jobs"
+          jobs={jobs}
           onJobClick={handleJobClick}
         />
       </div>
 
-      {/* Right: Job Postings Chart */}
-      <div className="w-2/3 h-full">
-        <Card className="h-full flex flex-col">
-          <CardHeader className="py-3 px-4 flex flex-row justify-between items-center">
+      <div className="w-2/3 h-full flex flex-col gap-6">
+        {/* Top row stats cards */}
+        <div className="grid grid-cols-2 gap-6 h-28">
+          <Card className="flex items-center justify-between px-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                <Building className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Total Jobs</p>
+                <p className="text-3xl font-semibold">{jobs.length}</p>
+              </div>
+            </div>
+          </Card>
+          
+          <Card className="flex items-center justify-between px-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                <CheckCircle2 className="w-6 h-6 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Total Applied</p>
+                <p className="text-3xl font-semibold">{jobs.filter(job => job.has_applied).length}</p>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Application rate card */}
+        <Card className="flex-shrink-0 h-24">
+          <CardHeader className="py-3 px-6">
+            <CardTitle className="text-base">Application Progress</CardTitle>
+          </CardHeader>
+          <CardContent className="px-6 pt-0 pb-3">
+            {jobs.length > 0 ? (
+              <>
+                <div className="w-full h-3 bg-gray-100 rounded-full mb-2">
+                  <div
+                    className="h-3 bg-primary rounded-full"
+                    style={{
+                      width: `${
+                        (jobs.filter((job) => job.has_applied).length /
+                          jobs.length) *
+                        100
+                      }%`,
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between items-center text-sm text-muted-foreground">
+                  <span>
+                    {Math.round(
+                      (jobs.filter((job) => job.has_applied).length /
+                        jobs.length) *
+                        100
+                    )}
+                    % applied
+                  </span>
+                  <span>
+                    {jobs.length -
+                      jobs.filter((job) => job.has_applied).length}{" "}
+                    remaining
+                  </span>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center">
+                No job application data yet
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Main chart */}
+        <Card className="flex-1 flex flex-col">
+          <CardHeader className="py-3 px-6 flex flex-row justify-between items-center">
             <div>
               <CardTitle>Workable Job Listings Per Day</CardTitle>
               <p className="text-muted-foreground text-sm">
-                {format(startOfWeek(currentWeek, { weekStartsOn: 1 }), "MMM d")} -{" "}
-                {format(endOfWeek(currentWeek, { weekStartsOn: 1 }), "MMM d")}
+                {format(startOfWeek(currentWeek, { weekStartsOn: 1 }), "MMM d")}{" "}
+                - {format(endOfWeek(currentWeek, { weekStartsOn: 1 }), "MMM d")}
               </p>
             </div>
 
-            {/* Navigation Arrows */}
             <div className="flex gap-3">
               <button
                 onClick={goToPreviousWeek}
@@ -320,17 +426,23 @@ export default function WorkablePage() {
           </CardHeader>
 
           <CardContent className="flex-1 relative p-0">
-            <div className="absolute inset-0 p-4">
+            <div className="absolute inset-0 p-2">
               <ChartContainer config={chartConfig} className="h-full">
                 <ResponsiveContainer width="100%" height="100%" aspect={undefined}>
-                  <BarChart 
-                    data={jobStats}
-                    margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
-                  >
+                  <BarChart data={jobStats} margin={{top: 15, right: 20, left: 0, bottom: 5}}>
                     <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                    <XAxis dataKey="day" tickLine={false} tickMargin={10} axisLine={false} />
-                    <YAxis stroke="hsl(var(--foreground))" />
-                    <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dashed" />} />
+                    <XAxis 
+                      dataKey="day" 
+                      tickLine={false} 
+                      tickMargin={10} 
+                      axisLine={false} 
+                      tick={{fontSize: 10}} 
+                    />
+                    <YAxis stroke="hsl(var(--foreground))" tick={{fontSize: 10}} />
+                    <ChartTooltip
+                      cursor={false}
+                      content={<ChartTooltipContent indicator="dashed" />}
+                    />
                     <Bar dataKey="count" fill="hsl(var(--chart-2))" radius={4} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -345,7 +457,11 @@ export default function WorkablePage() {
   // Mobile layout (optimised with tabs)
   const MobileLayout = () => (
     <div className="md:hidden h-full w-full flex flex-col">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="h-full flex flex-col"
+      >
         <TabsList className="grid grid-cols-2 mb-4">
           <TabsTrigger value="jobs" className="flex items-center gap-2">
             <List className="h-4 w-4" />
@@ -356,7 +472,7 @@ export default function WorkablePage() {
             <span>Stats</span>
           </TabsTrigger>
         </TabsList>
-        
+  
         <TabsContent value="jobs" className="flex-1 m-0 h-[calc(100vh-120px)]">
           <Card className="h-full border-0 shadow-none">
             <CardHeader className="py-2 px-3">
@@ -367,72 +483,246 @@ export default function WorkablePage() {
                 <div className="flex flex-col gap-3 px-3 pb-16">
                   {jobs.length > 0 ? (
                     jobs.map((job, index) => (
-                      <MobileJobCard 
-                        key={index} 
-                        job={job} 
+                      <MobileJobCard
+                        key={index}
+                        job={job}
                         onClick={() => handleJobClick(job)}
                       />
                     ))
                   ) : (
-                    <div className="text-center">
-                    <p className="text-muted-foreground mb-2">No jobs available yet</p>
-                    <p className="text-sm text-muted-foreground">
-                        As a new account holder, your first jobs will be added within 8 hours of account creation.
-                    </p>
-                </div>
+                    <div className="flex items-center justify-center h-40 bg-muted/50 rounded-lg p-4">
+                      <div className="text-center">
+                        <p className="text-muted-foreground mb-2">
+                          No jobs available yet
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          As a new account holder, your first jobs will be added
+                          within 8 hours of account creation.
+                        </p>
+                      </div>
+                    </div>
                   )}
                 </div>
               </ScrollArea>
             </CardContent>
           </Card>
         </TabsContent>
-        
+  
         <TabsContent value="stats" className="h-[calc(100vh-120px)] m-0">
-          <Card className="h-full flex flex-col border-0 shadow-none">
-            <CardHeader className="py-2 px-3 flex flex-row justify-between items-center">
-              <div>
-                <CardTitle className="text-lg">Workable Job Listings</CardTitle>
-                <p className="text-muted-foreground text-xs">
-                  {format(startOfWeek(currentWeek, {weekStartsOn: 1}), "MMM d")} -{" "}
-                  {format(endOfWeek(currentWeek, {weekStartsOn: 1}), "MMM d")}
-                </p>
-              </div>
+          <div className="grid grid-cols-1 gap-4">
+            {/* Job Activity Stats Cards */}
+            <div className="grid grid-cols-2 gap-3">
+              <Card className="bg-white shadow-sm">
+                <CardContent className="p-3 flex flex-col items-center justify-center">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mb-1">
+                    <Building className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <p className="text-2xl font-semibold">{jobs.length}</p>
+                  <p className="text-xs text-muted-foreground text-center">
+                    Total Jobs
+                  </p>
+                </CardContent>
+              </Card>
+  
+              <Card className="bg-white shadow-sm">
+                <CardContent className="p-3 flex flex-col items-center justify-center">
+                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mb-1">
+                    <CheckCircle2 className="w-4 h-4 text-green-600" />
+                  </div>
+                  <p className="text-2xl font-semibold">
+                    {jobs.filter((job) => job.has_applied).length}
+                  </p>
+                  <p className="text-xs text-muted-foreground text-center">
+                    Applied
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+  
+            {/* Weekly Chart */}
+            <Card className="flex flex-col shadow-sm">
+              <CardHeader className="py-2 px-3 flex flex-row justify-between items-center">
+                <div>
+                  <CardTitle className="text-sm">
+                    Job Listings This Week
+                  </CardTitle>
+                  <p className="text-muted-foreground text-xs">
+                    {format(
+                      startOfWeek(currentWeek, { weekStartsOn: 1 }),
+                      "MMM d"
+                    )}{" "}
+                    -{" "}
+                    {format(
+                      endOfWeek(currentWeek, { weekStartsOn: 1 }),
+                      "MMM d"
+                    )}
+                  </p>
+                </div>
 
-              <div className="flex gap-2">
-                <button
-                  onClick={goToPreviousWeek}
-                  className="p-1.5 rounded-full bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={goToNextWeek}
-                  className="p-1.5 rounded-full bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </CardHeader>
+                <div className="flex gap-2">
+                  <button
+                    onClick={goToPreviousWeek}
+                    className="p-1.5 rounded-full bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={goToNextWeek}
+                    className="p-1.5 rounded-full bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </CardHeader>
 
-            <CardContent className="flex-1 relative p-0">
-              <div className="absolute inset-0 p-2">
-                <ChartContainer config={chartConfig} className="h-full">
-                  <ResponsiveContainer width="100%" height="100%" aspect={undefined}>
-                    <BarChart data={jobStats} margin={{top: 15, right: 20, left: 0, bottom: 5}}>
-                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                      <XAxis dataKey="day" tickLine={false} tickMargin={10} axisLine={false} tick={{fontSize: 10}} />
-                      <YAxis stroke="hsl(var(--foreground))" tick={{fontSize: 10}} />
-                      <ChartTooltip
-                        cursor={false}
-                        content={<ChartTooltipContent indicator="dashed" />}
+              <CardContent className="p-3 overflow-x-auto">
+                <div className="w-full" style={{ height: '180px', minWidth: '350px' }}>
+                  <BarChart
+                    width={350}
+                    height={180}
+                    data={jobStats}
+                    margin={{ top: 10, right: 10, left: 10, bottom: 5 }}
+                  >
+                    <defs>
+                      <linearGradient id="colorBar" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#50C878" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#50C878" stopOpacity={0.5}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid 
+                      vertical={false} 
+                      strokeDasharray="3 3" 
+                      opacity={0.4} 
+                      stroke="hsl(var(--border))" 
+                    />
+                    <XAxis
+                      dataKey="day"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                      tickFormatter={(day) => day.substring(0, 3)}
+                    />
+                    <YAxis 
+                      width={25}
+                      tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} 
+                      stroke="hsl(var(--border))"
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip 
+                      cursor={{ fill: 'hsl(var(--muted)/0.3)' }}
+                      contentStyle={{
+                        background: 'hsl(var(--background))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '6px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                        padding: '8px 12px',
+                        fontSize: '12px'
+                      }}
+                      itemStyle={{ color: 'hsl(var(--foreground))' }}
+                      labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: '4px' }}
+                      formatter={(value) => [`${value} jobs`, 'Added']}
+                      labelFormatter={(label) => `${label}`}
+                    />
+                    <Bar 
+                      dataKey="count" 
+                      fill="url(#colorBar)"
+                      radius={[4, 4, 0, 0]} 
+                      barSize={30}
+                      animationDuration={750}
+                    />
+                  </BarChart>
+                </div>
+              </CardContent>
+            </Card>
+  
+            {/* Application Rate */}
+            <Card className="shadow-sm">
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="text-sm">Application Rate</CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 pb-3 pt-0">
+                {jobs.length > 0 ? (
+                  <>
+                    <div className="w-full h-3 bg-gray-100 rounded-full mb-2">
+                      <div
+                        className="h-3 bg-primary rounded-full"
+                        style={{
+                          width: `${
+                            (jobs.filter((job) => job.has_applied).length /
+                              jobs.length) *
+                            100
+                          }%`,
+                        }}
                       />
-                      <Bar dataKey="count" fill="hsl(var(--chart-2))" radius={4} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
-              </div>
-            </CardContent>
-          </Card>
+                    </div>
+                    <div className="flex justify-between items-center text-xs text-muted-foreground">
+                      <span>
+                        {Math.round(
+                          (jobs.filter((job) => job.has_applied).length /
+                            jobs.length) *
+                            100
+                        )}
+                        % applied
+                      </span>
+                      <span>
+                        {jobs.length -
+                          jobs.filter((job) => job.has_applied).length}{" "}
+                        remaining
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground text-center py-2">
+                    No job application data yet
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+  
+            {/* Recent Activity */}
+            <Card className="shadow-sm">
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="text-sm">Recent Activity</CardTitle>
+              </CardHeader>
+              <CardContent className="px-0 pb-3 pt-0">
+                <div className="max-h-32 overflow-auto">
+                  {jobs.length > 0 ? (
+                    <div className="space-y-1">
+                      {jobs.slice(0, 3).map((job, index) => (
+                        <div
+                          key={index}
+                          className="px-3 py-1.5 hover:bg-muted/50"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="text-xs font-medium truncate w-3/4">
+                              {job.title}
+                            </div>
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] py-0 h-4"
+                            >
+                              {job.has_applied ? "Applied" : "New"}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center text-[10px] text-muted-foreground">
+                            <Building className="h-2.5 w-2.5 mr-1 flex-shrink-0" />
+                            <span className="truncate">
+                              {job.company || "Not specified"}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground text-center py-4">
+                      No recent activity
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
@@ -445,19 +735,23 @@ export default function WorkablePage() {
       <MobileLayout />
 
       {/* Application Status Dialog (shared between layouts) */}
-      <AlertDialog open={showApplyDialog} onOpenChange={(open) => {
-        console.log('Dialog open state changed:', open);
-        setShowApplyDialog(open);
-      }}>
+      <AlertDialog
+        open={showApplyDialog}
+        onOpenChange={(open) => {
+          console.log("Dialog open state changed:", open);
+          setShowApplyDialog(open);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Did you apply for this job?</AlertDialogTitle>
             <AlertDialogDescription>
-              {selectedJob?.title} at {selectedJob?.company || "Company Not Specified"}
+              {selectedJob?.title} at{" "}
+              {selectedJob?.company || "Company Not Specified"}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="flex justify-center gap-6 py-4">
-            <Button 
+            <Button
               onClick={() => handleMarkApplied(true)}
               className="flex items-center gap-2"
               variant="default"
@@ -465,7 +759,7 @@ export default function WorkablePage() {
               <CheckCircle2 className="h-5 w-5" />
               Yes, I applied
             </Button>
-            <Button 
+            <Button
               onClick={() => handleMarkApplied(false)}
               className="flex items-center gap-2"
               variant="outline"
@@ -474,6 +768,16 @@ export default function WorkablePage() {
               Not yet
             </Button>
           </div>
+          <AlertDialogFooter className="sm:justify-start">
+            <AlertDialogCancel
+              onClick={() => {
+                console.log("Ask me later clicked");
+                setShowApplyDialog(false);
+              }}
+            >
+              Ask me later
+            </AlertDialogCancel>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
@@ -492,8 +796,8 @@ function JobColumn({ title, jobs, onJobClick }) {
           <div className="flex flex-col gap-3 pr-4">
             {jobs.length > 0 ? (
               jobs.map((job, index) => (
-                <Card 
-                  key={index} 
+                <Card
+                  key={index}
                   className="hover:shadow-md transition-shadow bg-white cursor-pointer"
                   onClick={() => onJobClick(job)}
                 >
@@ -502,23 +806,30 @@ function JobColumn({ title, jobs, onJobClick }) {
                       <h3 className="font-medium w-[70%]">{job.title}</h3>
                       <Badge variant="outline">Workable</Badge>
                     </div>
-                    
+
                     <div className="grid grid-cols-1 gap-2 mb-3">
                       <div className="flex items-center text-sm text-muted-foreground">
-                        <Building className="h-4 w-4 mr-1" /> {job.company || "Not specified"}
+                        <Building className="h-4 w-4 mr-1" />{" "}
+                        {job.company || "Not specified"}
                       </div>
                       <div className="flex items-center text-sm text-muted-foreground">
-                        <MapPin className="h-4 w-4 mr-1" /> {job.location || "Not specified"}
+                        <MapPin className="h-4 w-4 mr-1" />{" "}
+                        {job.location || "Not specified"}
                       </div>
                       {job.date_added && (
                         <div className="flex items-center text-sm text-muted-foreground">
-                          <Clock className="h-4 w-4 mr-1" /> {formatDate(job.date_added)}
+                          <Clock className="h-4 w-4 mr-1" />{" "}
+                          {formatDate(job.date_added)}
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="flex justify-between items-center mt-2 pt-2 border-t border-border/40">
-                      <div className={`flex items-center text-sm ${job.has_applied ? "text-green-500" : "text-red-500"}`}>
+                      <div
+                        className={`flex items-center text-sm ${
+                          job.has_applied ? "text-green-500" : "text-red-500"
+                        }`}
+                      >
                         {job.has_applied ? (
                           <span className="flex items-center">
                             <CheckCircle2 className="h-4 w-4 mr-1" /> Applied
@@ -538,11 +849,14 @@ function JobColumn({ title, jobs, onJobClick }) {
               ))
             ) : (
               <div className="text-center">
-                <p className="text-muted-foreground mb-2">No jobs available yet</p>
-                <p className="text-sm text-muted-foreground">
-                    As a new account holder, your first jobs will be added within 8 hours of account creation.
+                <p className="text-muted-foreground mb-2">
+                  No jobs available yet
                 </p>
-            </div>
+                <p className="text-sm text-muted-foreground">
+                  As a new account holder, your first jobs will be added within
+                  8 hours of account creation.
+                </p>
+              </div>
             )}
           </div>
         </ScrollArea>
@@ -554,34 +868,43 @@ function JobColumn({ title, jobs, onJobClick }) {
 // Mobile optimised job card
 function MobileJobCard({ job, onClick }) {
   return (
-    <Card 
+    <Card
       className="hover:shadow-sm active:shadow-inner transition-shadow bg-white cursor-pointer touch-manipulation"
       onClick={onClick}
     >
       <CardContent className="p-3">
         <div className="flex justify-between items-start mb-2">
-          <h3 className="font-medium text-sm leading-tight w-[75%]">{job.title}</h3>
-          <Badge variant="outline" className="text-xs py-0 h-5">Workable</Badge>
+          <h3 className="font-medium text-sm leading-tight w-[75%]">
+            {job.title}
+          </h3>
+          <Badge variant="outline" className="text-xs py-0 h-5">
+            Workable
+          </Badge>
         </div>
-        
+
         <div className="grid grid-cols-1 gap-1.5 mb-2">
           <div className="flex items-center text-xs text-muted-foreground">
-            <Building className="h-3 w-3 mr-1 flex-shrink-0" /> 
+            <Building className="h-3 w-3 mr-1 flex-shrink-0" />
             <span className="truncate">{job.company || "Not specified"}</span>
           </div>
           <div className="flex items-center text-xs text-muted-foreground">
-            <MapPin className="h-3 w-3 mr-1 flex-shrink-0" /> 
+            <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
             <span className="truncate">{job.location || "Not specified"}</span>
           </div>
           {job.date_added && (
             <div className="flex items-center text-xs text-muted-foreground">
-              <Clock className="h-3 w-3 mr-1 flex-shrink-0" /> {formatDate(job.date_added)}
+              <Clock className="h-3 w-3 mr-1 flex-shrink-0" />{" "}
+              {formatDate(job.date_added)}
             </div>
           )}
         </div>
-        
+
         <div className="flex justify-between items-center pt-1.5 border-t border-border/40">
-          <div className={`flex items-center text-xs ${job.has_applied ? "text-green-500" : "text-red-500"}`}>
+          <div
+            className={`flex items-center text-xs ${
+              job.has_applied ? "text-green-500" : "text-red-500"
+            }`}
+          >
             {job.has_applied ? (
               <span className="flex items-center">
                 <CheckCircle2 className="h-3 w-3 mr-1" /> Applied

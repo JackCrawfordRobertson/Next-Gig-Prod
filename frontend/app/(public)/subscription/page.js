@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
 import { doc, updateDoc, collection, addDoc, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import dynamic from "next/dynamic";
@@ -125,9 +126,21 @@ function SubscriptionComponent() {
     return (
         <div className="min-h-screen w-full bg-transparent flex flex-col items-center justify-center py-6 px-4">
             <Card className="max-w-2xl w-full shadow-lg border border-gray-200">
-                <CardHeader>
-                    <CardTitle className="text-center text-3xl font-bold">Support What Matters</CardTitle>
-                </CardHeader>
+               
+                  <CardHeader className="flex flex-col items-center text-center">
+                                   <div className="mb-4">
+                                       <Image 
+                                           src="/nextgig-logo.svg" 
+                                           alt="Company Logo" 
+                                           width={140} 
+                                           height={50} 
+                                           priority
+                                       />
+                                   </div>
+                                   <p className="text-lg font-medium text-gray-700 mt-2">
+                                   Support What Matters
+                                                                      </p>
+                               </CardHeader>
 
                 <CardContent className="space-y-6">
                     <p className="text-center text-gray-600 text-lg">
