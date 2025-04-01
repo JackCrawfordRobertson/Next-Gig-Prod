@@ -8,7 +8,8 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/componen
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UserPlus } from "lucide-react";
-import { showToast } from "@/lib/toast";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -45,12 +46,12 @@ export default function LoginPage() {
             if (result?.error) throw new Error(result.error);
             
             // Show success toast
-            showToast("Successfully logged in", "success");
+            toast.success("Successfully logged in");
             
             // Directly push to dashboard on successful login
             router.push("/dashboard");
         } catch (error) {
-            showToast("Login failed. Please check your details and try again.", "error");
+            toast.error("Login failed. Please check your details and try again.");
         } finally {
             setIsLoading(false);
         }
@@ -59,7 +60,7 @@ export default function LoginPage() {
     // Handle Password Reset Request
     const handleResetPassword = async () => {
         if (!resetEmail) {
-            showToast("Please enter your email address", "error");
+            toast.error("Please enter your email address");
             return;
         }
         
@@ -74,10 +75,10 @@ export default function LoginPage() {
             
             if (!response.ok) throw new Error("Failed to send reset email");
             
-            showToast("If an account exists with this email, you will receive a password reset link shortly.", "success");
+            toast.success("If an account exists with this email, you will receive a password reset link shortly.");
             setShowResetForm(false);
         } catch (error) {
-            showToast("An error occurred. Please try again later", "error");
+            toast.error("An error occurred. Please try again later");
         } finally {
             setIsLoading(false);
         }
@@ -124,6 +125,7 @@ export default function LoginPage() {
                         </Button>
                     </CardFooter>
                 </Card>
+                <ToastContainer />
             </div>
         );
     }
@@ -218,6 +220,17 @@ export default function LoginPage() {
                     </div>
                 </CardFooter>
             </Card>
+            <ToastContainer 
+                position="top-right"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+            />
         </div>
     );
 }
