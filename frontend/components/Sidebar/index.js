@@ -27,6 +27,8 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useState } from "react";
+import { signOut } from "next-auth/react";
+
 
 export default function SidebarLayout({ children }) {
   const { data: session } = useSession();
@@ -169,12 +171,15 @@ export default function SidebarLayout({ children }) {
                 Profile Settings
               </Link>
               <button
-                onClick={() => signOut({ callbackUrl: "/login" })}
-                className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-sm text-red-600"
-              >
-                <LogOut className="w-4 h-4" />
-                Sign out
-              </button>
+  onClick={() => signOut({ 
+    callbackUrl: '/login',
+    redirect: true 
+  })}
+  className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-sm text-red-600"
+>
+  <LogOut className="w-4 h-4" />
+  Sign out
+</button>
             </div>
           )}
         </div>
@@ -253,12 +258,15 @@ export default function SidebarLayout({ children }) {
               Profile Settings
             </Link>
             <button
-              onClick={() => signOut({ callbackUrl: "/login" })}
-              className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-sm text-red-600"
-            >
-              <LogOut className="w-4 h-4" />
-              Sign out
-            </button>
+  onClick={() => signOut({ 
+    callbackUrl: '/login',
+    redirect: true  
+  })}
+  className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-sm text-red-600"
+>
+  <LogOut className="w-4 h-4" />
+  Sign out
+</button>
           </div>
         )}
       </div>
