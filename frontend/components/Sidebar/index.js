@@ -44,6 +44,28 @@ export default function SidebarLayout({ children }) {
     return "Good night";
   };
 
+
+  const handleSignOut = async () => {
+    try {
+      // Sign out from NextAuth
+      await signOut({ 
+        redirect: false  // Prevent automatic redirect
+      });
+
+      // Clear any local storage or additional cleanup if needed
+      localStorage.clear();
+
+      // Show success toast
+      toast.success("Successfully signed out");
+
+      // Manually redirect to login page
+      router.push("/login");
+    } catch (error) {
+      console.error("Sign out error:", error);
+      toast.error("Failed to sign out. Please try again.");
+    }
+  };
+
   // Desktop Sidebar Component
   const DesktopSidebar = () => (
     <Sidebar className="h-full w-64 flex flex-col border-r max-md:hidden bg-white">
@@ -169,15 +191,12 @@ export default function SidebarLayout({ children }) {
                 Profile Settings
               </Link>
               <button
-  onClick={() => signOut({ 
-    callbackUrl: '/login',
-    redirect: true 
-  })}
-  className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-sm text-red-600"
->
-  <LogOut className="w-4 h-4" />
-  Sign out
-</button>
+        onClick={handleSignOut}
+        className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-sm text-red-600"
+      >
+        <LogOut className="w-4 h-4" />
+        Sign out
+      </button>
             </div>
           )}
         </div>
@@ -256,15 +275,12 @@ export default function SidebarLayout({ children }) {
               Profile Settings
             </Link>
             <button
-  onClick={() => signOut({ 
-    callbackUrl: '/login',
-    redirect: true  
-  })}
-  className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-sm text-red-600"
->
-  <LogOut className="w-4 h-4" />
-  Sign out
-</button>
+        onClick={handleSignOut}
+        className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-sm text-red-600"
+      >
+        <LogOut className="w-4 h-4" />
+        Sign out
+      </button>
           </div>
         )}
       </div>
