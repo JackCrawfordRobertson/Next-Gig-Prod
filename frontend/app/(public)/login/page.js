@@ -143,7 +143,7 @@ export default function LoginPage() {
                         />
                     </div>
                     <p className="text-lg font-medium text-gray-700 mt-2">
-                        Your dream gigs delivered. Not searched for.
+                        Dream gigs delivered. Not searched for.
                     </p>
                 </CardHeader>
 
