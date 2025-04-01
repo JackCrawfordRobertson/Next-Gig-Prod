@@ -27,8 +27,6 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useState } from "react";
-import { signOut } from "next-auth/react";
-
 
 export default function SidebarLayout({ children }) {
   const { data: session } = useSession();
