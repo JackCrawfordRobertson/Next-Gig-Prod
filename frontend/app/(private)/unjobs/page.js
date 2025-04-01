@@ -456,8 +456,8 @@ export default function UNJobsPage() {
 
   // Mobile layout (optimised with tabs)
   const MobileLayout = () => (
-    <div className="md:hidden h-full w-full flex flex-col">
-      <Tabs
+<div className="md:hidden max-h-[calc(100vh-100px)] w-full flex flex-col flex-grow">
+<Tabs
         value={activeTab}
         onValueChange={setActiveTab}
         className="h-full flex flex-col"
@@ -473,12 +473,12 @@ export default function UNJobsPage() {
           </TabsTrigger>
         </TabsList>
   
-        <TabsContent value="jobs" className="flex-1 m-0 h-[calc(100vh-120px)]">
+        <TabsContent value="jobs" className="flex-1">
           <Card className="h-full border-0 shadow-none">
             <CardHeader className="py-2 px-3">
               <CardTitle className="text-lg">UN Jobs</CardTitle>
             </CardHeader>
-            <CardContent className="p-0 pt-2 h-[calc(100vh-170px)]">
+            <CardContent className="flex-1  p-0 pt-2">
               <ScrollArea className="h-full pb-8">
                 <div className="flex flex-col gap-3 px-3 pb-16">
                   {jobs.length > 0 ? (
@@ -729,7 +729,7 @@ export default function UNJobsPage() {
   );
 
   return (
-    <div className="h-screen w-full p-2 sm:p-4 md:p-8 overflow-hidden">
+    <div className="h-screen w-full p-4 sm:p-4 md:p-8">
       {/* Render desktop or mobile layout based on screen size */}
       <DesktopLayout />
       <MobileLayout />

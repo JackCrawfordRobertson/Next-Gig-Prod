@@ -729,7 +729,7 @@ export default function WorkablePage() {
   );
 
   return (
-    <div className="h-screen w-full p-2 sm:p-4 md:p-8 overflow-hidden">
+    <div className="h-screen w-full p-4 sm:p-4 md:p-8">
       {/* Render desktop or mobile layout based on screen size */}
       <DesktopLayout />
       <MobileLayout />

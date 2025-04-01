@@ -322,7 +322,7 @@ export default function ProfileSettingsPage() {
   }
 
   return (
-    <div className="w-full min-h-screen flex flex-col px-10 py-10">
+    <div className="h-screen w-full p-4 sm:p-4 md:p-8 overflow-hidden">
       <div className="space-y-6 flex-1 flex flex-col">
         <Card className="p-4">
           <div>
@@ -362,7 +362,7 @@ export default function ProfileSettingsPage() {
                         {userData?.lastName?.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
-                    <label htmlFor="profilePicture" className="cursor-pointer">
+                    {/* <label htmlFor="profilePicture" className="cursor-pointer">
                       <span className="sr-only">Change profile picture</span>
                       <input
   id="profilePicture"
@@ -370,13 +370,13 @@ export default function ProfileSettingsPage() {
   type="file"
   accept="image/*"
   className="hidden"
-  onClick={(e) => (e.target.value = null)} // 💡 allows selecting the same file again
+  onClick={(e) => (e.target.value = null)} 
   onChange={handleProfilePictureChange}
 />
                       <Button variant="outline" size="sm" as="span">
                         Change Picture
                       </Button>
-                    </label>
+                    </label> */}
                   </div>
 
                   <div className="flex-1">
