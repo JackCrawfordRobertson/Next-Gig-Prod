@@ -10,7 +10,9 @@ import * as z from "zod";
 import { format } from "date-fns";
 import { db, doc, getDoc, updateDoc } from "@/lib/firebase";
 import { initializeApp } from "firebase/app";
-
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -30,14 +32,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,7 +47,6 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { showToast } from "@/lib/toast";
 
@@ -89,6 +82,7 @@ export default function ProfileSettingsPage() {
   const [userData, setUserData] = useState(null);
   const [subscriptionData, setSubscriptionData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedProfilePicture, setSelectedProfilePicture] = useState(null);
 
   const { data: session, status } = useSession({
     required: true,
@@ -188,6 +182,15 @@ export default function ProfileSettingsPage() {
       const userId = session.user.id;
       const userDocRef = doc(db, "users", userId);
 
+      let profilePictureUrl = userData?.profilePicture || "";
+
+      if (selectedProfilePicture) {
+        const storage = getStorage();
+        const storageRef = ref(storage, `users/${userId}/profilePicture`);
+        await uploadBytes(storageRef, selectedProfilePicture);
+        profilePictureUrl = await getDownloadURL(storageRef);
+      }
+
       await updateDoc(userDocRef, {
         firstName: data.firstName,
         lastName: data.lastName,
@@ -203,19 +206,17 @@ export default function ProfileSettingsPage() {
         marketingConsent: data.marketingConsent,
         profileVisibility: data.profileVisibility,
         notifications: data.notifications,
+        profilePicture: profilePictureUrl,
         updatedAt: new Date().toISOString(),
       });
 
-      toast({
-        title: "Profile updated",
-        description: "Your profile settings have been updated successfully.",
-      });
-    } catch (error) {
-      console.error("Error updating profile:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update profile. Please try again.",
-        variant: "destructive",
+      toast.success('Changes saved', {
+        position: toast.POSITION.TOP_RIGHT,
+        autoClose: 3000,
+        hideProgressBar: true,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: false,
       });
     } finally {
       setIsPending(false);
@@ -255,6 +256,19 @@ export default function ProfileSettingsPage() {
       });
     } finally {
       setIsPending(false);
+    }
+  };
+
+  const handleProfilePictureChange = (event) => {
+    const file = event.target.files[0];
+    if (file && file.size <= 1024 * 1024) {
+      setSelectedProfilePicture(file);
+    } else {
+      toast({
+        title: "Error",
+        description: "Please select an image file less than 1 MB.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -310,9 +324,20 @@ export default function ProfileSettingsPage() {
                         {userData?.lastName?.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
-                    <Button variant="outline" size="sm">
-                      Change Picture
-                    </Button>
+                    <label htmlFor="profilePicture" className="cursor-pointer">
+                      <span className="sr-only">Change profile picture</span>
+                      <input
+                        id="profilePicture"
+                        name="profilePicture"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleProfilePictureChange}
+                      />
+                      <Button variant="outline" size="sm" as="span">
+                        Change Picture
+                      </Button>
+                    </label>
                   </div>
 
                   <div className="flex-1">
@@ -804,140 +829,143 @@ export default function ProfileSettingsPage() {
             </Card>
           </TabsContent>
           <TabsContent value="privacy" className="space-y-4 mt-4 flex-1">
-  <Card className="flex flex-col h-full">
-    <CardHeader>
-      <CardTitle>Privacy Settings</CardTitle>
-      <CardDescription>
-        Manage your privacy preferences and data settings
-      </CardDescription>
-    </CardHeader>
-    <CardContent className="space-y-6 flex-1">
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="space-y-6"
-        >
-          <div className="space-y-4">
-          <Separator />
+            <Card className="flex flex-col h-full">
+              <CardHeader>
+                <CardTitle>Privacy Settings</CardTitle>
+                <CardDescription>
+                  Manage your privacy preferences and data settings
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6 flex-1">
+                <Form {...form}>
+                  <form
+                    onSubmit={form.handleSubmit(onSubmit)}
+                    className="space-y-6"
+                  >
+                    <div className="space-y-4">
+                      <Separator />
 
-            <FormField
-              control={form.control}
-              name="notifications"
-              render={({ field }) => (
-                <FormItem className="flex items-center justify-between">
-                  <div>
-                    <FormLabel>Email Notifications</FormLabel>
-                    <FormDescription>
-                      Receive email updates about activity
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
+                      <FormField
+                        control={form.control}
+                        name="notifications"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center justify-between">
+                            <div>
+                              <FormLabel>Email Notifications</FormLabel>
+                              <FormDescription>
+                                Receive email updates about activity
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
 
-            <Separator />
+                      <Separator />
 
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-medium">Two-Factor Authentication</h3>
-                <p className="text-sm text-muted-foreground">
-                  Add an extra layer of security to your account
-                </p>
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => {
-                  showToast({
-                    title: "Feature Coming Soon",
-                    description: "Two-factor authentication will be available shortly."
-                  });
-                }}
-              >
-                Enable 2FA
-              </Button>
-            </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-medium">
+                            Two-Factor Authentication
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            Add an extra layer of security to your account
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            showToast({
+                              title: "Feature Coming Soon",
+                              description:
+                                "Two-factor authentication will be available shortly.",
+                            });
+                          }}
+                        >
+                          Enable 2FA
+                        </Button>
+                      </div>
 
-            <Separator />
+                      <Separator />
 
-            <div>
-              <h3 className="font-medium mb-2">Data Management</h3>
-              <div className="space-y-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start"
-                  onClick={() => {
-                    showToast({
-                      title: "Data Export Requested",
-                      description: "Your data export has been queued. You'll receive an email when it's ready.",
-                      variant: "success"
-                    });
-                  }}
-                >
-                  Request Data Export
-                </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full justify-start text-destructive"
-                    >
-                      Delete Account
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>
-                        Are you absolutely sure?
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action cannot be undone. This will
-                        permanently delete your account and remove
-                        your data from our servers.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction 
-                        className="bg-destructive text-destructive-foreground"
-                        onClick={() => {
-                          showToast({
-                            title: "Account Deletion Initiated",
-                            description: "Your account deletion process has begun. You'll receive a confirmation email.",
-                            variant: "error"
-                          });
-                        }}
-                      >
-                        Delete Account
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            </div>
-          </div>
+                      <div>
+                        <h3 className="font-medium mb-2">Data Management</h3>
+                        <div className="space-y-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full justify-start"
+                            onClick={() => {
+                              showToast({
+                                title: "Data Export Requested",
+                                description:
+                                  "Your data export has been queued. You'll receive an email when it's ready.",
+                                variant: "success",
+                              });
+                            }}
+                          >
+                            Request Data Export
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full justify-start text-destructive"
+                              >
+                                Delete Account
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Are you absolutely sure?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will
+                                  permanently delete your account and remove
+                                  your data from our servers.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive text-destructive-foreground"
+                                  onClick={() => {
+                                    showToast({
+                                      title: "Account Deletion Initiated",
+                                      description:
+                                        "Your account deletion process has begun. You'll receive a confirmation email.",
+                                      variant: "error",
+                                    });
+                                  }}
+                                >
+                                  Delete Account
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    </div>
 
-          <div className="flex justify-end">
-            <Button 
-              type="submit" 
-              disabled={isPending}
-            >
-              {isPending ? "Saving..." : "Save Privacy Settings"}
-            </Button>
-          </div>
-        </form>
-      </Form>
-    </CardContent>
-  </Card>
-</TabsContent>
+                    <div className="flex justify-end">
+                      <Button type="submit" disabled={isPending}>
+                        {isPending ? "Saving..." : "Save Privacy Settings"}
+                      </Button>
+                    </div>
+                    <ToastContainer />
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
     </div>

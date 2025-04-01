@@ -4,10 +4,8 @@ from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-# ✅ Load environment variables
 load_dotenv()
 
-# ✅ Handle Firebase Credentials
 firebase_json = os.getenv("FIREBASE_CREDENTIALS_JSON")
 
 if firebase_json:
@@ -24,7 +22,6 @@ else:
 if not firebase_credentials_path:
     raise ValueError("❌ FIREBASE_CREDENTIALS_PATH is missing!")
 
-# ✅ Initialize Firebase
 if not firebase_admin._apps:
     cred = credentials.Certificate(firebase_credentials_path)
     firebase_admin.initialize_app(cred)
@@ -46,12 +43,11 @@ def get_subscribed_users():
 def get_unique_job_titles():
     """Fetches unique job titles across all subscribed users."""
     users = get_subscribed_users()
-    job_titles = set()  # ✅ Using a set to remove duplicates
+    job_titles = set() 
 
     for user in users:
-        job_titles.update(user.get("jobTitles", []))  # ✅ Add job titles to the set
+        job_titles.update(user.get("jobTitles", [])) 
 
-    return list(job_titles)  # ✅ Convert set back to a list
+    return list(job_titles)  
 
-# ✅ Default Location (Assuming most users are in the UK)
 LOCATION = os.getenv("LOCATION", "United Kingdom")

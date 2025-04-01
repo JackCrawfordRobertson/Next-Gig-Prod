@@ -32,6 +32,8 @@ install-state.gz
 frontend/.netlify
 frontend/netlify.toml
 
+next-gig
+
 # 🔹 Misc files
 .DS_Store
 *.pem
