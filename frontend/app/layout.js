@@ -1,8 +1,9 @@
+
 // app/layout.jsx
 import "./globals.css";
 import { Inter } from "next/font/google";
 import SessionProvider from "@/components/SessionProvider";
-import { Toaster } from "react-hot-toast";
+import ClientToaster from "@/components/ClientToaster";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -24,12 +25,7 @@ export default function RootLayout({ children }) {
         <SessionProvider>
           {children}
         </SessionProvider>
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            className: "bg-background border text-foreground shadow-md",
-          }}
-        />
+        <ClientToaster />
       </body>
     </html>
   );
