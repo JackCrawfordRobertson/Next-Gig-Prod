@@ -95,33 +95,29 @@ export default function ProfileSettingsPage() {
     const fetchUserData = async () => {
       try {
         if (status !== "authenticated") return;
-
-        const userId = session.user.id; // or however you access the user ID in your session
-
+    
+        const userId = session.user.id;
+    
         // Fetch user data
         const userDocRef = doc(db, "users", userId);
         const userDoc = await getDoc(userDocRef);
-
+    
         if (userDoc.exists()) {
           setUserData(userDoc.data());
         }
-
+    
         // Fetch subscription data
         const subscriptionDocRef = doc(db, "subscriptions", userId);
         const subscriptionDoc = await getDoc(subscriptionDocRef);
-
+    
         if (subscriptionDoc.exists()) {
           setSubscriptionData(subscriptionDoc.data());
         }
-
+    
         setIsLoading(false);
       } catch (error) {
         console.error("Error fetching user data:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load profile data. Please try again.",
-          variant: "destructive",
-        });
+        toast.error("Failed to load profile data. Please try again.");
         setIsLoading(false);
       }
     };
@@ -169,28 +165,27 @@ export default function ProfileSettingsPage() {
       });
     }
   }, [userData, isLoading, form]);
-
   const onSubmit = async (data) => {
     setIsPending(true);
-
+  
     try {
       if (status !== "authenticated") {
         router.push("/login");
         return;
       }
-
+  
       const userId = session.user.id;
       const userDocRef = doc(db, "users", userId);
-
+  
       let profilePictureUrl = userData?.profilePicture || "";
-
+  
       if (selectedProfilePicture) {
         const storage = getStorage();
         const storageRef = ref(storage, `users/${userId}/profilePicture`);
         await uploadBytes(storageRef, selectedProfilePicture);
         profilePictureUrl = await getDownloadURL(storageRef);
       }
-
+  
       await updateDoc(userDocRef, {
         firstName: data.firstName,
         lastName: data.lastName,
@@ -209,7 +204,7 @@ export default function ProfileSettingsPage() {
         profilePicture: profilePictureUrl,
         updatedAt: new Date().toISOString(),
       });
-
+  
       toast.success('Changes saved', {
         position: toast.POSITION.TOP_RIGHT,
         autoClose: 3000,
@@ -222,43 +217,45 @@ export default function ProfileSettingsPage() {
       setIsPending(false);
     }
   };
-
+  
   const handleCancelSubscription = async () => {
-    setIsPending(true);
-
     try {
       if (status !== "authenticated") {
         router.push("/login");
         return;
       }
-
+  
       const userId = session.user.id;
-
-      // Here you would typically call your backend API to cancel the subscription
-      // This is a placeholder for that logic
-
-      toast({
-        title: "Subscription cancelled",
-        description: "Your subscription has been cancelled successfully.",
+  
+      // Call your backend API to cancel the PayPal subscription
+      // Replace this with your actual backend API call
+      await fetch(`/api/cancel-subscription?userId=${userId}`, {
+        method: "POST",
       });
-
-      // Update local state
-      setSubscriptionData({
-        ...subscriptionData,
+  
+      // Update the subscription data in Firestore
+      const subscriptionDocRef = doc(db, "subscriptions", userId);
+      await updateDoc(subscriptionDocRef, {
         status: "cancelled",
       });
+  
+      // Update the user data in Firestore
+      const userDocRef = doc(db, "users", userId);
+      await updateDoc(userDocRef, {
+        subscribed: false,
+        onTrial: false,
+      });
+  
+      toast.success("Subscription cancelled successfully.");
+  
+      // Refresh the subscription data
+      fetchUserData();
     } catch (error) {
       console.error("Error cancelling subscription:", error);
-      toast({
-        title: "Error",
-        description: "Failed to cancel subscription. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsPending(false);
+      toast.error("Failed to cancel subscription. Please try again.");
     }
   };
-
+  
   const handleProfilePictureChange = (event) => {
     const file = event.target.files[0];
     if (file && file.size <= 1024 * 1024) {
@@ -271,6 +268,8 @@ export default function ProfileSettingsPage() {
       });
     }
   };
+
+  
 
   if (isLoading) {
     return (
@@ -654,180 +653,164 @@ export default function ProfileSettingsPage() {
           </TabsContent>
 
           <TabsContent value="subscription" className="space-y-4 mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Subscription Management</CardTitle>
-                <CardDescription>
-                  Manage your subscription plan and billing information
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {subscriptionData ? (
-                  <>
-                    <div className="border rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <h3 className="font-semibold">Current Plan</h3>
-                        <span
-                          className={`text-sm rounded-full px-3 py-1 ${
-                            subscriptionData.status === "trial"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : subscriptionData.status === "active"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-gray-100 text-gray-800"
-                          }`}
-                        >
-                          {subscriptionData.status === "trial"
-                            ? "Trial"
-                            : subscriptionData.status === "active"
-                            ? "Active"
-                            : subscriptionData.status}
-                        </span>
-                      </div>
-                      <p className="text-2xl font-bold capitalize">
-                        {subscriptionData.plan} Plan
-                      </p>
-                      <p className="text-muted-foreground">
-                        {subscriptionData.currency === "GBP"
-                          ? "£"
-                          : subscriptionData.currency === "USD"
-                          ? "$"
-                          : subscriptionData.currency === "EUR"
-                          ? "€"
-                          : ""}
-                        {subscriptionData.price} per month
-                      </p>
+  <Card>
+    <CardHeader>
+      <CardTitle>Subscription Management</CardTitle>
+      <CardDescription>
+        Manage your subscription plan and billing information
+      </CardDescription>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      {subscriptionData ? (
+        <>
+          <div className="border rounded-lg p-4">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="font-semibold">Current Plan</h3>
+              <span
+                className={`text-sm rounded-full px-3 py-1 ${
+                  subscriptionData.status === "trial"
+                    ? "bg-yellow-100 text-yellow-800"
+                    : "bg-green-100 text-green-800"
+                }`}
+              >
+                {subscriptionData.status === "trial" ? "Trial" : "Active"}
+              </span>
+            </div>
+            <p className="text-2xl font-bold capitalize">
+              {subscriptionData.plan} Plan
+            </p>
+            <p className="text-muted-foreground">
+              {subscriptionData.currency === "GBP" ? "£" : ""}
+              {subscriptionData.price} per month
+            </p>
 
-                      {subscriptionData.status === "trial" && (
-                        <div className="mt-2 p-2 bg-yellow-50 text-yellow-800 rounded-md text-sm">
-                          <p>
-                            Trial ends on{" "}
-                            {new Date(
-                              subscriptionData.trialEndDate
-                            ).toLocaleDateString("en-GB")}
-                          </p>
-                        </div>
-                      )}
+            {subscriptionData.status === "trial" && (
+              <div className="mt-4">
+                <div className="flex justify-between mb-2">
+                  <span>Trial Progress</span>
+                  <span>
+                    {Math.ceil(
+                      (new Date(subscriptionData.trialEndDate) - new Date()) /
+                        (1000 * 60 * 60 * 24)
+                    )}{" "}
+                    days left
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  <div
+                    className="bg-blue-600 h-2.5 rounded-full"
+                    style={{
+                      width: `${
+                        ((new Date() - new Date(subscriptionData.startDate)) /
+                          (new Date(subscriptionData.trialEndDate) -
+                            new Date(subscriptionData.startDate))) *
+                        100
+                      }%`,
+                    }}
+                  ></div>
+                </div>
+              </div>
+            )}
 
-                      <p className="text-muted-foreground text-sm mt-2">
-                        Next billing date:{" "}
-                        {new Date(
-                          subscriptionData.status === "trial"
-                            ? subscriptionData.trialEndDate
-                            : new Date(subscriptionData.startDate).setMonth(
-                                new Date(
-                                  subscriptionData.startDate
-                                ).getMonth() + 1
-                              )
-                        ).toLocaleDateString("en-GB")}
-                      </p>
-                    </div>
-
-                    <div className="border rounded-lg p-4">
-                      <h3 className="font-semibold mb-2">Payment Method</h3>
-                      <div className="flex items-center gap-2">
-                        <div className="bg-gray-100 rounded p-1">
-                          {subscriptionData.paymentMethod === "paypal" ? (
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="24"
-                              height="24"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="text-blue-600"
-                            >
-                              <path d="M7 11c1.5 0 3.5-1 3.5-4.5S8.33 2 6.5 2H2v12.5h2V9h.5L7 15h2l-3-4Z" />
-                              <path d="M22 8c0 3.5-2 4.5-3.5 4.5h-4c-1.5 0-2.5-1-2.5-2.5s1-2.5 2.5-2.5H19" />
-                              <path d="M22 2v3" />
-                              <path d="M17 15h-5.5c-1.5 0-2.5-1-2.5-2.5 0-1.5 1-2.5 2.5-2.5H17" />
-                              <path d="M22 9v6" />
-                            </svg>
-                          ) : (
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="24"
-                              height="24"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <rect width="20" height="14" x="2" y="5" rx="2" />
-                              <line x1="2" x2="22" y1="10" y2="10" />
-                            </svg>
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-medium capitalize">
-                            {subscriptionData.paymentMethod}
-                          </p>
-                          {subscriptionData.fingerprint && (
-                            <p className="text-sm text-muted-foreground">
-                              {subscriptionData.paymentMethod === "paypal"
-                                ? `ID: ${subscriptionData.subscriptionId}`
-                                : `Card ending in ${subscriptionData.fingerprint.substring(
-                                    subscriptionData.fingerprint.length - 4
-                                  )}`}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <Button variant="outline" size="sm" className="mt-3">
-                        Update Payment Method
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <div className="border rounded-lg p-8 text-center">
-                    <h3 className="font-semibold mb-4">
-                      No Active Subscription
-                    </h3>
-                    <p className="text-muted-foreground mb-6">
-                      You don't currently have an active subscription.
-                    </p>
-                    <Button>Subscribe Now</Button>
-                  </div>
-                )}
-              </CardContent>
-              {subscriptionData && (
-                <CardFooter className="flex justify-between">
-                  <Button variant="outline">Upgrade Plan</Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive">Cancel Subscription</Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>
-                          Are you sure you want to cancel?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Your subscription will be cancelled immediately and
-                          you will lose access to premium features
-                          {subscriptionData.status === "trial"
-                            ? " at the end of your trial period."
-                            : " at the end of your current billing period."}
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>
-                          Continue Subscription
-                        </AlertDialogCancel>
-                        <AlertDialogAction onClick={handleCancelSubscription}>
-                          Cancel Subscription
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </CardFooter>
+            <p className="text-muted-foreground text-sm mt-4">
+              Subscription started on{" "}
+              {new Date(subscriptionData.startDate).toLocaleDateString(
+                "en-GB"
               )}
-            </Card>
-          </TabsContent>
+            </p>
+            <p className="text-muted-foreground text-sm">
+              {subscriptionData.status === "trial"
+                ? `Trial ends on ${new Date(
+                    subscriptionData.trialEndDate
+                  ).toLocaleDateString("en-GB")}`
+                : `Next billing date: ${new Date(
+                    new Date(subscriptionData.startDate).setMonth(
+                      new Date(subscriptionData.startDate).getMonth() + 1
+                    )
+                  ).toLocaleDateString("en-GB")}`}
+            </p>
+          </div>
+
+          <div className="border rounded-lg p-4">
+            <h3 className="font-semibold mb-2">Payment Method</h3>
+            <div className="flex items-center gap-2">
+              <div className="bg-gray-100 rounded p-1">
+                {subscriptionData.paymentMethod === "paypal" ? (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-blue-600"
+                  >
+                    <path d="M7 11c1.5 0 3.5-1 3.5-4.5S8.33 2 6.5 2H2v12.5h2V9h.5L7 15h2l-3-4Z" />
+                    <path d="M22 8c0 3.5-2 4.5-3.5 4.5h-4c-1.5 0-2.5-1-2.5-2.5s1-2.5 2.5-2.5H19" />
+                    <path d="M22 2v3" />
+                    <path d="M17 15h-5.5c-1.5 0-2.5-1-2.5-2.5 0-1.5 1-2.5 2.5-2.5H17" />
+                    <path d="M22 9v6" />
+                  </svg>
+                ) : (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect width="20" height="14" x="2" y="5" rx="2" />
+                    <line x1="2" x2="22" y1="10" y2="10" />
+                  </svg>
+                )}
+              </div>
+              <div>
+                <p className="font-medium capitalize">
+                  {subscriptionData.paymentMethod}
+                </p>
+                {subscriptionData.fingerprint && (
+                  <p className="text-sm text-muted-foreground">
+                    {subscriptionData.paymentMethod === "paypal"
+                      ? `ID: ${subscriptionData.subscriptionId}`
+                      : `Card ending in ${subscriptionData.fingerprint.substring(
+                          subscriptionData.fingerprint.length - 4
+                        )}`}
+                  </p>
+                )}
+              </div>
+            </div>
+            <Button variant="outline" size="sm" className="mt-3">
+              Update Payment Method
+            </Button>
+          </div>
+        </>
+      ) : (
+        <div className="border rounded-lg p-8 text-center">
+          <h3 className="font-semibold mb-4">No Active Subscription</h3>
+          <p className="text-muted-foreground mb-6">
+            You don't currently have an active subscription.
+          </p>
+          <Button>Subscribe Now</Button>
+        </div>
+      )}
+    </CardContent>
+    {subscriptionData && (
+      <CardFooter className="flex justify-between">
+        <Button variant="outline">Upgrade Plan</Button>
+        <Button variant="destructive" onClick={handleCancelSubscription}>
+          Cancel Subscription
+        </Button>
+      </CardFooter>
+    )}
+  </Card>
+</TabsContent>
           <TabsContent value="privacy" className="space-y-4 mt-4 flex-1">
             <Card className="flex flex-col h-full">
               <CardHeader>
