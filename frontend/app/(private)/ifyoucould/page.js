@@ -16,8 +16,8 @@ import {
   CartesianGrid,
   XAxis,
   YAxis,
-    ResponsiveContainer,
-    Tooltip,
+  ResponsiveContainer,
+  Tooltip,
 } from "recharts";
 import {
   ChevronLeft,
@@ -292,20 +292,28 @@ export default function IfYouCouldPage() {
 
   function FixedSizeChart({ data, height = 200, width = 350 }) {
     return (
-      <div style={{ 
-        width: '100%', 
-        height: `${height}px`, 
-        position: 'relative',
-        minHeight: `${height}px` // Enforce minimum height
-      }}>
+      <div
+        style={{
+          width: "100%",
+          height: `${height}px`,
+          position: "relative",
+          minHeight: `${height}px`, // Enforce minimum height
+        }}
+      >
         <ChartContainer config={chartConfig}>
           <BarChart
-            width={typeof width === "number" ? width : parseInt(width, 10) || 350}
+            width={
+              typeof width === "number" ? width : parseInt(width, 10) || 350
+            }
             height={height}
             data={data}
             margin={{ top: 10, right: 10, left: -5, bottom: 5 }}
           >
-            <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.4} />
+            <CartesianGrid
+              vertical={false}
+              strokeDasharray="3 3"
+              opacity={0.4}
+            />
             <XAxis
               dataKey="day"
               tickLine={false}
@@ -313,7 +321,11 @@ export default function IfYouCouldPage() {
               tick={{ fontSize: 9 }}
               tickFormatter={(day) => day.substring(0, 3)}
             />
-            <YAxis stroke="hsl(var(--foreground))" tick={{ fontSize: 9 }} width={25} />
+            <YAxis
+              stroke="hsl(var(--foreground))"
+              tick={{ fontSize: 9 }}
+              width={25}
+            />
             <ChartTooltip
               cursor={false}
               content={<ChartTooltipContent indicator="dashed" />}
@@ -350,7 +362,7 @@ export default function IfYouCouldPage() {
               </div>
             </div>
           </Card>
-          
+
           <Card className="flex items-center justify-between px-6">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
@@ -358,7 +370,9 @@ export default function IfYouCouldPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Applied</p>
-                <p className="text-3xl font-semibold">{jobs.filter(job => job.has_applied).length}</p>
+                <p className="text-3xl font-semibold">
+                  {jobs.filter((job) => job.has_applied).length}
+                </p>
               </div>
             </div>
           </Card>
@@ -394,8 +408,7 @@ export default function IfYouCouldPage() {
                     % applied
                   </span>
                   <span>
-                    {jobs.length -
-                      jobs.filter((job) => job.has_applied).length}{" "}
+                    {jobs.length - jobs.filter((job) => job.has_applied).length}{" "}
                     remaining
                   </span>
                 </div>
@@ -436,29 +449,43 @@ export default function IfYouCouldPage() {
           </CardHeader>
 
           <CardContent className="flex-1 relative p-0">
-    <div className="absolute inset-0 p-2">
-        <ChartContainer config={chartConfig} className="h-full">
-            <ResponsiveContainer width="100%" height="100%" aspect={undefined}>
-                <BarChart data={jobStats} margin={{top: 15, right: 20, left: 0, bottom: 5}}>
+            <div className="absolute inset-0 p-2">
+              <ChartContainer config={chartConfig} className="h-full">
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                  aspect={undefined}
+                >
+                  <BarChart
+                    data={jobStats}
+                    margin={{ top: 15, right: 20, left: 0, bottom: 5 }}
+                  >
                     <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                    <XAxis 
-                        dataKey="day" 
-                        tickLine={false} 
-                        tickMargin={10} 
-                        axisLine={false} 
-                        tick={{fontSize: 10}} 
+                    <XAxis
+                      dataKey="day"
+                      tickLine={false}
+                      tickMargin={10}
+                      axisLine={false}
+                      tick={{ fontSize: 10 }}
                     />
-                    <YAxis stroke="hsl(var(--foreground))" tick={{fontSize: 10}} />
+                    <YAxis
+                      stroke="hsl(var(--foreground))"
+                      tick={{ fontSize: 10 }}
+                    />
                     <ChartTooltip
-                        cursor={false}
-                        content={<ChartTooltipContent indicator="dashed" />}
+                      cursor={false}
+                      content={<ChartTooltipContent indicator="dashed" />}
                     />
-                    <Bar dataKey="count" fill="hsl(var(--chart-5))" radius={4} />
-                </BarChart>
-            </ResponsiveContainer>
-        </ChartContainer>
-    </div>
-</CardContent>
+                    <Bar
+                      dataKey="count"
+                      fill="hsl(var(--chart-5))"
+                      radius={4}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </div>
+          </CardContent>
         </Card>
       </div>
     </div>
@@ -466,8 +493,8 @@ export default function IfYouCouldPage() {
 
   // Mobile layout (optimised with tabs)
   const MobileLayout = () => (
-<div className="md:hidden max-h-[calc(100vh-100px)] w-full flex flex-col flex-grow">
-<Tabs
+    <div className="md:hidden max-h-[calc(100vh-100px)] w-full flex flex-col flex-grow">
+      <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
         className="h-full flex flex-col"
@@ -482,7 +509,7 @@ export default function IfYouCouldPage() {
             <span>Stats</span>
           </TabsTrigger>
         </TabsList>
-  
+
         <TabsContent value="jobs" className="flex-1">
           <Card className="h-full border-0 shadow-none">
             <CardHeader className="py-2 px-3">
@@ -490,8 +517,8 @@ export default function IfYouCouldPage() {
             </CardHeader>
             <CardContent className="flex-1  p-0 pt-2">
               <ScrollArea className="h-full pb-8">
-              <div className="flex flex-col gap-3 px-3 pb-16">
-              {jobs.length > 0 ? (
+                <div className="flex flex-col gap-3 px-3 pb-16">
+                  {jobs.length > 0 ? (
                     jobs.map((job, index) => (
                       <MobileJobCard
                         key={index}
@@ -517,7 +544,7 @@ export default function IfYouCouldPage() {
             </CardContent>
           </Card>
         </TabsContent>
-  
+
         <TabsContent value="stats" className="h-[calc(100vh-120px)] m-0">
           <div className="grid grid-cols-1 gap-4">
             {/* Job Activity Stats Cards */}
@@ -533,7 +560,7 @@ export default function IfYouCouldPage() {
                   </p>
                 </CardContent>
               </Card>
-  
+
               <Card className="bg-white shadow-sm">
                 <CardContent className="p-3 flex flex-col items-center justify-center">
                   <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mb-1">
@@ -548,104 +575,124 @@ export default function IfYouCouldPage() {
                 </CardContent>
               </Card>
             </div>
-  
-{/* Weekly Chart */}
-<Card className="flex flex-col shadow-sm">
-  <CardHeader className="py-2 px-3 flex flex-row justify-between items-center">
-    <div>
-      <CardTitle className="text-sm">
-        Job Listings This Week
-      </CardTitle>
-      <p className="text-muted-foreground text-xs">
-        {format(
-          startOfWeek(currentWeek, { weekStartsOn: 1 }),
-          "MMM d"
-        )}{" "}
-        -{" "}
-        {format(
-          endOfWeek(currentWeek, { weekStartsOn: 1 }),
-          "MMM d"
-        )}
-      </p>
-    </div>
 
-    <div className="flex gap-2">
-      <button
-        onClick={goToPreviousWeek}
-        className="p-1.5 rounded-full bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition"
-      >
-        <ChevronLeft className="w-3.5 h-3.5" />
-      </button>
-      <button
-        onClick={goToNextWeek}
-        className="p-1.5 rounded-full bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition"
-      >
-        <ChevronRight className="w-3.5 h-3.5" />
-      </button>
-    </div>
-  </CardHeader>
+            {/* Weekly Chart */}
+            <Card className="flex flex-col shadow-sm">
+              <CardHeader className="py-2 px-3 flex flex-row justify-between items-center">
+                <div>
+                  <CardTitle className="text-sm">
+                    Job Listings This Week
+                  </CardTitle>
+                  <p className="text-muted-foreground text-xs">
+                    {format(
+                      startOfWeek(currentWeek, { weekStartsOn: 1 }),
+                      "MMM d"
+                    )}{" "}
+                    -{" "}
+                    {format(
+                      endOfWeek(currentWeek, { weekStartsOn: 1 }),
+                      "MMM d"
+                    )}
+                  </p>
+                </div>
 
-  <CardContent className="p-3 overflow-x-auto">
-    <div className="w-full" style={{ height: '180px', minWidth: '350px' }}>
-      <BarChart
-        width={350}
-        height={180}
-        data={jobStats}
-        margin={{ top: 10, right: 10, left: 10, bottom: 5 }}
-      >
-        <defs>
-          <linearGradient id="colorBar" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#FF008C" stopOpacity={0.8}/>
-            <stop offset="95%" stopColor="#FF008C" stopOpacity={0.5}/>
-          </linearGradient>
-        </defs>
-        <CartesianGrid 
-          vertical={false} 
-          strokeDasharray="3 3" 
-          opacity={0.4} 
-          stroke="hsl(var(--border))" 
-        />
-        <XAxis
-          dataKey="day"
-          tickLine={false}
-          axisLine={false}
-          tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-          tickFormatter={(day) => day.substring(0, 3)}
-        />
-        <YAxis 
-          width={25}
-          tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} 
-          stroke="hsl(var(--border))"
-          tickLine={false}
-          axisLine={false}
-        />
-        <Tooltip 
-          cursor={{ fill: 'hsl(var(--muted)/0.3)' }}
-          contentStyle={{
-            background: 'hsl(var(--background))',
-            border: '1px solid hsl(var(--border))',
-            borderRadius: '6px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-            padding: '8px 12px',
-            fontSize: '12px'
-          }}
-          itemStyle={{ color: 'hsl(var(--foreground))' }}
-          labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: '4px' }}
-          formatter={(value) => [`${value} jobs`, 'Added']}
-          labelFormatter={(label) => `${label}`}
-        />
-        <Bar 
-          dataKey="count" 
-          fill="url(#colorBar)"
-          radius={[4, 4, 0, 0]} 
-          barSize={30}
-          animationDuration={750}
-        />
-      </BarChart>
-    </div>
-  </CardContent>
-</Card>
-  
+                <div className="flex gap-2">
+                  <button
+                    onClick={goToPreviousWeek}
+                    className="p-1.5 rounded-full bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={goToNextWeek}
+                    className="p-1.5 rounded-full bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </CardHeader>
+
+              <CardContent className="p-3 overflow-x-auto">
+                <div
+                  className="w-full"
+                  style={{ height: "180px", minWidth: "350px" }}
+                >
+                  <BarChart
+                    width={350}
+                    height={180}
+                    data={jobStats}
+                    margin={{ top: 10, right: 10, left: 10, bottom: 5 }}
+                  >
+                    <defs>
+                      <linearGradient id="colorBar" x1="0" y1="0" x2="0" y2="1">
+                        <stop
+                          offset="5%"
+                          stopColor="#FF008C"
+                          stopOpacity={0.8}
+                        />
+                        <stop
+                          offset="95%"
+                          stopColor="#FF008C"
+                          stopOpacity={0.5}
+                        />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid
+                      vertical={false}
+                      strokeDasharray="3 3"
+                      opacity={0.4}
+                      stroke="hsl(var(--border))"
+                    />
+                    <XAxis
+                      dataKey="day"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{
+                        fontSize: 10,
+                        fill: "hsl(var(--muted-foreground))",
+                      }}
+                      tickFormatter={(day) => day.substring(0, 3)}
+                    />
+                    <YAxis
+                      width={25}
+                      tick={{
+                        fontSize: 10,
+                        fill: "hsl(var(--muted-foreground))",
+                      }}
+                      stroke="hsl(var(--border))"
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip
+                      cursor={{ fill: "hsl(var(--muted)/0.3)" }}
+                      contentStyle={{
+                        background: "hsl(var(--background))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "6px",
+                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+                        padding: "8px 12px",
+                        fontSize: "12px",
+                      }}
+                      itemStyle={{ color: "hsl(var(--foreground))" }}
+                      labelStyle={{
+                        color: "hsl(var(--muted-foreground))",
+                        marginBottom: "4px",
+                      }}
+                      formatter={(value) => [`${value} jobs`, "Added"]}
+                      labelFormatter={(label) => `${label}`}
+                    />
+                    <Bar
+                      dataKey="count"
+                      fill="url(#colorBar)"
+                      radius={[4, 4, 0, 0]}
+                      barSize={30}
+                      animationDuration={750}
+                    />
+                  </BarChart>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Application Rate */}
             <Card className="shadow-sm">
               <CardHeader className="py-2 px-3">
@@ -689,7 +736,7 @@ export default function IfYouCouldPage() {
                 )}
               </CardContent>
             </Card>
-  
+
             {/* Recent Activity */}
             <Card className="shadow-sm">
               <CardHeader className="py-2 px-3">

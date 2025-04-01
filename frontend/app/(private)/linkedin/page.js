@@ -223,41 +223,50 @@ export default function LinkedInPage() {
     }
   };
 
-  // Handle marking job as applied
   const handleMarkApplied = async (applied) => {
-    if (!selectedJob) {
-      console.log('No selected job to mark as applied');
-      return;
-    }
-    
-    console.log('Marking job as applied:', selectedJob.title, applied);
-    
+    if (!selectedJob || !session?.user?.email) return;
+  
+    console.log("Marking job as applied:", selectedJob.title, applied);
+  
     try {
-      // Update the local state
-      const updatedJobs = jobs.map(job => 
+      // Update local state
+      const updatedJobs = jobs.map((job) =>
         job.id === selectedJob.id ? { ...job, has_applied: applied } : job
       );
       setJobs(updatedJobs);
-      console.log('Updated local state');
-      
-      // Update Firestore if in production
-      if (!isDev && selectedJob.id) {
-        console.log('Updating Firestore document:', selectedJob.id);
-        await updateDoc(doc(db, "linkedin", selectedJob.id), {
-          has_applied: applied
-        });
-        console.log('Firestore updated successfully');
-      } else {
-        console.log('Not updating Firestore (dev mode or no job ID)');
+      console.log("Updated local state");
+  
+      if (!isDev) {
+        const usersSnapshot = await getDocs(collection(db, "users"));
+        const userDoc = usersSnapshot.docs.find(
+          (doc) => doc.data().email === session.user.email
+        );
+  
+        if (userDoc) {
+          const ref = doc(db, "users", userDoc.id);
+          const currentJobs = userDoc.data().jobs?.linkedin || [];
+  
+          const updatedJobArray = currentJobs.map((job) =>
+            job.id === selectedJob.id ? { ...job, has_applied: true } : job
+          );
+  
+          await updateDoc(ref, {
+            "jobs.linkedin": updatedJobArray
+          });
+  
+          console.log("Firestore updated successfully");
+        } else {
+          console.warn("User document not found");
+        }
       }
     } catch (error) {
       console.error("Error updating application status:", error);
     } finally {
       setShowApplyDialog(false);
       setSelectedJob(null);
-      console.log('Dialog closed and selected job cleared');
     }
   };
+  
 
   // Navigation Functions for Weekly View
   const goToPreviousWeek = () => setCurrentWeek(subWeeks(currentWeek, 1));
