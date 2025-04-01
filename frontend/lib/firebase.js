@@ -77,7 +77,9 @@ export const setDoc = isDevelopment ? mockFirebase.setDoc : null;
  * Storage: real vs. mock
  */
 export const ref = isDevelopment ? mockStorage.ref : storage.ref;
-export const uploadBytes = isDevelopment ? mockStorage.uploadBytes : storage.uploadBytes;
+export const uploadBytes = isDevelopment
+  ? mockStorage.uploadBytes
+  : storage.uploadBytes;
 export const getDownloadURL = isDevelopment
   ? mockStorage.getDownloadURL
   : storage.getDownloadURL;
