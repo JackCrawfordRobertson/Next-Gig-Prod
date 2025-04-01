@@ -8,8 +8,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { format } from "date-fns";
-import { db, doc, getDoc, updateDoc } from "@/lib/firebase";
-import { initializeApp } from "firebase/app";
+import {
+  db,
+  doc,
+  getDoc,
+  updateDoc,
+  collection,
+  query,
+  where,
+  getDocs, // CHANGED: for querying subscription doc by userId
+} from "@/lib/firebase";import { initializeApp } from "firebase/app";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -80,9 +88,13 @@ export default function ProfileSettingsPage() {
   const { toast } = useToast(); // Use the toast hook instead of importing directly
   const [isPending, setIsPending] = useState(false);
   const [userData, setUserData] = useState(null);
-  const [subscriptionData, setSubscriptionData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedProfilePicture, setSelectedProfilePicture] = useState(null);
+
+    // CHANGED: store subscription data + the Firestore doc ID
+    const [subscriptionData, setSubscriptionData] = useState(null);
+    const [subscriptionDocId, setSubscriptionDocId] = useState(null);
+
 
   const { data: session, status } = useSession({
     required: true,
@@ -95,25 +107,31 @@ export default function ProfileSettingsPage() {
     const fetchUserData = async () => {
       try {
         if (status !== "authenticated") return;
-    
+
         const userId = session.user.id;
-    
-        // Fetch user data
+
+        // 1. Fetch user data
         const userDocRef = doc(db, "users", userId);
-        const userDoc = await getDoc(userDocRef);
-    
-        if (userDoc.exists()) {
-          setUserData(userDoc.data());
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+          setUserData(userDocSnap.data());
         }
-    
-        // Fetch subscription data
-        const subscriptionDocRef = doc(db, "subscriptions", userId);
-        const subscriptionDoc = await getDoc(subscriptionDocRef);
-    
-        if (subscriptionDoc.exists()) {
-          setSubscriptionData(subscriptionDoc.data());
+
+        // 2. Fetch subscription data by querying subscription docs
+        //    that match userId in the "subscriptions" collection
+        const subQuery = query(
+          collection(db, "subscriptions"),
+          where("userId", "==", userId) // CHANGED: filter on userId field
+        );
+        const subQuerySnap = await getDocs(subQuery);
+
+        if (!subQuerySnap.empty) {
+          // For simplicity, assume each user only has 1 subscription doc
+          const docSnap = subQuerySnap.docs[0];
+          setSubscriptionDocId(docSnap.id); // CHANGED: store the actual doc ID
+          setSubscriptionData(docSnap.data());
         }
-    
+
         setIsLoading(false);
       } catch (error) {
         console.error("Error fetching user data:", error);
@@ -123,7 +141,7 @@ export default function ProfileSettingsPage() {
     };
 
     fetchUserData();
-  }, [status, session, router]);
+  }, [status, session, router, toast]);
 
   const form = useForm({
     resolver: zodResolver(profileFormSchema),
@@ -165,27 +183,27 @@ export default function ProfileSettingsPage() {
       });
     }
   }, [userData, isLoading, form]);
+
   const onSubmit = async (data) => {
     setIsPending(true);
-  
     try {
       if (status !== "authenticated") {
         router.push("/login");
         return;
       }
-  
+
       const userId = session.user.id;
       const userDocRef = doc(db, "users", userId);
-  
+
       let profilePictureUrl = userData?.profilePicture || "";
-  
+
       if (selectedProfilePicture) {
         const storage = getStorage();
         const storageRef = ref(storage, `users/${userId}/profilePicture`);
         await uploadBytes(storageRef, selectedProfilePicture);
         profilePictureUrl = await getDownloadURL(storageRef);
       }
-  
+
       await updateDoc(userDocRef, {
         firstName: data.firstName,
         lastName: data.lastName,
@@ -204,8 +222,8 @@ export default function ProfileSettingsPage() {
         profilePicture: profilePictureUrl,
         updatedAt: new Date().toISOString(),
       });
-  
-      toast.success('Changes saved', {
+
+      toast.success("Changes saved", {
         position: toast.POSITION.TOP_RIGHT,
         autoClose: 3000,
         hideProgressBar: true,
@@ -217,45 +235,53 @@ export default function ProfileSettingsPage() {
       setIsPending(false);
     }
   };
-  
+
   const handleCancelSubscription = async () => {
     try {
       if (status !== "authenticated") {
         router.push("/login");
         return;
       }
-  
+
+      // CHANGED: We must have a valid subscriptionDocId to update
+      if (!subscriptionDocId) {
+        toast.error("No subscription doc found for this user.");
+        return;
+      }
+
+      // 1. Cancel subscription on your backend
       const userId = session.user.id;
-  
-      // Call your backend API to cancel the PayPal subscription
-      // Replace this with your actual backend API call
       await fetch(`/api/cancel-subscription?userId=${userId}`, {
         method: "POST",
       });
-  
-      // Update the subscription data in Firestore
-      const subscriptionDocRef = doc(db, "subscriptions", userId);
-      await updateDoc(subscriptionDocRef, {
+
+      // 2. Update the subscription doc's status in Firestore
+      await updateDoc(doc(db, "subscriptions", subscriptionDocId), {
         status: "cancelled",
       });
-  
-      // Update the user data in Firestore
-      const userDocRef = doc(db, "users", userId);
-      await updateDoc(userDocRef, {
+
+      // 3. Update user doc in Firestore
+      await updateDoc(doc(db, "users", userId), {
         subscribed: false,
         onTrial: false,
       });
-  
+
       toast.success("Subscription cancelled successfully.");
-  
-      // Refresh the subscription data
-      fetchUserData();
+
+      // 4. Refetch data so UI refreshes
+      //    (or manually set your states if you prefer)
+      setSubscriptionData((prev) => ({ ...prev, status: "cancelled" }));
+      setUserData((prev) => ({
+        ...prev,
+        subscribed: false,
+        onTrial: false,
+      }));
     } catch (error) {
       console.error("Error cancelling subscription:", error);
       toast.error("Failed to cancel subscription. Please try again.");
     }
   };
-  
+
   const handleProfilePictureChange = (event) => {
     const file = event.target.files[0];
     if (file && file.size <= 1024 * 1024) {
