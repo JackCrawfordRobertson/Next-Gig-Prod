@@ -9,7 +9,7 @@ export const metadata = {
 
 export default function PublicLayout({ children }) {
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <div className="relative min-h-screen ">
 
       <ArrowsBackgroundWrapper />
 

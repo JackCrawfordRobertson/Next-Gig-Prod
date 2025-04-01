@@ -160,7 +160,7 @@ export default function SidebarLayout({ children }) {
 
           {/* Desktop User Dropdown */}
           {desktopUserMenuOpen && (
-            <div className="absolute bottom-full left-0 right-0 bg-white border shadow-lg rounded-t-md overflow-hidden">
+            <div className="absolute bottom-full left-0 right-0 bg-white border shadow-lg rounded-t-md overflow-auto md:overflow-hidden">
               <Link
                 href="/profile-settings"
                 className="flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-sm border-b"
@@ -244,7 +244,7 @@ export default function SidebarLayout({ children }) {
 
         {/* Mobile User Menu Dropdown */}
         {mobileUserMenuOpen && (
-          <div className="absolute bottom-16 right-0 bg-white border shadow-lg rounded-md overflow-hidden w-48">
+          <div className="absolute bottom-16 right-0 bg-white border shadow-lg rounded-md overflow-auto md:overflow-hidden w-48">
             <Link
               href="/profile-settings"
               className="flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-sm border-b"
@@ -268,7 +268,7 @@ export default function SidebarLayout({ children }) {
   return (
     <ThemeProvider>
       <SidebarProvider>
-        <div className="flex h-screen w-screen overflow-hidden">
+        <div className="flex h-screen w-screen">
           {/* Desktop Sidebar */}
           <DesktopSidebar />
 

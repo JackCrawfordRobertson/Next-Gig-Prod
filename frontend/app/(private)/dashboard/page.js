@@ -385,256 +385,252 @@ export default function DashboardPage() {
    };
 
    return (
-       <div className="h-screen w-full flex flex-col bg-transparent overflow-hidden p-2 sm:p-4">
-          
+        <div className="h-screen w-full flex flex-col bg-transparent p-2 sm:p-4 overflow-auto md:overflow-hidden">
           {loading ? (
-    <div className="flex items-center justify-center h-full">
-        <div className="text-center space-y-3">
-            <div className="inline-flex items-center gap-2">
-                <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                <div className="w-3 h-3 bg-primary rounded-full animate-bounce"></div>
+            <div className="flex items-center justify-center h-full">
+                <div className="text-center space-y-3">
+                    <div className="inline-flex items-center gap-2">
+                        <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                        <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                        <div className="w-3 h-3 bg-primary rounded-full animate-bounce"></div>
+                    </div>
+                    <p className="text-muted-foreground animate-pulse">Loading your jobs...</p>
+                </div>
             </div>
-            <p className="text-muted-foreground animate-pulse">Loading your jobs...</p>
-        </div>
+          ) : (
+            <div className="flex flex-col h-full space-y-3 sm:space-y-4">
+                {/* Stats Row - Scrollable on mobile, grid on desktop */}
+                <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <MiniStat title="LinkedIn" count={jobCounts.linkedin} />
+                    <MiniStat title="Workable" count={jobCounts.workable} />
+                    <MiniStat title="If You Could" count={jobCounts.ifyoucould} />
+                    <MiniStat title="UN Jobs" count={jobCounts.unjobs} />
+                </div>
+
+                {/* Search Bar with Dropdown */}
+                <div className="relative">
+                    <div className="relative bg-white rounded-md h-[3rem]">
+                        <Search className="absolute left-2.5 top-3.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            ref={searchInputRef}
+                            placeholder="Search all jobs..."
+                            className="pl-9 h-[3rem] flex items-center"
+                            value={searchQuery}
+                            onChange={(e) => {
+                                setSearchQuery(e.target.value);
+                                setShowSearchResults(e.target.value.trim() !== "");
+                            }}
+                            onKeyDown={handleSearchKeyDown}
+                            onFocus={() => {
+                                if (searchQuery.trim() !== "") {
+                                    setShowSearchResults(true);
+                                }
+                            }}
+                        />
+                    </div>
+
+                    {showSearchResults && (
+                        <Card className="absolute z-10 w-full mt-1 shadow-lg max-h-64 overflow-hidden">
+                            <CardContent className="p-0">
+                                <Command>
+                                    <CommandList>
+                                        <CommandEmpty>No results found.</CommandEmpty>
+                                        <CommandGroup>
+                                            <ScrollArea className="h-64">
+                                                {filteredJobs.map((job, index) => (
+                                                    <CommandItem
+                                                        key={index}
+                                                        className="p-0 cursor-pointer"
+                                                        onSelect={() => {
+                                                            handleJobClick(job);
+                                                            setShowSearchResults(false);
+                                                        }}
+                                                    >
+                                                        <div className="w-full p-2">
+                                                            <div className="flex justify-between items-center mb-1">
+                                                                <h4 className="font-medium text-sm">{job.title}</h4>
+                                                                <Badge variant="outline" className="text-xs">
+                                                                    {job.source}
+                                                                </Badge>
+                                                            </div>
+                                                            <div className="flex items-center text-xs text-muted-foreground">
+                                                                <Building className="h-3 w-3 mr-1" /> {job.company}
+                                                                <span className="mx-1">•</span>
+                                                                <MapPin className="h-3 w-3 mr-1" /> {job.location}
+                                                            </div>
+                                                        </div>
+                                                    </CommandItem>
+                                                ))}
+                                            </ScrollArea>
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </CardContent>
+                        </Card>
+                    )}
+                </div>
+
+                {/* Desktop: Main Content with Grid Layout */}
+                <div className="hidden md:grid md:grid-cols-3 md:gap-4 md:flex-1 md:w-full md:overflow-hidden">
+                    {/* Recent Jobs Column */}
+                    <Card className="flex flex-col h-full md:overflow-hidden bg-muted/20 md:col-span-2">
+                        <CardHeader className="py-4 px-3">
+                            <CardTitle className="flex items-center justify-between">
+                                <span>Last 24 Hours</span>
+                                <Badge variant="outline">{recentJobs.length}</Badge>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="flex-1 pl-2 pr-0 pb-0 md:overflow-hidden">
+                        <ScrollArea className="h-full">
+                                <div className="flex flex-col gap-3 pr-4 pb-2">
+                                    {recentJobs.length > 0 ? (
+                                        recentJobs.map((job, index) => (
+                                            <JobCard key={index} job={job} onClick={() => handleJobClick(job)} />
+                                        ))
+                                    ) : (
+                                        <div className="flex items-center justify-center h-32 bg-muted/50 rounded-lg">
+                                            <p className="text-muted-foreground">
+                                                No new jobs in the last 24 hours
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </ScrollArea>
+                        </CardContent>
+                    </Card>
+
+                    {/* All Jobs Column */}
+                    <Card className="flex flex-col h-full md:overflow-hidden bg-muted/20">
+                        <CardHeader className="py-4 px-3">
+                            <CardTitle className="flex items-center justify-between">
+                                <span>All Jobs</span>
+                                <Badge variant="outline">{jobs.length}</Badge>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="flex-1 pl-2 pr-0 pb-0 md:overflow-hidden">
+                            <ScrollArea className="h-full">
+                                <div className="flex flex-col gap-3 pr-4 pb-2">
+                                    {jobs.length > 0 ? (
+                                        jobs.map((job, index) => (
+                                            <JobCard
+                                                key={index}
+                                                job={job}
+                                                compact
+                                                onClick={() => handleJobClick(job)}
+                                            />
+                                        ))
+                                    ) : (
+                                        <div className="flex items-center justify-center h-32 bg-muted/50 rounded-lg">
+                                            <p className="text-muted-foreground">No jobs found</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </ScrollArea>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Mobile: Tabbed Layout for job lists */}
+                <div className="flex-1 md:hidden flex flex-col overflow-auto">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+                        <TabsList className="w-full h-auto grid grid-cols-2 mb-2">
+                            <TabsTrigger value="recent" className="text-sm py-1">
+                                Last 24 Hours ({recentJobs.length})
+                            </TabsTrigger>
+                            <TabsTrigger value="all" className="text-sm py-1">
+                                All Jobs ({jobs.length})
+                            </TabsTrigger>
+                        </TabsList>
+
+                        <div className="flex-1 overflow-auto">
+                            <TabsContent value="recent" className="mt-0 h-full overflow-auto">
+                                <Card className="flex flex-col h-full bg-muted/20 border-0">
+                                    <CardContent className="p-2 pb-16 flex-1 overflow-auto">
+                                        {recentJobs.length > 0 ? (
+                                            <div className="flex flex-col gap-3">
+                                                {recentJobs.map((job, index) => (
+                                                    <JobCard
+                                                        key={index}
+                                                        job={job}
+                                                        onClick={() => handleJobClick(job)}
+                                                    />
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-center h-32 bg-muted/50 rounded-lg">
+                                                <p className="text-muted-foreground">
+                                                    No new jobs in the last 24 hours
+                                                </p>
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+
+                            <TabsContent value="all" className="mt-0 h-full overflow-auto">
+                                <Card className="flex flex-col h-full bg-muted/20 border-0">
+                                    <CardContent className="p-2 pb-16 flex-1 overflow-auto">
+                                        {jobs.length > 0 ? (
+                                            <div className="flex flex-col gap-3">
+                                                {jobs.map((job, index) => (
+                                                    <JobCard
+                                                        key={index}
+                                                        job={job}
+                                                        compact
+                                                        onClick={() => handleJobClick(job)}
+                                                    />
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-center h-32 bg-muted/50 rounded-lg">
+                                                <p className="text-muted-foreground">No jobs found</p>
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+                        </div>
+                    </Tabs>
+                </div>
+
+                {/* Application Status Dialog */}
+                <AlertDialog
+                    open={showApplyDialog}
+                    onOpenChange={(open) => {
+                        console.log("Dialog open state changed:", open);
+                        setShowApplyDialog(open);
+                    }}
+                >
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Did you apply for this job?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                {selectedJob?.title} at {selectedJob?.company || "Company Not Specified"}
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <div className="flex justify-center gap-6 py-4">
+                            <Button
+                                onClick={() => handleMarkApplied(true)}
+                                className="flex items-center gap-2"
+                                variant="default"
+                            >
+                                <CheckCircle2 className="h-5 w-5" />
+                                Yes, I applied
+                            </Button>
+                            <Button
+                                onClick={() => handleMarkApplied(false)}
+                                className="flex items-center gap-2"
+                                variant="outline"
+                            >
+                                <XCircle className="h-5 w-5" />
+                                Not yet
+                            </Button>
+                        </div>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </div>
+        )}
     </div>
-) : (
-          
-          
-          
-               <div className="flex flex-col h-full space-y-3 sm:space-y-4">
-                   {/* Stats Row - Scrollable on mobile, grid on desktop */}
-                   <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                       <MiniStat title="LinkedIn" count={jobCounts.linkedin} />
-                       <MiniStat title="Workable" count={jobCounts.workable} />
-                       <MiniStat title="If You Could" count={jobCounts.ifyoucould} />
-                       <MiniStat title="UN Jobs" count={jobCounts.unjobs} />
-                   </div>
-
-                   {/* Search Bar with Dropdown */}
-                   <div className="relative ">
-                       <div className="relative bg-white rounded-md h-[3rem]">
-                           <Search className="absolute left-2.5 top-3.5 h-4 w-4 text-muted-foreground" />
-                           <Input
-                               ref={searchInputRef}
-                               placeholder="Search all jobs..."
-                               className="pl-9 h-[3rem] flex items-center"
-                               value={searchQuery}
-                               onChange={(e) => {
-                                   setSearchQuery(e.target.value);
-                                   setShowSearchResults(e.target.value.trim() !== "");
-                               }}
-                               onKeyDown={handleSearchKeyDown}
-                               onFocus={() => {
-                                   if (searchQuery.trim() !== "") {
-                                       setShowSearchResults(true);
-                                   }
-                               }}
-                           />
-                       </div>
-
-                       {showSearchResults && (
-                           <Card className="absolute z-10 w-full mt-1 shadow-lg max-h-64 overflow-hidden">
-                               <CardContent className="p-0">
-                                   <Command>
-                                       <CommandList>
-                                           <CommandEmpty>No results found.</CommandEmpty>
-                                           <CommandGroup>
-                                               <ScrollArea className="h-64">
-                                                   {filteredJobs.map((job, index) => (
-                                                       <CommandItem
-                                                           key={index}
-                                                           className="p-0 cursor-pointer"
-                                                           onSelect={() => {
-                                                               handleJobClick(job);
-                                                               setShowSearchResults(false);
-                                                           }}
-                                                       >
-                                                           <div className="w-full p-2">
-                                                               <div className="flex justify-between items-center mb-1">
-                                                                   <h4 className="font-medium text-sm">{job.title}</h4>
-                                                                   <Badge variant="outline" className="text-xs">
-                                                                       {job.source}
-                                                                   </Badge>
-                                                               </div>
-                                                               <div className="flex items-center text-xs text-muted-foreground">
-                                                                   <Building className="h-3 w-3 mr-1" /> {job.company}
-                                                                   <span className="mx-1">•</span>
-                                                                   <MapPin className="h-3 w-3 mr-1" /> {job.location}
-                                                               </div>
-                                                           </div>
-                                                       </CommandItem>
-                                                   ))}
-                                               </ScrollArea>
-                                           </CommandGroup>
-                                       </CommandList>
-                                   </Command>
-                               </CardContent>
-                           </Card>
-                       )}
-                   </div>
-
-                   {/* Desktop: Main Content with Grid Layout */}
-                   <div className="hidden md:grid md:grid-cols-3 md:gap-4 md:flex-1 md:w-full overflow-hidden">
-                       {/* Recent Jobs Column */}
-                       <Card className="flex flex-col h-full overflow-hidden bg-muted/20 md:col-span-2">
-                           <CardHeader className="py-4 px-3">
-                               <CardTitle className="flex items-center justify-between">
-                                   <span>Last 24 Hours</span>
-                                   <Badge variant="outline">{recentJobs.length}</Badge>
-                               </CardTitle>
-                           </CardHeader>
-                           <CardContent className="flex-1 pl-2 pr-0 pb-0 overflow-hidden">
-                           <ScrollArea className="h-full">
-                                   <div className="flex flex-col gap-3 pr-4 pb-2">
-                                       {recentJobs.length > 0 ? (
-                                           recentJobs.map((job, index) => (
-                                               <JobCard key={index} job={job} onClick={() => handleJobClick(job)} />
-                                           ))
-                                       ) : (
-                                           <div className="flex items-center justify-center h-32 bg-muted/50 rounded-lg">
-                                               <p className="text-muted-foreground">
-                                                   No new jobs in the last 24 hours
-                                               </p>
-                                           </div>
-                                       )}
-                                   </div>
-                               </ScrollArea>
-                           </CardContent>
-                       </Card>
-
-                       {/* All Jobs Column */}
-                       <Card className="flex flex-col h-full overflow-hidden bg-muted/20">
-                           <CardHeader className="py-4 px-3">
-                               <CardTitle className="flex items-center justify-between">
-                                   <span>All Jobs</span>
-                                   <Badge variant="outline">{jobs.length}</Badge>
-                               </CardTitle>
-                           </CardHeader>
-                           <CardContent className="flex-1 pl-2 pr-0 pb-0 overflow-hidden">
-                               <ScrollArea className="h-full">
-                                   <div className="flex flex-col gap-3 pr-4 pb-2">
-                                       {jobs.length > 0 ? (
-                                           jobs.map((job, index) => (
-                                               <JobCard
-                                                   key={index}
-                                                   job={job}
-                                                   compact
-                                                   onClick={() => handleJobClick(job)}
-                                               />
-                                           ))
-                                       ) : (
-                                           <div className="flex items-center justify-center h-32 bg-muted/50 rounded-lg">
-                                               <p className="text-muted-foreground">No jobs found</p>
-                                           </div>
-                                       )}
-                                   </div>
-                               </ScrollArea>
-                           </CardContent>
-                       </Card>
-                   </div>
-
-                   {/* Mobile: Tabbed Layout for job lists */}
-                   <div className="flex-1 md:hidden flex flex-col overflow-hidden">
-                       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-                           <TabsList className="w-full h-auto grid grid-cols-2 mb-2">
-                               <TabsTrigger value="recent" className="text-sm py-1">
-                                   Last 24 Hours ({recentJobs.length})
-                               </TabsTrigger>
-                               <TabsTrigger value="all" className="text-sm py-1">
-                                   All Jobs ({jobs.length})
-                               </TabsTrigger>
-                           </TabsList>
-
-                           <div className="flex-1 overflow-hidden">
-                               <TabsContent value="recent" className="mt-0 h-full">
-                                   <Card className="flex flex-col h-full overflow-hidden bg-muted/20 border-0">
-                                       <CardContent className="p-2 pb-16 flex-1">
-                                           {recentJobs.length > 0 ? (
-                                               <div className="flex flex-col gap-3">
-                                                   {recentJobs.map((job, index) => (
-                                                       <JobCard
-                                                           key={index}
-                                                           job={job}
-                                                           onClick={() => handleJobClick(job)}
-                                                       />
-                                                   ))}
-                                               </div>
-                                           ) : (
-                                               <div className="flex items-center justify-center h-32 bg-muted/50 rounded-lg">
-                                                   <p className="text-muted-foreground">
-                                                       No new jobs in the last 24 hours
-                                                   </p>
-                                               </div>
-                                           )}
-                                       </CardContent>
-                                   </Card>
-                               </TabsContent>
-
-                               <TabsContent value="all" className="mt-0 h-full">
-                                   <Card className="flex flex-col h-full overflow-hidden bg-muted/20 border-0">
-                                       <CardContent className="p-2 pb-16 flex-1">
-                                           {jobs.length > 0 ? (
-                                               <div className="flex flex-col gap-3">
-                                                   {jobs.map((job, index) => (
-                                                       <JobCard
-                                                           key={index}
-                                                           job={job}
-                                                           compact
-                                                           onClick={() => handleJobClick(job)}
-                                                       />
-                                                   ))}
-                                               </div>
-                                           ) : (
-                                               <div className="flex items-center justify-center h-32 bg-muted/50 rounded-lg">
-                                                   <p className="text-muted-foreground">No jobs found</p>
-                                               </div>
-                                           )}
-                                       </CardContent>
-                                   </Card>
-                               </TabsContent>
-                           </div>
-                       </Tabs>
-                   </div>
-
-                   {/* Application Status Dialog */}
-                   <AlertDialog
-                       open={showApplyDialog}
-                       onOpenChange={(open) => {
-                           console.log("Dialog open state changed:", open);
-                           setShowApplyDialog(open);
-                       }}
-                   >
-                       <AlertDialogContent>
-                           <AlertDialogHeader>
-                               <AlertDialogTitle>Did you apply for this job?</AlertDialogTitle>
-                               <AlertDialogDescription>
-                                   {selectedJob?.title} at {selectedJob?.company || "Company Not Specified"}
-                               </AlertDialogDescription>
-                           </AlertDialogHeader>
-                           <div className="flex justify-center gap-6 py-4">
-                               <Button
-                                   onClick={() => handleMarkApplied(true)}
-                                   className="flex items-center gap-2"
-                                   variant="default"
-                               >
-                                   <CheckCircle2 className="h-5 w-5" />
-                                   Yes, I applied
-                               </Button>
-                               <Button
-                                   onClick={() => handleMarkApplied(false)}
-                                   className="flex items-center gap-2"
-                                   variant="outline"
-                               >
-                                   <XCircle className="h-5 w-5" />
-                                   Not yet
-                               </Button>
-                           </div>
-                       </AlertDialogContent>
-                   </AlertDialog>
-               </div>
-           )}
-       </div>
    );
 }
 
@@ -723,25 +719,25 @@ function JobCard({job, compact = false, onClick}) {
                </div>
 
                <div className="flex justify-between items-center mt-2 pt-2 border-t border-border/40">
-                   <div className="flex items-center text-sm">
-                       <PoundSterling className="h-4 w-4 mr-1" /> {salary}
-                   </div>
-                   <div className="flex items-center gap-2">
-                       <div className={`flex items-center text-sm ${has_applied ? "text-green-500" : "text-red-500"}`}>
-                           {has_applied ? (
-                               <span className="flex items-center text-xs">
-                                   <CheckCircle2 className="h-3 w-3 mr-1" /> Applied
-                               </span>
-                           ) : (
-                               <span className="flex items-center text-xs">
-                                   <XCircle className="h-3 w-3 mr-1" /> Not Applied
-                               </span>
-                           )}
-                       </div>
-                       <div className="text-xs text-primary hover:underline ml-4">View details</div>
-                   </div>
-               </div>
-           </CardContent>
-       </Card>
-   );
+               <div className="flex items-center text-sm">
+                      <PoundSterling className="h-4 w-4 mr-1" /> {salary}
+                  </div>
+                  <div className="flex items-center gap-2">
+                      <div className={`flex items-center text-sm ${has_applied ? "text-green-500" : "text-red-500"}`}>
+                          {has_applied ? (
+                              <span className="flex items-center text-xs">
+                                  <CheckCircle2 className="h-3 w-3 mr-1" /> Applied
+                              </span>
+                          ) : (
+                              <span className="flex items-center text-xs">
+                                  <XCircle className="h-3 w-3 mr-1" /> Not Applied
+                              </span>
+                          )}
+                      </div>
+                      <div className="text-xs text-primary hover:underline ml-4">View details</div>
+                  </div>
+              </div>
+          </CardContent>
+      </Card>
+  );
 }
