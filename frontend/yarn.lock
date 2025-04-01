@@ -9964,6 +9964,7 @@ __metadata:
     react-hook-form: "npm:^7.54.2"
     react-hot-toast: "npm:^2.5.2"
     react-icons: "npm:^5.5.0"
+    react-swipeable: "npm:^7.0.2"
     react-toastify: "npm:^11.0.5"
     recharts: "npm:^2.15.1"
     shadcn-ui: "npm:^0.9.4"
@@ -13165,6 +13166,15 @@ __metadata:
     "@types/react":
       optional: true
   checksum: 10c0/841938ff16d16a6b76895f4cb2e1fea957e5fe3b30febbf03a54892dae1c9153f2383e231dea0b3ba41192ad2f2849448fa859caccd288943bce32639e971bee
+  languageName: node
+  linkType: hard
+
+"react-swipeable@npm:^7.0.2":
+  version: 7.0.2
+  resolution: "react-swipeable@npm:7.0.2"
+  peerDependencies:
+    react: ^16.8.3 || ^17 || ^18 || ^19.0.0 || ^19.0.0-rc
+  checksum: 10c0/cca3ec9e6321f73d187a8ac4beece2ad8cce1f4efa0215de93e2635492e7c514ccbc30311bb0e88bafb79d302916550603cdcd44ac81054a8c0f6679b18eb04d
   languageName: node
   linkType: hard
 

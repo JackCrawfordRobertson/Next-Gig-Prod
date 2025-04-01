@@ -458,18 +458,35 @@ export default function WorkablePage() {
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
-        className="h-full flex flex-col"
+        className="h-full flex flex-col pb-[6rem]"
       >
-        <TabsList className="grid grid-cols-2 mb-4">
-          <TabsTrigger value="jobs" className="flex items-center gap-2">
-            <List className="h-4 w-4" />
-            <span>Jobs ({jobs.length})</span>
-          </TabsTrigger>
-          <TabsTrigger value="stats" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            <span>Stats</span>
-          </TabsTrigger>
-        </TabsList>
+        <TabsList className="grid grid-cols-2 gap-2 mb-4">
+  <TabsTrigger
+    value="jobs"
+    className="flex items-center gap-2 px-3 py-2 h-auto"
+  >
+    <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+      <List className="w-4 h-4 text-purple-600" />
+    </div>
+    <div className="text-left">
+      <p className="text-xs text-muted-foreground">Jobs</p>
+      <p className="text-sm font-semibold">{jobs.length}</p>
+    </div>
+  </TabsTrigger>
+  
+  <TabsTrigger
+    value="stats"
+    className="flex items-center gap-2 px-3 py-2 h-auto"
+  >
+    <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+      <BarChart3 className="w-4 h-4 text-amber-600" />
+    </div>
+    <div className="text-left">
+      <p className="text-xs text-muted-foreground">Stats</p>
+      <p className="text-sm font-semibold">View</p>
+    </div>
+  </TabsTrigger>
+</TabsList>
   
         <TabsContent value="jobs" className="flex-1 m-0 h-[calc(100vh-120px)]">
           <Card className="h-full border-0 shadow-none">
@@ -478,7 +495,7 @@ export default function WorkablePage() {
             </CardHeader>
             <CardContent className="p-0 pt-2 h-[calc(100vh-170px)]">
               <ScrollArea className="h-full pb-8">
-                <div className="flex flex-col gap-3 px-3 pb-16">
+                <div className="flex flex-col gap-3 px-3 pb-3">
                   {jobs.length > 0 ? (
                     jobs.map((job, index) => (
                       <MobileJobCard

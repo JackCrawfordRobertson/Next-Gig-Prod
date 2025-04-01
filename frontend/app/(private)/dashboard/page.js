@@ -532,7 +532,7 @@ export default function DashboardPage() {
 
                 {/* Mobile: Tabbed Layout for job lists */}
                 <div className="flex-1 md:hidden flex flex-col overflow-auto">
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col pb-[6rem]">
                         <TabsList className="w-full h-auto grid grid-cols-2 mb-2">
                             <TabsTrigger value="recent" className="text-sm py-1">
                                 Last 24 Hours ({recentJobs.length})
@@ -545,7 +545,7 @@ export default function DashboardPage() {
                         <div className="flex-1 overflow-auto">
                             <TabsContent value="recent" className="mt-0 h-full overflow-auto">
                                 <Card className="flex flex-col h-full bg-muted/20 border-0">
-                                    <CardContent className="p-2 pb-16 flex-1 overflow-auto">
+                                    <CardContent className="p-2 pb-3 flex-1 overflow-auto">
                                         {recentJobs.length > 0 ? (
                                             <div className="flex flex-col gap-3">
                                                 {recentJobs.map((job, index) => (

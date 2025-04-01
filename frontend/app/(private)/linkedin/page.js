@@ -1,11 +1,15 @@
 "use client";
 
-import {useEffect, useState, useRef} from "react";
-import {db, collection, getDocs, doc, updateDoc} from "@/lib/firebase";
-import {useSession} from "next-auth/react";
-import {ScrollArea} from "@/components/ui/scroll-area";
-import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
-import {ChartContainer, ChartTooltip, ChartTooltipContent} from "@/components/ui/chart";
+import { useEffect, useState, useRef } from "react";
+import { db, collection, getDocs, doc, updateDoc } from "@/lib/firebase";
+import { useSession } from "next-auth/react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 import {
   BarChart,
   Bar,
@@ -28,29 +32,28 @@ import {
   DollarSign,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import {startOfWeek, endOfWeek, format, subWeeks, addWeeks} from "date-fns";
-import { 
+import { startOfWeek, endOfWeek, format, subWeeks, addWeeks } from "date-fns";
+import {
   AlertDialog,
   AlertDialogContent,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogDescription,
   AlertDialogFooter,
-  AlertDialogCancel
+  AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { updateJobAppliedStatus } from "@/lib/updateJobApplied";
 
-
 // Helper function to format date
 const formatDate = (dateString) => {
   const date = new Date(dateString);
-  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 };
 
 export default function LinkedInPage() {
-  const {data: session, status} = useSession();
+  const { data: session, status } = useSession();
   const [jobs, setJobs] = useState([]);
   const [jobStats, setJobStats] = useState([]);
   const [currentWeek, setCurrentWeek] = useState(new Date());
@@ -64,42 +67,44 @@ export default function LinkedInPage() {
 
   // Handle visibility change (user returns from external link)
   const handleVisibilityChange = () => {
-    console.log('Visibility changed:', document.visibilityState);
-    console.log('Last click time:', lastClickTimeRef.current);
-    console.log('Selected job:', selectedJobRef.current);
-    
-    if (document.visibilityState === 'visible' && lastClickTimeRef.current) {
+    console.log("Visibility changed:", document.visibilityState);
+    console.log("Last click time:", lastClickTimeRef.current);
+    console.log("Selected job:", selectedJobRef.current);
+
+    if (document.visibilityState === "visible" && lastClickTimeRef.current) {
       const timeAway = Date.now() - lastClickTimeRef.current;
-      console.log('Time away (ms):', timeAway);
-      
+      console.log("Time away (ms):", timeAway);
+
       // If they spent enough time on the job page (5+ seconds), probably viewed it in detail
       if (timeAway > 5000 && selectedJobRef.current) {
-        console.log('Showing apply dialog');
+        console.log("Showing apply dialog");
         setSelectedJob(selectedJobRef.current);
         setShowApplyDialog(true);
       } else {
-        console.log('Not showing dialog - time threshold not met or no job selected');
+        console.log(
+          "Not showing dialog - time threshold not met or no job selected"
+        );
       }
-      
+
       lastClickTimeRef.current = null;
     }
   };
 
   useEffect(() => {
-    console.log('Setting up visibility change listener');
+    console.log("Setting up visibility change listener");
     // Monitor visibility changes to detect when user returns from a job link
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
-      console.log('Cleaning up visibility change listener');
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      console.log("Cleaning up visibility change listener");
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 
   useEffect(() => {
     async function fetchJobs() {
       try {
-        console.log('Fetching LinkedIn jobs');
+        console.log("Fetching LinkedIn jobs");
         let jobsData = [];
 
         if (isDev) {
@@ -110,7 +115,7 @@ export default function LinkedInPage() {
 
           // Extract LinkedIn jobs from mock user data
           jobsData = userData.linkedin || [];
-          console.log('Fetched jobs from mock API:', jobsData.length);
+          console.log("Fetched jobs from mock API:", jobsData.length);
         } else {
           // In production, use Firestore directly
           console.log("Fetching jobs from Firestore");
@@ -118,27 +123,31 @@ export default function LinkedInPage() {
 
           if (userEmail) {
             console.log(`Fetching user data for: ${userEmail}`);
-            
+
             try {
               console.log("Fetching users collection");
               const usersSnapshot = await getDocs(collection(db, "users"));
               console.log(`Found ${usersSnapshot.docs.length} user documents`);
-              
-              const userDoc = usersSnapshot.docs.find(doc => doc.data().email === userEmail);
-              
+
+              const userDoc = usersSnapshot.docs.find(
+                (doc) => doc.data().email === userEmail
+              );
+
               if (!userDoc) {
                 console.log("No user document found with this email");
                 jobsData = [];
               } else {
                 const userData = userDoc.data();
                 console.log("User data found:", userData);
-                
+
                 // Check if jobs exist in the user document
                 if (userData.jobs?.linkedin) {
                   console.log("LinkedIn jobs found in user document");
-                  jobsData = userData.jobs.linkedin.map(job => ({
+                  jobsData = userData.jobs.linkedin.map((job) => ({
                     ...job,
-                    id: `linkedin-${job.id || Math.random().toString(36).substring(2, 9)}`,
+                    id: `linkedin-${
+                      job.id || Math.random().toString(36).substring(2, 9)
+                    }`,
                     source: "linkedin",
                   }));
                 } else {
@@ -148,7 +157,7 @@ export default function LinkedInPage() {
               }
             } catch (error) {
               console.error("Error querying users:", error);
-              
+
               // Fall back to the original approach
               console.log("Falling back to original collection approach");
               const querySnapshot = await getDocs(collection(db, "linkedin"));
@@ -219,16 +228,16 @@ export default function LinkedInPage() {
 
   const handleMarkApplied = async (applied) => {
     if (!selectedJob || !session?.user?.email) return;
-  
+
     console.log("Marking job as applied:", selectedJob.title, applied);
-  
+
     try {
       // 1. Update local state
       const updatedJobs = jobs.map((job) =>
         job.id === selectedJob.id ? { ...job, has_applied: applied } : job
       );
       setJobs(updatedJobs);
-  
+
       // 2. Firestore update
       if (!isDev && selectedJob?.source) {
         await updateJobAppliedStatus({
@@ -245,42 +254,52 @@ export default function LinkedInPage() {
       setSelectedJob(null);
     }
   };
-  
-  
 
   // Navigation Functions for Weekly View
   const goToPreviousWeek = () => setCurrentWeek(subWeeks(currentWeek, 1));
   const goToNextWeek = () => setCurrentWeek(addWeeks(currentWeek, 1));
 
   if (loading) {
-    return <div className="flex items-center justify-center h-full">
-      <div className="text-center space-y-3">
-        <div className="inline-flex items-center gap-2">
-          <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-          <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-          <div className="w-3 h-3 bg-primary rounded-full animate-bounce"></div>
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center space-y-3">
+          <div className="inline-flex items-center gap-2">
+            <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+            <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+            <div className="w-3 h-3 bg-primary rounded-full animate-bounce"></div>
+          </div>
+          <p className="text-muted-foreground animate-pulse">
+            Loading your jobs...
+          </p>
         </div>
-        <p className="text-muted-foreground animate-pulse">Loading your jobs...</p>
       </div>
-    </div>;
+    );
   }
 
   function FixedSizeChart({ data, height = 200, width = 350 }) {
     return (
-      <div style={{ 
-        width: '100%', 
-        height: `${height}px`, 
-        position: 'relative',
-        minHeight: `${height}px` // Enforce minimum height
-      }}>
+      <div
+        style={{
+          width: "100%",
+          height: `${height}px`,
+          position: "relative",
+          minHeight: `${height}px`, // Enforce minimum height
+        }}
+      >
         <ChartContainer config={chartConfig}>
           <BarChart
-            width={typeof width === "number" ? width : parseInt(width, 10) || 350}
+            width={
+              typeof width === "number" ? width : parseInt(width, 10) || 350
+            }
             height={height}
             data={data}
             margin={{ top: 10, right: 10, left: -5, bottom: 5 }}
           >
-            <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.4} />
+            <CartesianGrid
+              vertical={false}
+              strokeDasharray="3 3"
+              opacity={0.4}
+            />
             <XAxis
               dataKey="day"
               tickLine={false}
@@ -288,7 +307,11 @@ export default function LinkedInPage() {
               tick={{ fontSize: 9 }}
               tickFormatter={(day) => day.substring(0, 3)}
             />
-            <YAxis stroke="hsl(var(--foreground))" tick={{ fontSize: 9 }} width={25} />
+            <YAxis
+              stroke="hsl(var(--foreground))"
+              tick={{ fontSize: 9 }}
+              width={25}
+            />
             <ChartTooltip
               cursor={false}
               content={<ChartTooltipContent indicator="dashed" />}
@@ -325,7 +348,7 @@ export default function LinkedInPage() {
               </div>
             </div>
           </Card>
-          
+
           <Card className="flex items-center justify-between px-6">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
@@ -333,7 +356,9 @@ export default function LinkedInPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Applied</p>
-                <p className="text-3xl font-semibold">{jobs.filter(job => job.has_applied).length}</p>
+                <p className="text-3xl font-semibold">
+                  {jobs.filter((job) => job.has_applied).length}
+                </p>
               </div>
             </div>
           </Card>
@@ -369,8 +394,7 @@ export default function LinkedInPage() {
                     % applied
                   </span>
                   <span>
-                    {jobs.length -
-                      jobs.filter((job) => job.has_applied).length}{" "}
+                    {jobs.length - jobs.filter((job) => job.has_applied).length}{" "}
                     remaining
                   </span>
                 </div>
@@ -383,8 +407,8 @@ export default function LinkedInPage() {
           </CardContent>
         </Card>
 
-     {/* Main chart */}
-     <Card className="flex-1 flex flex-col">
+        {/* Main chart */}
+        <Card className="flex-1 flex flex-col">
           <CardHeader className="py-3 px-6 flex flex-row justify-between items-center">
             <div>
               <CardTitle>Job Listings Per Day</CardTitle>
@@ -413,22 +437,36 @@ export default function LinkedInPage() {
           <CardContent className="flex-1 relative p-0">
             <div className="absolute inset-0 p-2">
               <ChartContainer config={chartConfig} className="h-full">
-                <ResponsiveContainer width="100%" height="100%" aspect={undefined}>
-                  <BarChart data={jobStats} margin={{top: 15, right: 20, left: 0, bottom: 5}}>
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                  aspect={undefined}
+                >
+                  <BarChart
+                    data={jobStats}
+                    margin={{ top: 15, right: 20, left: 0, bottom: 5 }}
+                  >
                     <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="day" 
-                      tickLine={false} 
-                      tickMargin={10} 
-                      axisLine={false} 
-                      tick={{fontSize: 10}} 
+                    <XAxis
+                      dataKey="day"
+                      tickLine={false}
+                      tickMargin={10}
+                      axisLine={false}
+                      tick={{ fontSize: 10 }}
                     />
-                    <YAxis stroke="hsl(var(--foreground))" tick={{fontSize: 10}} />
+                    <YAxis
+                      stroke="hsl(var(--foreground))"
+                      tick={{ fontSize: 10 }}
+                    />
                     <ChartTooltip
                       cursor={false}
                       content={<ChartTooltipContent indicator="dashed" />}
                     />
-                    <Bar dataKey="count" fill="hsl(var(--chart-1))" radius={4} />
+                    <Bar
+                      dataKey="count"
+                      fill="hsl(var(--chart-1))"
+                      radius={4}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </ChartContainer>
@@ -441,31 +479,48 @@ export default function LinkedInPage() {
 
   // Mobile layout (optimised with tabs)
   const MobileLayout = () => (
-<div className="md:hidden max-h-[calc(100vh-100px)] w-full flex flex-col flex-grow">
-<Tabs
+    <div className="md:hidden max-h-[calc(100vh-100px)] w-full flex flex-col flex-grow">
+      <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
-        className="h-full flex flex-col"
+        className="h-full flex flex-col pb-[6rem]"
       >
-        <TabsList className="grid grid-cols-2 mb-4">
-          <TabsTrigger value="jobs" className="flex items-center gap-2">
-            <List className="h-4 w-4" />
-            <span>Jobs ({jobs.length})</span>
+        <TabsList className="grid grid-cols-2 gap-2 mb-4">
+          <TabsTrigger
+            value="jobs"
+            className="flex items-center gap-2 px-3 py-2 h-auto"
+          >
+            <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+              <List className="w-4 h-4 text-purple-600" />
+            </div>
+            <div className="text-left">
+              <p className="text-xs text-muted-foreground">Jobs</p>
+              <p className="text-sm font-semibold">{jobs.length}</p>
+            </div>
           </TabsTrigger>
-          <TabsTrigger value="stats" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            <span>Stats</span>
+
+          <TabsTrigger
+            value="stats"
+            className="flex items-center gap-2 px-3 py-2 h-auto"
+          >
+            <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+              <BarChart3 className="w-4 h-4 text-amber-600" />
+            </div>
+            <div className="text-left">
+              <p className="text-xs text-muted-foreground">Stats</p>
+              <p className="text-sm font-semibold">View</p>
+            </div>
           </TabsTrigger>
         </TabsList>
-  
+
         <TabsContent value="jobs" className="flex-1">
-        <Card className="h-full border-0 shadow-none">
+          <Card className="h-full border-0 shadow-none">
             <CardHeader className="py-2 px-3">
               <CardTitle className="text-lg">LinkedIn Jobs</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 p-0 pt-2">
-            <ScrollArea className="h-full pb-8">
-                <div className="flex flex-col gap-3 px-3 pb-16">
+              <ScrollArea className="h-full pb-8">
+                <div className="flex flex-col gap-3 px-3 pb-3">
                   {jobs.length > 0 ? (
                     jobs.map((job, index) => (
                       <MobileJobCard
@@ -492,7 +547,7 @@ export default function LinkedInPage() {
             </CardContent>
           </Card>
         </TabsContent>
-  
+
         <TabsContent value="stats" className="h-[calc(100vh-120px)] m-0">
           <div className="grid grid-cols-1 gap-4">
             {/* Job Activity Stats Cards */}
@@ -508,7 +563,7 @@ export default function LinkedInPage() {
                   </p>
                 </CardContent>
               </Card>
-  
+
               <Card className="bg-white shadow-sm">
                 <CardContent className="p-3 flex flex-col items-center justify-center">
                   <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mb-1">
@@ -523,7 +578,7 @@ export default function LinkedInPage() {
                 </CardContent>
               </Card>
             </div>
-  
+
             {/* Weekly Chart */}
             <Card className="flex flex-col shadow-sm">
               <CardHeader className="py-2 px-3 flex flex-row justify-between items-center">
@@ -561,7 +616,10 @@ export default function LinkedInPage() {
               </CardHeader>
 
               <CardContent className="p-3 overflow-x-auto">
-                <div className="w-full" style={{ height: '180px', minWidth: '350px' }}>
+                <div
+                  className="w-full"
+                  style={{ height: "180px", minWidth: "350px" }}
+                >
                   <BarChart
                     width={350}
                     height={180}
@@ -570,49 +628,66 @@ export default function LinkedInPage() {
                   >
                     <defs>
                       <linearGradient id="colorBar" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#0077B5" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#0077B5" stopOpacity={0.5}/>
+                        <stop
+                          offset="5%"
+                          stopColor="#0077B5"
+                          stopOpacity={0.8}
+                        />
+                        <stop
+                          offset="95%"
+                          stopColor="#0077B5"
+                          stopOpacity={0.5}
+                        />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid 
-                      vertical={false} 
-                      strokeDasharray="3 3" 
-                      opacity={0.4} 
-                      stroke="hsl(var(--border))" 
+                    <CartesianGrid
+                      vertical={false}
+                      strokeDasharray="3 3"
+                      opacity={0.4}
+                      stroke="hsl(var(--border))"
                     />
                     <XAxis
                       dataKey="day"
                       tickLine={false}
                       axisLine={false}
-                      tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                      tick={{
+                        fontSize: 10,
+                        fill: "hsl(var(--muted-foreground))",
+                      }}
                       tickFormatter={(day) => day.substring(0, 3)}
                     />
-                    <YAxis 
+                    <YAxis
                       width={25}
-                      tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} 
+                      tick={{
+                        fontSize: 10,
+                        fill: "hsl(var(--muted-foreground))",
+                      }}
                       stroke="hsl(var(--border))"
                       tickLine={false}
                       axisLine={false}
                     />
-                    <Tooltip 
-                      cursor={{ fill: 'hsl(var(--muted)/0.3)' }}
+                    <Tooltip
+                      cursor={{ fill: "hsl(var(--muted)/0.3)" }}
                       contentStyle={{
-                        background: 'hsl(var(--background))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '6px',
-                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                        padding: '8px 12px',
-                        fontSize: '12px'
+                        background: "hsl(var(--background))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "6px",
+                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+                        padding: "8px 12px",
+                        fontSize: "12px",
                       }}
-                      itemStyle={{ color: 'hsl(var(--foreground))' }}
-                      labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: '4px' }}
-                      formatter={(value) => [`${value} jobs`, 'Added']}
+                      itemStyle={{ color: "hsl(var(--foreground))" }}
+                      labelStyle={{
+                        color: "hsl(var(--muted-foreground))",
+                        marginBottom: "4px",
+                      }}
+                      formatter={(value) => [`${value} jobs`, "Added"]}
                       labelFormatter={(label) => `${label}`}
                     />
-                    <Bar 
-                      dataKey="count" 
+                    <Bar
+                      dataKey="count"
                       fill="url(#colorBar)"
-                      radius={[4, 4, 0, 0]} 
+                      radius={[4, 4, 0, 0]}
                       barSize={30}
                       animationDuration={750}
                     />
@@ -620,7 +695,7 @@ export default function LinkedInPage() {
                 </div>
               </CardContent>
             </Card>
-  
+
             {/* Application Rate */}
             <Card className="shadow-sm">
               <CardHeader className="py-2 px-3">
@@ -664,7 +739,7 @@ export default function LinkedInPage() {
                 )}
               </CardContent>
             </Card>
-  
+
             {/* Recent Activity */}
             <Card className="shadow-sm">
               <CardHeader className="py-2 px-3">

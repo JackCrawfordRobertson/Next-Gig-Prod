@@ -17,9 +17,10 @@ import {
   query,
   where,
   getDocs, // CHANGED: for querying subscription doc by userId
-} from "@/lib/firebase";import { initializeApp } from "firebase/app";
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+} from "@/lib/firebase";
+import { initializeApp } from "firebase/app";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Button } from "@/components/ui/button";
 import {
@@ -91,10 +92,9 @@ export default function ProfileSettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedProfilePicture, setSelectedProfilePicture] = useState(null);
 
-    // CHANGED: store subscription data + the Firestore doc ID
-    const [subscriptionData, setSubscriptionData] = useState(null);
-    const [subscriptionDocId, setSubscriptionDocId] = useState(null);
-
+  // CHANGED: store subscription data + the Firestore doc ID
+  const [subscriptionData, setSubscriptionData] = useState(null);
+  const [subscriptionDocId, setSubscriptionDocId] = useState(null);
 
   const { data: session, status } = useSession({
     required: true,
@@ -228,7 +228,6 @@ export default function ProfileSettingsPage() {
         description: "Your profile has been updated successfully.",
         variant: "success",
       });
-      
     } finally {
       setIsPending(false);
     }
@@ -269,7 +268,6 @@ export default function ProfileSettingsPage() {
         description: "Your subscription has been successfully cancelled.",
         variant: "success",
       });
-      
 
       // 4. Refetch data so UI refreshes
       //    (or manually set your states if you prefer)
@@ -289,7 +287,7 @@ export default function ProfileSettingsPage() {
     const file = event.target.files[0];
     if (file && file.size <= 1024 * 1024) {
       setSelectedProfilePicture(file);
-  
+
       // Show preview before upload
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -308,8 +306,6 @@ export default function ProfileSettingsPage() {
     }
   };
 
-  
-
   if (isLoading) {
     return (
       <div className="container py-10 flex justify-center items-center min-h-[60vh]">
@@ -322,7 +318,7 @@ export default function ProfileSettingsPage() {
   }
 
   return (
-    <div className="h-screen w-full p-4 sm:p-4 md:p-8 overflow-hidden">
+    <div className="h-screen w-full p-4 sm:p-4 md:p-8 md:overflow-hidden overflow-auto">
       <div className="space-y-6 flex-1 flex flex-col">
         <Card className="p-4">
           <div>
@@ -333,7 +329,7 @@ export default function ProfileSettingsPage() {
           </div>
         </Card>
 
-        <Tabs defaultValue="general" className="w-full h-full flex flex-col">
+        <Tabs defaultValue="general" className="w-full h-full flex flex-col pb-[5rem]">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="address">Address</TabsTrigger>
@@ -693,161 +689,171 @@ export default function ProfileSettingsPage() {
           </TabsContent>
 
           <TabsContent value="subscription" className="space-y-4 mt-4">
-  <Card>
-    <CardHeader>
-      <CardTitle>Subscription Management</CardTitle>
-      <CardDescription>
-        Manage your subscription plan and billing information
-      </CardDescription>
-    </CardHeader>
-    <CardContent className="space-y-4">
-      {subscriptionData ? (
-        <>
-          <div className="border rounded-lg p-4 bg-white">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-semibold">Current Plan</h3>
-              <span
-                className={`text-sm rounded-full px-3 py-1 ${
-                  subscriptionData.status === "trial"
-                    ? "bg-yellow-100 text-yellow-800"
-                    : "bg-green-100 text-green-800"
-                }`}
-              >
-                {subscriptionData.status === "trial" ? "Trial" : "Active"}
-              </span>
-            </div>
-            <p className="text-2xl font-bold capitalize">
-              {subscriptionData.plan} Plan
-            </p>
-            <p className="text-muted-foreground">
-              {subscriptionData.currency === "GBP" ? "£" : ""}
-              {subscriptionData.price} per month
-            </p>
+            <Card>
+              <CardHeader>
+                <CardTitle>Subscription Management</CardTitle>
+                <CardDescription>
+                  Manage your subscription plan and billing information
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {subscriptionData ? (
+                  <>
+                    <div className="border rounded-lg p-4 bg-white">
+                      <div className="flex justify-between items-center mb-2">
+                        <h3 className="font-semibold">Current Plan</h3>
+                        <span
+                          className={`text-sm rounded-full px-3 py-1 ${
+                            subscriptionData.status === "trial"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-green-100 text-green-800"
+                          }`}
+                        >
+                          {subscriptionData.status === "trial"
+                            ? "Trial"
+                            : "Active"}
+                        </span>
+                      </div>
+                      <p className="text-2xl font-bold capitalize">
+                        {subscriptionData.plan} Plan
+                      </p>
+                      <p className="text-muted-foreground">
+                        {subscriptionData.currency === "GBP" ? "£" : ""}
+                        {subscriptionData.price} per month
+                      </p>
 
-            {subscriptionData.status === "trial" && (
-              <div className="mt-4">
-                <div className="flex justify-between mb-2">
-                  <span>Trial Progress</span>
-                  <span>
-                    {Math.ceil(
-                      (new Date(subscriptionData.trialEndDate) - new Date()) /
-                        (1000 * 60 * 60 * 24)
-                    )}{" "}
-                    days left
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2.5">
-                  <div
-                    className="bg-blue-600 h-2.5 rounded-full"
-                    style={{
-                      width: `${
-                        ((new Date() - new Date(subscriptionData.startDate)) /
-                          (new Date(subscriptionData.trialEndDate) -
-                            new Date(subscriptionData.startDate))) *
-                        100
-                      }%`,
-                    }}
-                  ></div>
-                </div>
-              </div>
-            )}
+                      {subscriptionData.status === "trial" && (
+                        <div className="mt-4">
+                          <div className="flex justify-between mb-2">
+                            <span>Trial Progress</span>
+                            <span>
+                              {Math.ceil(
+                                (new Date(subscriptionData.trialEndDate) -
+                                  new Date()) /
+                                  (1000 * 60 * 60 * 24)
+                              )}{" "}
+                              days left
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2.5">
+                            <div
+                              className="bg-blue-600 h-2.5 rounded-full"
+                              style={{
+                                width: `${
+                                  ((new Date() -
+                                    new Date(subscriptionData.startDate)) /
+                                    (new Date(subscriptionData.trialEndDate) -
+                                      new Date(subscriptionData.startDate))) *
+                                  100
+                                }%`,
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      )}
 
-            <p className="text-muted-foreground text-sm mt-4">
-              Subscription started on{" "}
-              {new Date(subscriptionData.startDate).toLocaleDateString(
-                "en-GB"
-              )}
-            </p>
-            <p className="text-muted-foreground text-sm">
-              {subscriptionData.status === "trial"
-                ? `Trial ends on ${new Date(
-                    subscriptionData.trialEndDate
-                  ).toLocaleDateString("en-GB")}`
-                : `Next billing date: ${new Date(
-                    new Date(subscriptionData.startDate).setMonth(
-                      new Date(subscriptionData.startDate).getMonth() + 1
-                    )
-                  ).toLocaleDateString("en-GB")}`}
-            </p>
-          </div>
+                      <p className="text-muted-foreground text-sm mt-4">
+                        Subscription started on{" "}
+                        {new Date(
+                          subscriptionData.startDate
+                        ).toLocaleDateString("en-GB")}
+                      </p>
+                      <p className="text-muted-foreground text-sm">
+                        {subscriptionData.status === "trial"
+                          ? `Trial ends on ${new Date(
+                              subscriptionData.trialEndDate
+                            ).toLocaleDateString("en-GB")}`
+                          : `Next billing date: ${new Date(
+                              new Date(subscriptionData.startDate).setMonth(
+                                new Date(
+                                  subscriptionData.startDate
+                                ).getMonth() + 1
+                              )
+                            ).toLocaleDateString("en-GB")}`}
+                      </p>
+                    </div>
 
-          <div className="border rounded-lg p-4 bg-white">
-            <h3 className="font-semibold mb-2">Payment Method</h3>
-            <div className="flex items-center gap-2">
-              <div className="bg-gray-100 rounded p-1">
-                {subscriptionData.paymentMethod === "paypal" ? (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="text-blue-600"
-                  >
-                    <path d="M7 11c1.5 0 3.5-1 3.5-4.5S8.33 2 6.5 2H2v12.5h2V9h.5L7 15h2l-3-4Z" />
-                    <path d="M22 8c0 3.5-2 4.5-3.5 4.5h-4c-1.5 0-2.5-1-2.5-2.5s1-2.5 2.5-2.5H19" />
-                    <path d="M22 2v3" />
-                    <path d="M17 15h-5.5c-1.5 0-2.5-1-2.5-2.5 0-1.5 1-2.5 2.5-2.5H17" />
-                    <path d="M22 9v6" />
-                  </svg>
+                    <div className="border rounded-lg p-4 bg-white">
+                      <h3 className="font-semibold mb-2">Payment Method</h3>
+                      <div className="flex items-center gap-2">
+                        <div className="bg-gray-100 rounded p-1">
+                          {subscriptionData.paymentMethod === "paypal" ? (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="text-blue-600"
+                            >
+                              <path d="M7 11c1.5 0 3.5-1 3.5-4.5S8.33 2 6.5 2H2v12.5h2V9h.5L7 15h2l-3-4Z" />
+                              <path d="M22 8c0 3.5-2 4.5-3.5 4.5h-4c-1.5 0-2.5-1-2.5-2.5s1-2.5 2.5-2.5H19" />
+                              <path d="M22 2v3" />
+                              <path d="M17 15h-5.5c-1.5 0-2.5-1-2.5-2.5 0-1.5 1-2.5 2.5-2.5H17" />
+                              <path d="M22 9v6" />
+                            </svg>
+                          ) : (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <rect width="20" height="14" x="2" y="5" rx="2" />
+                              <line x1="2" x2="22" y1="10" y2="10" />
+                            </svg>
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium capitalize">
+                            {subscriptionData.paymentMethod}
+                          </p>
+                          {subscriptionData.fingerprint && (
+                            <p className="text-sm text-muted-foreground">
+                              {subscriptionData.paymentMethod === "paypal"
+                                ? `ID: ${subscriptionData.subscriptionId}`
+                                : `Card ending in ${subscriptionData.fingerprint.substring(
+                                    subscriptionData.fingerprint.length - 4
+                                  )}`}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </>
                 ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                  <div className="border rounded-lg p-8 text-center">
+                    <h3 className="font-semibold mb-4">
+                      No Active Subscription
+                    </h3>
+                    <p className="text-muted-foreground mb-6">
+                      You don't currently have an active subscription.
+                    </p>
+                    <Button>Subscribe Now</Button>
+                  </div>
+                )}
+              </CardContent>
+              {subscriptionData && (
+                <CardFooter className="flex justify-between">
+                  <Button
+                    variant="destructive"
+                    onClick={handleCancelSubscription}
                   >
-                    <rect width="20" height="14" x="2" y="5" rx="2" />
-                    <line x1="2" x2="22" y1="10" y2="10" />
-                  </svg>
-                )}
-              </div>
-              <div>
-                <p className="font-medium capitalize">
-                  {subscriptionData.paymentMethod}
-                </p>
-                {subscriptionData.fingerprint && (
-                  <p className="text-sm text-muted-foreground">
-                    {subscriptionData.paymentMethod === "paypal"
-                      ? `ID: ${subscriptionData.subscriptionId}`
-                      : `Card ending in ${subscriptionData.fingerprint.substring(
-                          subscriptionData.fingerprint.length - 4
-                        )}`}
-                  </p>
-                )}
-              </div>
-            </div>
-            
-          </div>
-        </>
-      ) : (
-        <div className="border rounded-lg p-8 text-center">
-          <h3 className="font-semibold mb-4">No Active Subscription</h3>
-          <p className="text-muted-foreground mb-6">
-            You don't currently have an active subscription.
-          </p>
-          <Button>Subscribe Now</Button>
-        </div>
-      )}
-    </CardContent>
-    {subscriptionData && (
-      <CardFooter className="flex justify-between">
-        <Button variant="destructive" onClick={handleCancelSubscription}>
-          Cancel Subscription
-        </Button>
-      </CardFooter>
-    )}
-  </Card>
-</TabsContent>
+                    Cancel Subscription
+                  </Button>
+                </CardFooter>
+              )}
+            </Card>
+          </TabsContent>
           <TabsContent value="privacy" className="space-y-4 mt-4 flex-1">
             <Card className="flex flex-col h-full">
               <CardHeader>
@@ -885,8 +891,6 @@ export default function ProfileSettingsPage() {
                           </FormItem>
                         )}
                       />
-
-
 
                       <Separator />
 
