@@ -3,6 +3,7 @@ import json
 from config import db
 from fetch.run_scrapers import run_scrapers 
 from store.store_jobs import store_jobs 
+import uuid
 
 def create_test_user():
     """
@@ -71,7 +72,7 @@ def get_unique_job_locations(test_mode=False):
     return list(locations)
 
 def job_cycle(test_mode=False):
-    """Fetch new jobs for all subscribed users and store them."""
+    """Fetch new jobs for all subscribed users and store them with unique IDs."""
     job_titles = get_unique_job_titles(test_mode)
     job_locations = get_unique_job_locations(test_mode)
 
@@ -88,37 +89,34 @@ def job_cycle(test_mode=False):
 
     print("✅ Scraping complete. Storing results per user...")
 
-    # In test mode, only process the test user
     users = [next(db.collection("users").where("email", "==", "test_user@nexgig.com").stream())] if test_mode else get_subscribed_users()
 
     for user_doc in users:
-        # Handle different input types (dict for test mode, DocumentSnapshot for normal mode)
         user = user_doc.to_dict() if hasattr(user_doc, 'to_dict') else user_doc
         user_id = user_doc.id if hasattr(user_doc, 'id') else user.get('id')
 
         user_jobs = {}
-        
+
         for source, job_list in jobs.items():
-            user_jobs[source] = [
+            matched_jobs = [
                 job for job in job_list
-                # More flexible matching
-                if any(
-                    title.lower() in job['title'].lower() 
-                    for title in user['jobTitles']
-                ) and any(
-                    loc.lower() in job['location'].lower() 
-                    for loc in user['jobLocations']
-                )
+                if any(title.lower() in job['title'].lower() for title in user['jobTitles']) and
+                   any(loc.lower() in job['location'].lower() for loc in user['jobLocations'])
             ]
-        
-        # Store jobs even if the list is empty
+
+            # 🔐 Inject unique IDs into each job
+            user_jobs[source] = [
+                {
+                    **job,
+                    "id": str(uuid.uuid4())
+                } for job in matched_jobs
+            ]
+
         store_jobs(user_id, user_jobs)
-        
-        # Improved logging
+
         total_jobs = sum(len(v) for v in user_jobs.values())
         print(f"💾 Stored {total_jobs} jobs for {user_id}")
-        
-        # Optional: Log matched jobs for debugging
+
         if total_jobs > 0:
             for source, source_jobs in user_jobs.items():
                 print(f"  {source} jobs: {len(source_jobs)}")
