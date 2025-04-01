@@ -1,9 +1,11 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { toast } from 'react-toastify';
 import {
   Sidebar,
   SidebarProvider,
@@ -29,6 +31,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useState } from "react";
 
 export default function SidebarLayout({ children }) {
+  const router = useRouter();
   const { data: session } = useSession();
   const pathname = usePathname();
   const [playgroundOpen, setPlaygroundOpen] = useState(true);
@@ -43,7 +46,6 @@ export default function SidebarLayout({ children }) {
     if (hour >= 18 && hour < 22) return "Evening";
     return "Good night";
   };
-
 
   const handleSignOut = async () => {
     try {
