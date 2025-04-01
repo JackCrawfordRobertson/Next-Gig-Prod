@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useRef } from "react";
 import { db, collection, getDocs, doc, updateDoc } from "@/lib/firebase";
+import { updateJobAppliedStatus } from "@/lib/updateJobApplied";
+
 import { useSession } from "next-auth/react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -138,9 +140,11 @@ export default function WorkablePage() {
                 // Check if jobs exist in the user document
                 if (userData.jobs?.workable) {
                   console.log("Workable jobs found in user document");
-                  jobsData = userData.jobs.workable.map(job => ({
+
+                  jobsData = userData.jobs.workable.map((job) => ({
                     ...job,
                     id: `workable-${job.id || Math.random().toString(36).substring(2, 9)}`,
+                    source: "workable",
                   }));
                 } else {
                   console.log("No Workable jobs found in user document");
@@ -227,41 +231,35 @@ export default function WorkablePage() {
     }
   };
 
-  // Handle marking job as applied
   const handleMarkApplied = async (applied) => {
-    if (!selectedJob) {
-      console.log('No selected job to mark as applied');
-      return;
-    }
-    
-    console.log('Marking job as applied:', selectedJob.title, applied);
-    
+    if (!selectedJob || !session?.user?.email) return;
+  
+    console.log("Marking job as applied:", selectedJob.title, applied);
+  
     try {
-      // Update the local state
-      const updatedJobs = jobs.map(job => 
+      // 1. Update local state
+      const updatedJobs = jobs.map((job) =>
         job.id === selectedJob.id ? { ...job, has_applied: applied } : job
       );
       setJobs(updatedJobs);
-      console.log('Updated local state');
-      
-      // Update Firestore if in production
-      if (!isDev && selectedJob.id) {
-        console.log('Updating Firestore document:', selectedJob.id);
-        await updateDoc(doc(db, "jobs_workable", selectedJob.id), {
-          has_applied: applied
+  
+      // 2. Firestore update
+      if (!isDev && selectedJob?.source) {
+        await updateJobAppliedStatus({
+          email: session.user.email,
+          jobId: selectedJob.id,
+          applied,
+          source: selectedJob.source,
         });
-        console.log('Firestore updated successfully');
-      } else {
-        console.log('Not updating Firestore (dev mode or no job ID)');
       }
     } catch (error) {
       console.error("Error updating application status:", error);
     } finally {
       setShowApplyDialog(false);
       setSelectedJob(null);
-      console.log('Dialog closed and selected job cleared');
     }
   };
+  
 
   // Navigation Functions for Weekly View
   const goToPreviousWeek = () => setCurrentWeek(subWeeks(currentWeek, 1));

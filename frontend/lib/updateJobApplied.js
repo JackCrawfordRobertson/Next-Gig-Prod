@@ -1,3 +1,6 @@
+import { db, collection, getDocs, doc, updateDoc } from "./firebase";
+
+
 export async function updateJobAppliedStatus({ email, jobId, applied, source }) {
   const usersSnapshot = await getDocs(collection(db, "users"));
   const userDoc = usersSnapshot.docs.find(doc => doc.data().email === email);
