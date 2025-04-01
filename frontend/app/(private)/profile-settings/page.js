@@ -223,14 +223,12 @@ export default function ProfileSettingsPage() {
         updatedAt: new Date().toISOString(),
       });
 
-      toast.success("Changes saved", {
-        position: toast.POSITION.TOP_RIGHT,
-        autoClose: 3000,
-        hideProgressBar: true,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: false,
+      showToast({
+        title: "Changes saved",
+        description: "Your profile has been updated successfully.",
+        variant: "success",
       });
+      
     } finally {
       setIsPending(false);
     }
@@ -266,7 +264,12 @@ export default function ProfileSettingsPage() {
         onTrial: false,
       });
 
-      toast.success("Subscription cancelled successfully.");
+      showToast({
+        title: "Subscription Cancelled",
+        description: "Your subscription has been successfully cancelled.",
+        variant: "success",
+      });
+      
 
       // 4. Refetch data so UI refreshes
       //    (or manually set your states if you prefer)
@@ -286,6 +289,16 @@ export default function ProfileSettingsPage() {
     const file = event.target.files[0];
     if (file && file.size <= 1024 * 1024) {
       setSelectedProfilePicture(file);
+  
+      // Show preview before upload
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setUserData((prev) => ({
+          ...prev,
+          profilePicture: e.target.result,
+        }));
+      };
+      reader.readAsDataURL(file);
     } else {
       toast({
         title: "Error",
@@ -352,13 +365,14 @@ export default function ProfileSettingsPage() {
                     <label htmlFor="profilePicture" className="cursor-pointer">
                       <span className="sr-only">Change profile picture</span>
                       <input
-                        id="profilePicture"
-                        name="profilePicture"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleProfilePictureChange}
-                      />
+  id="profilePicture"
+  name="profilePicture"
+  type="file"
+  accept="image/*"
+  className="hidden"
+  onClick={(e) => (e.target.value = null)} // 💡 allows selecting the same file again
+  onChange={handleProfilePictureChange}
+/>
                       <Button variant="outline" size="sm" as="span">
                         Change Picture
                       </Button>
@@ -689,7 +703,7 @@ export default function ProfileSettingsPage() {
     <CardContent className="space-y-4">
       {subscriptionData ? (
         <>
-          <div className="border rounded-lg p-4">
+          <div className="border rounded-lg p-4 bg-white">
             <div className="flex justify-between items-center mb-2">
               <h3 className="font-semibold">Current Plan</h3>
               <span
@@ -757,7 +771,7 @@ export default function ProfileSettingsPage() {
             </p>
           </div>
 
-          <div className="border rounded-lg p-4">
+          <div className="border rounded-lg p-4 bg-white">
             <h3 className="font-semibold mb-2">Payment Method</h3>
             <div className="flex items-center gap-2">
               <div className="bg-gray-100 rounded p-1">
@@ -812,9 +826,7 @@ export default function ProfileSettingsPage() {
                 )}
               </div>
             </div>
-            <Button variant="outline" size="sm" className="mt-3">
-              Update Payment Method
-            </Button>
+            
           </div>
         </>
       ) : (
@@ -829,7 +841,6 @@ export default function ProfileSettingsPage() {
     </CardContent>
     {subscriptionData && (
       <CardFooter className="flex justify-between">
-        <Button variant="outline">Upgrade Plan</Button>
         <Button variant="destructive" onClick={handleCancelSubscription}>
           Cancel Subscription
         </Button>
@@ -875,31 +886,7 @@ export default function ProfileSettingsPage() {
                         )}
                       />
 
-                      <Separator />
 
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-medium">
-                            Two-Factor Authentication
-                          </h3>
-                          <p className="text-sm text-muted-foreground">
-                            Add an extra layer of security to your account
-                          </p>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            showToast({
-                              title: "Feature Coming Soon",
-                              description:
-                                "Two-factor authentication will be available shortly.",
-                            });
-                          }}
-                        >
-                          Enable 2FA
-                        </Button>
-                      </div>
 
                       <Separator />
 

@@ -1,5 +1,3 @@
-// First, let's create a proper toast utility file
-
 // lib/toast.js
 import toast from "react-hot-toast";
 

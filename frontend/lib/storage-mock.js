@@ -1,6 +1,10 @@
-// storage-mock.js
+// src/lib/storage-mock.js
 
 let mockStorage = {};
+
+export const getStorage = () => {
+  return { mock: true }; // Simple object for compatibility
+};
 
 export const ref = (storage, path) => {
   return {
@@ -22,8 +26,6 @@ export const uploadBytes = async (storageRef, file) => {
 
 export const getDownloadURL = async (storageRef) => {
   const file = mockStorage[storageRef.path];
-  if (!file) {
-    throw new Error("File not found");
-  }
+  if (!file) throw new Error("File not found");
   return `https://example.com/${storageRef.path}`;
 };

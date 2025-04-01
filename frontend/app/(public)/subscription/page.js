@@ -111,7 +111,7 @@ function SubscriptionComponent() {
                 trialEndDate: trialEndDate.toISOString(),
                 fingerprint: fingerprint,
                 paymentMethod: "paypal",
-                price: 1.25,
+                price: 1.99,
                 currency: "GBP",
                 createdAt: new Date().toISOString(),
             });
@@ -172,7 +172,7 @@ function SubscriptionComponent() {
 
                             {/* Price and CTA */}
                             <div className="flex justify-center md:justify-start items-baseline space-x-2">
-                                <h1 className="text-3xl font-bold">£1.25</h1>
+                                <h1 className="text-3xl font-bold">£1.99</h1>
                                 <p className="text-gray-500">/ month</p>
                             </div>
                         </div>

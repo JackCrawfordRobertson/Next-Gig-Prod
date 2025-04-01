@@ -1,6 +1,12 @@
 // app/mock/users.js (not src/mock/users.js)
 const mockUsers = {
     "demo-user-id": {
+        city    : "London",
+        firstLine: "123 Main St",
+        postcode: "E1 6AN",
+        secondLine : "Apt 4B",
+        deviceFingerprint: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36-en-GB-1920x1080",
+        firstName: "Alice",
         email: "alice@example.com",
         jobLocations: ["London", "Remote"],
         jobTitles: ["Junior Developer", "Product Designer"],
@@ -126,7 +132,19 @@ const mockUsers = {
                 url: "https://uk.linkedin.com/jobs/view/product-designer-ux-ui-at-fresha-4140124691",
             },
         ],
+        lastName: "Smith",
+        marketingConsent: true,
+        notifications: true,
+        onTrial: true,
+        profilePicture: "/Memoji.png",
+        profileVisibility: true,
         subscribed: true,
+        subscriptionId: "sub_123456789",
+        subscriptionPlan: "paypal",
+        subscriptionStartDate:  "2025-04-01T09:30:26.206Z",
+        trialEndDate: "2025-04-08T09:30:26.205Z",
+        updatedAt: "2025-04-01T10:08:03.059Z",
+        userIP: "80.47.3.221"   ,
     },
 };
 

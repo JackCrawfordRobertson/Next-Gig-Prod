@@ -2,21 +2,26 @@ import { initializeApp } from "firebase/app";
 import {
   getFirestore,
   doc as firestoreDoc,
-  updateDoc,
-  getDocs,
-  collection,
+  updateDoc as firestoreUpdateDoc,
+  getDocs as firestoreGetDocs,
+  collection as firestoreCollection,
   getDoc as firestoreGetDoc,
   where as firestoreWhere,
   query as firestoreQuery,
+  setDoc as firestoreSetDoc,
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-import { getStorage } from "firebase/storage";
+import {
+  getStorage as realGetStorage,
+  ref as storageRef,
+  uploadBytes as realUploadBytes,
+  getDownloadURL as realGetDownloadURL,
+} from "firebase/storage";
 
-// Import mock implementations when in development/test mode
 import * as mockFirebase from "@/lib/firebase-mock.js";
 import * as mockStorage from "@/lib/storage-mock.js";
 
-// Load Firebase config from environment variables
+// Firebase config
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -27,59 +32,37 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// Initialise Firebase
+// Initialise
 const app = initializeApp(firebaseConfig);
-
-// Environment checks
 const isDevelopment = process.env.NODE_ENV === "development";
 const appUrl = isDevelopment
   ? "http://localhost:3000"
   : "https://next.gig.jack-robertson.co.uk";
 
-/**
- * Auth, Firestore, and Storage references
- */
+// Auth + DB
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-const storage = getStorage(app);
 
-/**
- * ActionCodeSettings for password reset (example)
- */
+// Reset links
 export const actionCodeSettings = {
   url: `${appUrl}/login`,
   handleCodeInApp: false,
 };
 
-/**
- * Firestore: real vs. mock exports
- */
+// Firestore
 export const doc = isDevelopment ? mockFirebase.doc : firestoreDoc;
 export const getDoc = isDevelopment ? mockFirebase.getDoc : firestoreGetDoc;
-
-// If you want to mock these, add them to your mock file; otherwise you'll get errors in dev
+export const setDoc = isDevelopment ? mockFirebase.setDoc : firestoreSetDoc;
+export const updateDoc = isDevelopment ? mockFirebase.updateDoc : firestoreUpdateDoc;
+export const getDocs = isDevelopment ? mockFirebase.getDocs : firestoreGetDocs;
+export const collection = isDevelopment ? mockFirebase.collection : firestoreCollection;
 export const where = isDevelopment ? mockFirebase.where : firestoreWhere;
 export const query = isDevelopment ? mockFirebase.query : firestoreQuery;
 
-/**
- * Exports that do not differ between dev/prod (unless you have mocks for them).
- */
-export { updateDoc, getDocs, collection };
-
-/**
- * Example setDoc export
- * If you need setDoc in dev mode, implement mockFirebase.setDoc
- * If not, remove this or do real setDoc only
- */
-export const setDoc = isDevelopment ? mockFirebase.setDoc : null;
-
-/**
- * Storage: real vs. mock
- */
-export const ref = isDevelopment ? mockStorage.ref : storage.ref;
-export const uploadBytes = isDevelopment
-  ? mockStorage.uploadBytes
-  : storage.uploadBytes;
-export const getDownloadURL = isDevelopment
-  ? mockStorage.getDownloadURL
-  : storage.getDownloadURL;
+// Storage
+export const storage = isDevelopment
+  ? mockStorage.getStorage()
+  : realGetStorage(app);
+export const ref = isDevelopment ? mockStorage.ref : storageRef;
+export const uploadBytes = isDevelopment ? mockStorage.uploadBytes : realUploadBytes;
+export const getDownloadURL = isDevelopment ? mockStorage.getDownloadURL : realGetDownloadURL;
