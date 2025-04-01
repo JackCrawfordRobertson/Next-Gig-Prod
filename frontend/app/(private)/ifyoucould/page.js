@@ -383,7 +383,7 @@ export default function IfYouCouldPage() {
               <>
                 <div className="w-full h-3 bg-gray-100 rounded-full mb-2">
                   <div
-                    className="h-3 bg-primary rounded-full"
+                    className="h-3 bg-chart-5 rounded-full"
                     style={{
                       width: `${
                         (jobs.filter((job) => job.has_applied).length /
@@ -843,9 +843,9 @@ function JobColumn({ title, jobs, onJobClick }) {
       <CardHeader className="py-2 px-4">
         <CardTitle className="text-lg">{title}</CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 p-2 overflow-hidden">
+      <CardContent className="flex-1 pl-2 pr-0 pb-0 overflow-hidden">
         <ScrollArea className="h-full">
-          <div className="flex flex-col gap-3 pr-4">
+          <div className="flex flex-col gap-3 pr-4 pb-2">
             {jobs.length > 0 ? (
               jobs.map((job, index) => (
                 <Card

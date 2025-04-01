@@ -484,9 +484,9 @@ export default function DashboardPage() {
                                    <Badge variant="outline">{recentJobs.length}</Badge>
                                </CardTitle>
                            </CardHeader>
-                           <CardContent className="flex-1 p-2 pt-0 overflow-hidden">
-                               <ScrollArea className="h-full">
-                                   <div className="flex flex-col gap-3 pr-4">
+                           <CardContent className="flex-1 pl-2 pr-0 pb-0 overflow-hidden">
+                           <ScrollArea className="h-full">
+                                   <div className="flex flex-col gap-3 pr-4 pb-2">
                                        {recentJobs.length > 0 ? (
                                            recentJobs.map((job, index) => (
                                                <JobCard key={index} job={job} onClick={() => handleJobClick(job)} />
@@ -511,9 +511,9 @@ export default function DashboardPage() {
                                    <Badge variant="outline">{jobs.length}</Badge>
                                </CardTitle>
                            </CardHeader>
-                           <CardContent className="flex-1 p-2 pt-0 overflow-hidden">
+                           <CardContent className="flex-1 pl-2 pr-0 pb-0 overflow-hidden">
                                <ScrollArea className="h-full">
-                                   <div className="flex flex-col gap-3 pr-4">
+                                   <div className="flex flex-col gap-3 pr-4 pb-2">
                                        {jobs.length > 0 ? (
                                            jobs.map((job, index) => (
                                                <JobCard
