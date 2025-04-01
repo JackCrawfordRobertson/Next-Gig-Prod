@@ -41,7 +41,6 @@
     "cmdk": "1.0.0",
     "date-fns": "^4.1.0",
     "firebase": "^11.6.0",
-    "firebase-admin": "^11.11.1",
     "firebaseui": "^6.1.0",
     "framer-motion": "^12.5.0",
     "gsap": "^3.12.7",

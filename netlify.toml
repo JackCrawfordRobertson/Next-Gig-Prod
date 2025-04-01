@@ -1,6 +1,6 @@
 [build]
   base = "frontend"
-  command = "yarn install && yarn build"
+  command = "corepack enable && yarn install --immutable && yarn build"
   publish = ".next"
 
 [[plugins]]
@@ -10,8 +10,10 @@
   NEXT_TELEMETRY_DISABLED = "1"
   NODE_ENV = "production"
   YARN_NPM_REGISTRY_SERVER = "https://registry.npmjs.org"
+  COREPACK_ENABLE_STRICT = "0"
 
 [context.deploy-preview.environment]
   NEXT_TELEMETRY_DISABLED = "1"
   NODE_ENV = "production"
   YARN_NPM_REGISTRY_SERVER = "https://registry.npmjs.org"
+  COREPACK_ENABLE_STRICT = "0"
