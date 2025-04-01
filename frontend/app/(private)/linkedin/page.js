@@ -40,6 +40,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { updateJobAppliedStatus } from "@/lib/updateJobApplied";
+
 
 // Helper function to format date
 const formatDate = (dateString) => {
@@ -137,6 +139,7 @@ export default function LinkedInPage() {
                   jobsData = userData.jobs.linkedin.map(job => ({
                     ...job,
                     id: `linkedin-${job.id || Math.random().toString(36).substring(2, 9)}`,
+                    source: "linkedin",
                   }));
                 } else {
                   console.log("No LinkedIn jobs found in user document");
@@ -208,19 +211,10 @@ export default function LinkedInPage() {
     }
   }, [currentWeek, status, isDev, session]);
 
-  // Handle job card click to open URL
   const handleJobClick = (job) => {
-    console.log('Job clicked:', job.title);
-    
-    if (job.url) {
-      console.log('Opening URL:', job.url);
-      selectedJobRef.current = job;
-      lastClickTimeRef.current = Date.now();
-      console.log('Set lastClickTime:', lastClickTimeRef.current);
-      window.open(job.url, "_blank");
-    } else {
-      console.log('No URL found for job');
-    }
+    selectedJobRef.current = job;
+    lastClickTimeRef.current = Date.now();
+    window.open(job.url, "_blank");
   };
 
   const handleMarkApplied = async (applied) => {
@@ -229,35 +223,20 @@ export default function LinkedInPage() {
     console.log("Marking job as applied:", selectedJob.title, applied);
   
     try {
-      // Update local state
+      // 1. Update local state
       const updatedJobs = jobs.map((job) =>
         job.id === selectedJob.id ? { ...job, has_applied: applied } : job
       );
       setJobs(updatedJobs);
-      console.log("Updated local state");
   
-      if (!isDev) {
-        const usersSnapshot = await getDocs(collection(db, "users"));
-        const userDoc = usersSnapshot.docs.find(
-          (doc) => doc.data().email === session.user.email
-        );
-  
-        if (userDoc) {
-          const ref = doc(db, "users", userDoc.id);
-          const currentJobs = userDoc.data().jobs?.linkedin || [];
-  
-          const updatedJobArray = currentJobs.map((job) =>
-            job.id === selectedJob.id ? { ...job, has_applied: true } : job
-          );
-  
-          await updateDoc(ref, {
-            "jobs.linkedin": updatedJobArray
-          });
-  
-          console.log("Firestore updated successfully");
-        } else {
-          console.warn("User document not found");
-        }
+      // 2. Firestore update
+      if (!isDev && selectedJob?.source) {
+        await updateJobAppliedStatus({
+          email: session.user.email,
+          jobId: selectedJob.id,
+          applied,
+          source: selectedJob.source,
+        });
       }
     } catch (error) {
       console.error("Error updating application status:", error);
@@ -266,6 +245,7 @@ export default function LinkedInPage() {
       setSelectedJob(null);
     }
   };
+  
   
 
   // Navigation Functions for Weekly View

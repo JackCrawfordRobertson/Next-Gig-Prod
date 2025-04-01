@@ -9,12 +9,12 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    if (status === "loading") return; // ✅ Wait until session is checked
+    if (status === "loading") return; 
 
     if (session) {
-      router.push("/dashboard"); // ✅ Redirect to Dashboard if authenticated
+      router.push("/dashboard"); 
     } else {
-      router.push("/login"); // ✅ Redirect to Login if unauthenticated
+      router.push("/login"); 
     }
   }, [session, status, router]);
 
@@ -33,7 +33,7 @@ export default function Home() {
           {[1, 2, 3].map((dot) => (
             <motion.span
               key={dot}
-              className="block w-4 h-4 bg-blue-500 rounded-full"
+              className="block w-4 h-4 bg-primary rounded-full"
               animate={{ y: [0, -10, 0] }}
               transition={{
                 duration: 0.6,
@@ -51,7 +51,7 @@ export default function Home() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.5 }}
-          className="mt-4 text-gray-900 text-lg"
+          className="mt-4 text-gray-900 text-sm"
         >
           Checking authentication...
         </motion.p>
