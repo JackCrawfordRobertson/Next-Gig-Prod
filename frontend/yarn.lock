@@ -9947,7 +9947,7 @@ __metadata:
     clsx: "npm:^2.1.1"
     cmdk: "npm:1.0.0"
     date-fns: "npm:^4.1.0"
-    firebase: "npm:^11.5.0"
+    firebase: "npm:^11.6.0"
     firebase-admin: "npm:^11.11.1"
     firebaseui: "npm:^6.1.0"
     framer-motion: "npm:^12.5.0"
