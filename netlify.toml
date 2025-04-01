@@ -1,17 +1,17 @@
 [build]
   base = "frontend"
-  command = "yarn install && yarn build" 
+  command = "corepack enable && yarn install --immutable && yarn build"
   publish = ".next"
 
-# This plugin is essential for Next.js with App Router and Server Components
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# Optional: Set environment variables for different contexts
 [context.production.environment]
-  NEXT_TELEMETRY_DISABLED = "1"
   NODE_ENV = "production"
+  YARN_NPM_REGISTRY_SERVER = "https://registry.npmjs.org"
+  npm_config_registry = "https://registry.npmjs.org"
 
 [context.deploy-preview.environment]
-  NEXT_TELEMETRY_DISABLED = "1"
   NODE_ENV = "production"
+  YARN_NPM_REGISTRY_SERVER = "https://registry.npmjs.org"
+  npm_config_registry = "https://registry.npmjs.org"
