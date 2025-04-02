@@ -13,6 +13,7 @@ import {
   addDoc,
   getDoc
 } from "@/lib/firebase";
+import { calculateConsumedTrialDays, hasCompletedTrial } from "@/lib/checkSubscriptionStatus";
 
 // Direct PayPal SDK import instead of @/lib/paypal
 const paypal = require("@paypal/checkout-server-sdk");
@@ -71,6 +72,64 @@ export async function POST(req) {
     const userDoc = await getDoc(userDocRef);
     const userData = userDoc.data();
 
+    // 5b. Check previous subscription history for trial eligibility
+    const subscriptionsRef = collection(db, 'subscriptions');
+    const historyQuery = query(
+      subscriptionsRef,
+      where('userId', '==', userId),
+      where('status', '==', 'cancelled')
+    );
+    
+    const historySnapshot = await getDocs(historyQuery);
+    const subscriptionHistory = historySnapshot.docs.map(doc => doc.data());
+    const lastCancellation = subscriptionHistory.length > 0 ? 
+      subscriptionHistory.sort((a, b) => new Date(b.cancelledAt) - new Date(a.cancelledAt))[0] : null;
+    
+    // Determine trial eligibility
+    let eligibleForTrial = true;
+    let trialDuration = 7; // Default trial duration in days
+    let trialEligibilityReason = 'First-time subscriber';
+    
+    if (userData.hadPreviousSubscription) {
+      // Check when the last subscription was cancelled
+      if (userData.lastCancellationDate || (lastCancellation && lastCancellation.cancelledAt)) {
+        const lastCancelDate = userData.lastCancellationDate || lastCancellation.cancelledAt;
+        const lastCancellationDate = new Date(lastCancelDate);
+        const now = new Date();
+        const daysSinceCancellation = Math.ceil(
+          (now - lastCancellationDate) / (1000 * 60 * 60 * 24)
+        );
+        
+        // If cancelled within last 30 days, check if trial was already used
+        if (daysSinceCancellation < 30) {
+          if (userData.trialCompleted) {
+            // No new trial if previous one was completed and cancelled recently
+            eligibleForTrial = false;
+            trialDuration = 0;
+            trialEligibilityReason = 'Previous trial completed within last 30 days';
+          } else if (userData.trialConsumedDays || (lastCancellation && lastCancellation.trialConsumedDays)) {
+            // Partial trial - give remaining days
+            const daysConsumed = userData.trialConsumedDays || lastCancellation.trialConsumedDays || 0;
+            trialDuration = Math.max(0, 7 - daysConsumed);
+            eligibleForTrial = trialDuration > 0;
+            trialEligibilityReason = trialDuration > 0 ? 
+              `Partial trial (${trialDuration} days remaining)` : 
+              'No trial days remaining';
+          }
+        } else {
+          trialEligibilityReason = 'Previous subscription cancelled >30 days ago';
+        }
+      } else {
+        trialEligibilityReason = 'Previous subscription without cancellation data';
+      }
+    }
+    
+    // Calculate trial end date
+    const onTrial = eligibleForTrial && trialDuration > 0;
+    const trialEndDate = new Date();
+    trialEndDate.setDate(trialEndDate.getDate() + (onTrial ? trialDuration : 0));
+    const trialEndDateIso = trialEndDate.toISOString();
+
     // 6. Create new PayPal Subscription using the direct SDK
     const request = new paypal.subscriptions.SubscriptionsCreateRequest();
     request.requestBody({
@@ -101,13 +160,14 @@ export async function POST(req) {
     const subscriptionData = {
       userId,
       subscriptionId: subscriptionResponse.result.id,
-      status: 'active',
+      status: onTrial ? 'trial' : 'active',
       plan: planType,
       price: 1.25, // Default price if not available from PayPal
       currency: 'GBP',
       paymentMethod: 'paypal',
       startDate: new Date().toISOString(),
-      onTrial: false,
+      onTrial: onTrial,
+      trialEndDate: onTrial ? trialEndDateIso : null,
       createdAt: new Date().toISOString(),
       
       // Enhanced security metadata
@@ -117,6 +177,13 @@ export async function POST(req) {
         timestamp: new Date().toISOString(),
         method: 'resubscription',
         sourceIP: req.ip || req.headers.get('x-forwarded-for') || 'unknown'
+      },
+      
+      // Trial eligibility data
+      trialEligibility: {
+        eligible: eligibleForTrial,
+        duration: trialDuration,
+        reason: trialEligibilityReason
       }
     };
 
@@ -142,8 +209,11 @@ export async function POST(req) {
     // 10. Update user document
     await updateDoc(userDocRef, {
       subscribed: true,
-      onTrial: false,
-      lastSubscriptionDate: new Date().toISOString()
+      onTrial: onTrial,
+      trialEndDate: onTrial ? trialEndDateIso : null,
+      lastSubscriptionDate: new Date().toISOString(),
+      trialEligibilityReason: trialEligibilityReason,
+      trialDuration: trialDuration
     });
 
     // 11. Log security event

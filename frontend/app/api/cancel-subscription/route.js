@@ -2,7 +2,8 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { db, doc, updateDoc, collection, query, where, getDocs } from "@/lib/firebase";
+import { db, doc, updateDoc, collection, query, where, getDocs, getDoc } from "@/lib/firebase";
+import { calculateConsumedTrialDays, hasCompletedTrial } from "@/lib/checkSubscriptionStatus";
 
 const paypal = require("@paypal/checkout-server-sdk");
 
@@ -37,6 +38,11 @@ export async function POST(req) {
     }
 
     try {
+      // Get user data to calculate trial consumption
+      const userRef = doc(db, "users", userId);
+      const userSnap = await getDoc(userRef);
+      const userData = userSnap.exists() ? userSnap.data() : {};
+
       // Cancel the PayPal subscription
       const request = new paypal.subscriptions.SubscriptionsCreateRequest(subscriptionId);
       await paypalClient.execute(request);
@@ -61,46 +67,87 @@ export async function POST(req) {
         docIdToUpdate = querySnapshot.docs[0].id;
       }
       
+      // Calculate how many days of trial were used before cancellation
+      const trialConsumedDays = calculateConsumedTrialDays(
+        userData.subscriptionStartDate, 
+        userData.trialEndDate
+      );
+      
+      // Check if the trial was completed
+      const trialCompleted = hasCompletedTrial(userData.trialEndDate);
+      
       // Update subscription status
       const subscriptionDocRef = doc(db, "subscriptions", docIdToUpdate);
       await updateDoc(subscriptionDocRef, {
         status: "cancelled",
-        cancelledAt: new Date().toISOString()
+        cancelledAt: new Date().toISOString(),
+        // Store the trial usage information
+        trialUsed: userData.onTrial || false,
+        trialConsumedDays: trialConsumedDays
       });
       
       // Update user data
-      const userDocRef = doc(db, "users", userId);
-      await updateDoc(userDocRef, {
+      await updateDoc(userRef, {
         subscribed: false,
-        onTrial: false
+        onTrial: false,
+        // Track trial history
+        trialCompleted: trialCompleted,
+        lastCancellationDate: new Date().toISOString(),
+        trialConsumedDays: trialConsumedDays
       });
       
       return NextResponse.json({
         success: true,
-        message: "Subscription cancelled successfully"
+        message: "Subscription cancelled successfully",
+        trialInfo: {
+          consumed: trialConsumedDays,
+          completed: trialCompleted
+        }
       });
     } catch (error) {
       console.error("Error cancelling PayPal subscription:", error);
       
       // If PayPal API fails, still update our records
       if (subscriptionDocId) {
+        // Get user data to calculate trial consumption
+        const userRef = doc(db, "users", userId);
+        const userSnap = await getDoc(userRef);
+        const userData = userSnap.exists() ? userSnap.data() : {};
+
+        // Calculate how many days of trial were used
+        const trialConsumedDays = calculateConsumedTrialDays(
+          userData.subscriptionStartDate, 
+          userData.trialEndDate
+        );
+        
+        // Check if the trial was completed
+        const trialCompleted = hasCompletedTrial(userData.trialEndDate);
+        
         const subscriptionDocRef = doc(db, "subscriptions", subscriptionDocId);
         await updateDoc(subscriptionDocRef, {
           status: "cancelled",
           cancelledAt: new Date().toISOString(),
-          cancellationNote: "Marked as cancelled but PayPal API failed"
+          cancellationNote: "Marked as cancelled but PayPal API failed",
+          trialUsed: userData.onTrial || false,
+          trialConsumedDays: trialConsumedDays
         });
         
-        const userDocRef = doc(db, "users", userId);
-        await updateDoc(userDocRef, {
+        await updateDoc(userRef, {
           subscribed: false,
-          onTrial: false
+          onTrial: false,
+          trialCompleted: trialCompleted,
+          lastCancellationDate: new Date().toISOString(),
+          trialConsumedDays: trialConsumedDays
         });
         
         return NextResponse.json({
           success: true,
           warning: "Subscription marked as cancelled, but PayPal API failed",
-          message: "Your subscription has been cancelled in our records"
+          message: "Your subscription has been cancelled in our records",
+          trialInfo: {
+            consumed: trialConsumedDays,
+            completed: trialCompleted
+          }
         });
       }
       
