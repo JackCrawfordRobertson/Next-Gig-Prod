@@ -382,15 +382,19 @@ const handleSubscriptionSuccess = async (subscriptionData) => {
     // Update local state
     setSubscriptionData({
       userId: session.user.id,
-      subscriptionId: subscriptionData.subscriptionId,
-      status: 'trial',
+      subscriptionId: subscriptionData.subscriptionID || subscriptionData.subscriptionId,
+      status: result.onTrial ? 'trial' : 'active',
       plan: 'paypal',
       price: 1.99,
       currency: 'GBP',
       paymentMethod: 'paypal',
       startDate: new Date().toISOString(),
       trialEndDate: result.trialEndDate,
-      onTrial: true
+      onTrial: result.onTrial || false,
+      trialEligibility: {
+        duration: result.trialDuration || 0,
+        reason: result.trialEligibilityReason || 'Standard subscription'
+      }
     });
     
     if (result.subscriptionDocId) {
@@ -401,17 +405,30 @@ const handleSubscriptionSuccess = async (subscriptionData) => {
     setUserData((prev) => ({
       ...prev,
       subscribed: true,
-      onTrial: true,
+      onTrial: result.onTrial || false,
       subscriptionPlan: "paypal",
-      subscriptionId: subscriptionData.subscriptionId,
+      subscriptionId: subscriptionData.subscriptionID || subscriptionData.subscriptionId,
       subscriptionStartDate: new Date().toISOString(),
       trialEndDate: result.trialEndDate,
+      trialEligibilityReason: result.trialEligibilityReason
     }));
+    
+    showToast({
+      title: result.onTrial ? "Trial Activated!" : "Subscription Activated!",
+      description: result.onTrial 
+        ? `Your trial has been activated.`
+        : "Your subscription has been successfully activated.",
+      variant: "success",
+    });
     
     // No navigation here - user stays on the profile page
   } catch (error) {
     console.error("Error handling subscription success:", error);
-    // Toast is already shown by the shared function if showToast is true
+    showToast({
+      title: "Subscription Error",
+      description: "There was an error activating your subscription. Please try again.",
+      variant: "destructive",
+    });
   }
 };
 
@@ -815,174 +832,199 @@ const handleSubscriptionSuccess = async (subscriptionData) => {
           </TabsContent>
 
           <TabsContent value="subscription" className="space-y-4 mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Subscription Management</CardTitle>
-                <CardDescription>
-                  Manage your subscription plan and billing information
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">              
-                {subscriptionData && subscriptionData.status === 'cancelled' ? (
-                  <div className="border rounded-lg p-8 text-center">
-                    <h3 className="font-semibold mb-4">Subscription Cancelled</h3>
-                    <p className="text-muted-foreground mb-6">
-                      Your subscription has been cancelled. Reactivate to continue enjoying our services.
+  <Card>
+    <CardHeader>
+      <CardTitle>Subscription Management</CardTitle>
+      <CardDescription>
+        Manage your subscription plan and billing information
+      </CardDescription>
+    </CardHeader>
+    <CardContent className="space-y-4">              
+      {subscriptionData && subscriptionData.status === 'cancelled' ? (
+        <div className="border rounded-lg p-8 text-center">
+          <h3 className="font-semibold mb-4">Subscription Cancelled</h3>
+          <p className="text-muted-foreground mb-6">
+            Your subscription has been cancelled. Reactivate to continue enjoying our services.
+          </p>
+          <Button onClick={() => handleResubscribe()}>Resubscribe Now</Button>
+        </div>
+      ) : subscriptionData ? (
+        <>
+          <div className="border rounded-lg p-4 bg-white">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="font-semibold">Current Plan</h3>
+              <span
+                className={`text-sm rounded-full px-3 py-1 ${
+                  subscriptionData.status === "trial"
+                    ? "bg-yellow-100 text-yellow-800"
+                    : "bg-green-100 text-green-800"
+                }`}
+              >
+                {subscriptionData.status === "trial"
+                  ? "Trial"
+                  : "Active"}
+              </span>
+            </div>
+            <p className="text-2xl font-bold capitalize">
+              {subscriptionData.plan} Plan
+            </p>
+            <p className="text-muted-foreground">
+              {subscriptionData.currency === "GBP" ? "£" : ""}
+              {subscriptionData.price} per month
+            </p>
+
+            {subscriptionData.status === "trial" && (
+              <div className="mt-4">
+                <div className="flex justify-between mb-2">
+                  <span>Trial Progress</span>
+                  <span>
+                    {Math.ceil(
+                      (new Date(subscriptionData.trialEndDate) -
+                        new Date()) /
+                        (1000 * 60 * 60 * 24)
+                    )}{" "}
+                    days left
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  <div
+                    className="bg-blue-600 h-2.5 rounded-full"
+                    style={{
+                      width: `${
+                        ((new Date() -
+                          new Date(subscriptionData.startDate)) /
+                          (new Date(subscriptionData.trialEndDate) -
+                            new Date(subscriptionData.startDate))) *
+                        100
+                      }%`,
+                    }}
+                  ></div>
+                </div>
+                
+                {/* Add this section to show trial eligibility details */}
+                {subscriptionData.trialEligibility && (
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    <p>
+                      {subscriptionData.trialEligibility.reason || 
+                       (subscriptionData.trialEligibility.duration < 7 ? 
+                         "Partial trial based on previous usage" : 
+                         "Full trial period")}
                     </p>
-                    <Button onClick={() => handleResubscribe()}>Resubscribe Now</Button>
                   </div>
-                ) : subscriptionData ? (
-                  <>
-                    <div className="border rounded-lg p-4 bg-white">
-                      <div className="flex justify-between items-center mb-2">
-                        <h3 className="font-semibold">Current Plan</h3>
-                        <span
-                          className={`text-sm rounded-full px-3 py-1 ${
-                            subscriptionData.status === "trial"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-green-100 text-green-800"
-                          }`}
-                        >
-                          {subscriptionData.status === "trial"
-                            ? "Trial"
-                            : "Active"}
-                        </span>
-                      </div>
-                      <p className="text-2xl font-bold capitalize">
-                        {subscriptionData.plan} Plan
-                      </p>
-                      <p className="text-muted-foreground">
-                        {subscriptionData.currency === "GBP" ? "£" : ""}
-                        {subscriptionData.price} per month
-                      </p>
+                )}
+              </div>
+            )}
 
-                      {subscriptionData.status === "trial" && (
-                        <div className="mt-4">
-                          <div className="flex justify-between mb-2">
-                            <span>Trial Progress</span>
-                            <span>
-                              {Math.ceil(
-                                (new Date(subscriptionData.trialEndDate) -
-                                  new Date()) /
-                                  (1000 * 60 * 60 * 24)
-                              )}{" "}
-                              days left
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2.5">
-                            <div
-                              className="bg-blue-600 h-2.5 rounded-full"
-                              style={{
-                                width: `${
-                                  ((new Date() -
-                                    new Date(subscriptionData.startDate)) /
-                                    (new Date(subscriptionData.trialEndDate) -
-                                      new Date(subscriptionData.startDate))) *
-                                  100
-                                }%`,
-                              }}
-                            ></div>
-                          </div>
-                        </div>
-                      )}
+            <p className="text-muted-foreground text-sm mt-4">
+              Subscription started on{" "}
+              {new Date(
+                subscriptionData.startDate
+              ).toLocaleDateString("en-GB")}
+            </p>
+            <p className="text-muted-foreground text-sm">
+              {subscriptionData.status === "trial"
+                ? `Trial ends on ${new Date(
+                    subscriptionData.trialEndDate
+                  ).toLocaleDateString("en-GB")}`
+                : `Next billing date: ${new Date(
+                    new Date(subscriptionData.startDate).setMonth(
+                      new Date(
+                        subscriptionData.startDate
+                      ).getMonth() + 1
+                    )
+                  ).toLocaleDateString("en-GB")}`}
+            </p>
+          </div>
 
-                      <p className="text-muted-foreground text-sm mt-4">
-                        Subscription started on{" "}
-                        {new Date(
-                          subscriptionData.startDate
-                        ).toLocaleDateString("en-GB")}
-                      </p>
-                      <p className="text-muted-foreground text-sm">
-                        {subscriptionData.status === "trial"
-                          ? `Trial ends on ${new Date(
-                              subscriptionData.trialEndDate
-                            ).toLocaleDateString("en-GB")}`
-                          : `Next billing date: ${new Date(
-                              new Date(subscriptionData.startDate).setMonth(
-                                new Date(
-                                  subscriptionData.startDate
-                                ).getMonth() + 1
-                              )
-                            ).toLocaleDateString("en-GB")}`}
-                      </p>
-                    </div>
-
-                    <div className="border rounded-lg p-4 bg-white">
-                      <h3 className="font-semibold mb-2">Payment Method</h3>
-                      <div className="flex items-center gap-2">
-                        <div className="bg-gray-100 rounded p-1">
-                          {subscriptionData.paymentMethod === "paypal" ? (
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="24"
-                              height="24"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="text-blue-600"
-                            >
-                              <path d="M22 8c0 3.5-2 4.5-3.5 4.5h-4c-1.5 0-2.5-1-2.5-2.5s1-2.5 2.5-2.5H19" />
-                             <path d="M22 2v3" />
-                             <path d="M17 15h-5.5c-1.5 0-2.5-1-2.5-2.5 0-1.5 1-2.5 2.5-2.5H17" />
-                             <path d="M22 9v6" />
-                           </svg>
-                         ) : (
-                           <svg
-                             xmlns="http://www.w3.org/2000/svg"
-                             width="24"
-                             height="24"
-                             viewBox="0 0 24 24"
-                             fill="none"
-                             stroke="currentColor"
-                             strokeWidth="2"
-                             strokeLinecap="round"
-                             strokeLinejoin="round"
-                           >
-                             <rect width="20" height="14" x="2" y="5" rx="2" />
-                             <line x1="2" x2="22" y1="10" y2="10" />
-                           </svg>
-                         )}
-                       </div>
-                       <div>
-                         <p className="font-medium capitalize">
-                           {subscriptionData.paymentMethod}
-                         </p>
-                         {subscriptionData.fingerprint && (
-                           <p className="text-sm text-muted-foreground">
-                             {subscriptionData.paymentMethod === "paypal"
-                               ? `ID: ${subscriptionData.subscriptionId}`
-                               : `Card ending in ${subscriptionData.fingerprint.substring(
-                                   subscriptionData.fingerprint.length - 4
-                                 )}`}
-                           </p>
-                         )}
-                       </div>
-                     </div>
-                   </div>
-                 </>
-               ) : (
-                 <div className="border rounded-lg p-8 text-center">
-                   <h3 className="font-semibold mb-4">No Active Subscription</h3>
-                   <p className="text-muted-foreground mb-6">
-                     You don't currently have an active subscription.
-                   </p>
-                   <Button onClick={handleSubscribe}>Subscribe Now</Button>
-                 </div>
-               )}
-             </CardContent>
-             
-             {subscriptionData && subscriptionData.status !== 'cancelled' && (
-               <CardFooter className="flex justify-between">
-                 <Button variant="destructive" onClick={handleCancelSubscription}>
-                   Cancel Subscription
-                 </Button>
-               </CardFooter>
-             )}              
-           </Card>
-         </TabsContent>
+          <div className="border rounded-lg p-4 bg-white">
+            <h3 className="font-semibold mb-2">Payment Method</h3>
+            <div className="flex items-center gap-2">
+              <div className="bg-gray-100 rounded p-1">
+                {subscriptionData.paymentMethod === "paypal" ? (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-blue-600"
+                  >
+                    <path d="M22 8c0 3.5-2 4.5-3.5 4.5h-4c-1.5 0-2.5-1-2.5-2.5s1-2.5 2.5-2.5H19" />
+                    <path d="M22 2v3" />
+                    <path d="M17 15h-5.5c-1.5 0-2.5-1-2.5-2.5 0-1.5 1-2.5 2.5-2.5H17" />
+                    <path d="M22 9v6" />
+                  </svg>
+                ) : (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect width="20" height="14" x="2" y="5" rx="2" />
+                    <line x1="2" x2="22" y1="10" y2="10" />
+                  </svg>
+                )}
+              </div>
+              <div>
+                <p className="font-medium capitalize">
+                  {subscriptionData.paymentMethod}
+                </p>
+                {subscriptionData.fingerprint && (
+                  <p className="text-sm text-muted-foreground">
+                    {subscriptionData.paymentMethod === "paypal"
+                      ? `ID: ${subscriptionData.subscriptionId}`
+                      : `Card ending in ${subscriptionData.fingerprint.substring(
+                          subscriptionData.fingerprint.length - 4
+                        )}`}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          {/* Add this section to show subscription history */}
+          {subscriptionData.previousSubscription && (
+            <div className="border rounded-lg p-4 bg-white">
+              <h3 className="font-semibold mb-2">Subscription History</h3>
+              <div className="text-sm text-muted-foreground">
+                <p>Previous subscription: {new Date(subscriptionData.previousSubscription.cancelledAt).toLocaleDateString("en-GB")}</p>
+                {subscriptionData.previousSubscription.trialConsumedDays > 0 && (
+                  <p>Used {subscriptionData.previousSubscription.trialConsumedDays} days of trial previously</p>
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="border rounded-lg p-8 text-center">
+          <h3 className="font-semibold mb-4">No Active Subscription</h3>
+          <p className="text-muted-foreground mb-6">
+            You don't currently have an active subscription.
+          </p>
+          <Button onClick={handleSubscribe}>Subscribe Now</Button>
+        </div>
+      )}
+    </CardContent>
+    
+    {subscriptionData && subscriptionData.status !== 'cancelled' && (
+      <CardFooter className="flex justify-between">
+        <Button variant="destructive" onClick={handleCancelSubscription}>
+          Cancel Subscription
+        </Button>
+      </CardFooter>
+    )}              
+  </Card>
+</TabsContent>
 
          <TabsContent value="privacy" className="space-y-4 mt-4 flex-1">
            <Card className="flex flex-col h-full">
