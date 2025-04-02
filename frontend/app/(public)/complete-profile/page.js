@@ -253,8 +253,9 @@ export default function CompleteProfile() {
         jobTitles,
         jobLocations,
         subscribed: false,
-        userIP, // Store IP for fraud prevention
-        deviceFingerprint, // Store fingerprint for fraud prevention
+        userIP, 
+        deviceFingerprint,
+        hadPreviousSubscription: true,
       });
 
       // ✅ Sign the user in using NextAuth
