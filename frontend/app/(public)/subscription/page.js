@@ -86,20 +86,48 @@ function SubscriptionComponent() {
         return <div className="flex items-center justify-center h-screen text-lg">Loading...</div>;
     }
 
-    const handleSubscriptionSuccess = async (subscriptionData) => {
-        try {
-          console.log("Subscription successful:", subscriptionData);
-          
-          // Use the shared function to store subscription data
-          await storeSubscription(session.user.id, subscriptionData, fingerprint);
-          
-          // Redirect to dashboard after successful subscription
-          router.push("/dashboard");
-        } catch (err) {
-          console.error("Error updating subscription:", err);
-          setErrorMessage("Subscription update failed. Please try again or contact support.");
-        }
-      };
+   const handlePayPallSubscriptionSuccess = async (subscriptionData) => {
+    try {
+      console.log("Subscription successful:", subscriptionData);
+
+      // Calculate trial end date (7 days from now)
+      const trialEndDate = new Date();
+      trialEndDate.setDate(trialEndDate.getDate() + 7);
+
+      // 1) Update user document
+      await updateDoc(doc(db, "users", session.user.id), {
+        subscribed: true,
+        onTrial: true,
+        subscriptionPlan: "paypal",
+        subscriptionId: subscriptionData.subscriptionId,
+        subscriptionStartDate: new Date().toISOString(),
+        trialEndDate: trialEndDate.toISOString(),
+      });
+
+      // 2) Create subscription record in "subscriptions" collection
+      await addDoc(collection(db, "subscriptions"), {
+        userId: session.user.id,
+        subscriptionId: subscriptionData.subscriptionId,
+        plan: "paypal",
+        status: "trial",
+        startDate: new Date().toISOString(),
+        trialEndDate: trialEndDate.toISOString(),
+        fingerprint: fingerprint,
+        paymentMethod: "paypal",
+        price: 1.99,
+        currency: "GBP",
+        createdAt: new Date().toISOString(),
+      });
+
+      // Finally, redirect to dashboard
+      router.push("/dashboard");
+    } catch (err) {
+      console.error("Error updating subscription:", err);
+      setErrorMessage(
+        "Subscription update failed. Please try again or contact support."
+      );
+    }
+  };
 
     return (
         <div className="min-h-screen w-full bg-transparent flex flex-col items-center justify-center py-6 px-4">
@@ -179,7 +207,7 @@ function SubscriptionComponent() {
                             ) : (
                                 <PayPalButton 
                                     userId={session.user.id} 
-                                    onSuccess={handleSubscriptionSuccess} 
+                                    onSuccess={handlePayPallSubscriptionSuccess} 
                                 />
                             )}
                         </div>
