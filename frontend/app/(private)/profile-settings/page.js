@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -125,8 +125,9 @@ export default function ProfileSettingsPage() {
   const [selectedProfilePicture, setSelectedProfilePicture] = useState(null);
   const [existingSubscriptions, setExistingSubscriptions] = useState(null);
   const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
-
-
+  const searchParams = useSearchParams(); 
+  const tabFromUrl = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(tabFromUrl || 'general');
 
   // CHANGED: store subscription data + the Firestore doc ID
   const [subscriptionData, setSubscriptionData] = useState(null);
@@ -435,6 +436,18 @@ const handleSubscriptionSuccess = async (subscriptionData) => {
     }
   }, []);
 
+  const handleTabChange = (value) => {
+    setActiveTab(value);
+    router.push(`/profile-settings?tab=${value}`, { scroll: false });
+  };
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && ['general', 'address', 'subscription', 'privacy'].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
   if (isLoading) {
     return (
       <div className="container py-10 flex justify-center items-center min-h-[60vh]">
@@ -458,14 +471,13 @@ const handleSubscriptionSuccess = async (subscriptionData) => {
           </div>
         </Card>
 
-        <Tabs defaultValue="general" className="w-full h-full flex flex-col">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full h-full flex flex-col">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="address">Address</TabsTrigger>
             <TabsTrigger value="subscription">Subscription</TabsTrigger>
             <TabsTrigger value="privacy">Privacy</TabsTrigger>
           </TabsList>
-
           <TabsContent value="general" className="space-y-4 mt-4 flex-1">
             <Card className="flex flex-col h-full">
               <CardHeader>

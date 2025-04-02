@@ -46,7 +46,7 @@
     "firebaseui": "^6.1.0",
     "framer-motion": "^12.5.0",
     "gsap": "^3.12.7",
-    "lucide-react": "^0.475.0",
+    "lucide-react": "^0.487.0",
     "next": "^15.2.4",
     "next-auth": "^4.24.11",
     "next-navigation": "^1.0.6",

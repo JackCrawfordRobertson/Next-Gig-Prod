@@ -11,48 +11,48 @@ export function SubscriptionChecker() {
 
   useEffect(() => {
     async function checkSubscription() {
-      // Only check if authenticated and not already checked
+      // Let's not be hasty, we check only when the time is right
       if (status !== 'authenticated' || hasCheckedSubscription) return;
 
       try {
-        // Use the user ID from session in both prod and dev
+        // The secret identity, hidden in plain sight
         const userId = session?.user?.id;
         
-        console.log('Checking subscription for user:', userId);
+        console.log('Peering into the subscription void for user:', userId);
         const subscriptionStatus = await checkSubscriptionStatus(userId);
-        console.log('Full Subscription status:', subscriptionStatus);
+        console.log('Behold! The full subscription revelation:', subscriptionStatus);
 
-        // Detailed logging for toast conditions
-        console.log('Subscription details:', {
+        // Jotting down the curious details in our diary
+        console.log('Subscription secrets unveiled:', {
           subscribed: subscriptionStatus.subscribed,
           hadPreviousSubscription: subscriptionStatus.hadPreviousSubscription,
           onTrial: subscriptionStatus.onTrial
         });
 
-        // Conditions for showing toast
+        // Should we whisper in their ear? The decision tree grows
         const shouldShowToast = 
           !subscriptionStatus.subscribed && 
           (subscriptionStatus.hadPreviousSubscription || subscriptionStatus.onTrial);
 
-        console.log('Should show toast:', shouldShowToast);
+        console.log('To toast or not to toast:', shouldShowToast);
 
-        // Show toast only if conditions are met
+        // If the cosmic alignment is just so, we shall speak
         if (shouldShowToast) {
-          console.log('Showing subscription toast');
+          console.log('Summoning the toast messenger');
           showToast({
-            title: "Missing your job alerts?",
-            description: "Start getting your next gig delivered again by resubscribing to our service.",
+            title: "Missing those job whispers?",
+            description: "Your inbox grows lonely without your job alerts. Rekindle the flame and let us deliver possibilities to your door once more.",
             variant: "warning",
             action: {
-              label: "Resubscribe",
-              onClick: () => window.location.href = "/privacy/profile-settings?tab=subscription"
+              label: "Reunite with us",
+              onClick: () => window.location.href = "/profile-settings?tab=subscription"
             }
           });
         }
 
         setHasCheckedSubscription(true);
       } catch (error) {
-        console.error("Subscription check error:", error);
+        console.error("Alas! The subscription spirits have abandoned us:", error);
       }
     }
 

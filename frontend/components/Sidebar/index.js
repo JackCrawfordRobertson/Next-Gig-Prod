@@ -48,17 +48,16 @@ export default function SidebarLayout({ children }) {
 
   const handleSignOut = async () => {
     try {
-      await signOut({ 
-        redirect: false 
+      await signOut({
+        redirect: false,
       });
 
       localStorage.clear();
 
-   
       showToast({
         title: "Success",
         description: "Successfully signed out",
-        variant: "success"
+        variant: "success",
       });
       router.push("/login");
     } catch (error) {
@@ -66,8 +65,9 @@ export default function SidebarLayout({ children }) {
       showToast({
         title: "Error",
         description: "Failed to sign out. Please try again.",
-        variant: "destructive"
-      });    }
+        variant: "destructive",
+      });
+    }
   };
 
   // Desktop Sidebar Component
@@ -86,10 +86,6 @@ export default function SidebarLayout({ children }) {
           </div>
         </div>
 
-        <div className="mt-0 px-4">
-          <p className="text-sm text-gray-500 mb-2">Platform</p>
-        </div>
-
         {/* Main navigation */}
         <SidebarMenu className="space-y-1">
           {/* Playground dropdown */}
@@ -99,7 +95,7 @@ export default function SidebarLayout({ children }) {
               className="w-full flex items-center justify-between px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
             >
               <div className="flex items-center">
-                <Home className="w-5 h-5 mr-3 text-gray-500" />
+                <Home className="w-4 h-4 mr-3 text-gray-500" />
                 <span>Dashboard</span>
               </div>
               <ChevronRight className="w-5 h-5 text-gray-400" />
@@ -111,7 +107,7 @@ export default function SidebarLayout({ children }) {
               href="/linkedin"
               className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
             >
-              <Briefcase className="w-5 h-5 mr-3 text-gray-500" />
+              <Briefcase className="w-4 h-4 mr-3 text-gray-500" />
               <span>LinkedIn Jobs</span>
               <ChevronRight className="w-5 h-5 text-gray-400 ml-auto" />
             </Link>
@@ -122,7 +118,7 @@ export default function SidebarLayout({ children }) {
               href="/ifyoucould"
               className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
             >
-              <Palette className="w-5 h-5 mr-3 text-gray-500" />
+              <Palette className="w-4 h-4 mr-3 text-gray-500" />
               <span>If You Could</span>
               <ChevronRight className="w-5 h-5 text-gray-400 ml-auto" />
             </Link>
@@ -133,26 +129,47 @@ export default function SidebarLayout({ children }) {
               href="/unjobs"
               className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
             >
-              <Globe className="w-5 h-5 mr-3 text-gray-500" />
+              <Globe className="w-4 h-4 mr-3 text-gray-500" />
               <span>UN Jobs</span>
               <ChevronRight className="w-5 h-5 text-gray-400 ml-auto" />
             </Link>
           </SidebarMenuItem>
 
           <SidebarMenuItem>
-            <Link
-              href="/workable"
-              className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
-            >
-              <BookOpen className="w-5 h-5 mr-3 text-gray-500" />
-              <span>Workable</span>
-              <ChevronRight className="w-5 h-5 text-gray-400 ml-auto" />
-            </Link>
-          </SidebarMenuItem>
+          <Link
+            href="/workable"
+            className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
+          >
+            <BookOpen className="w-4 h-4 mr-3 text-gray-500" />
+            <span>Workable</span>
+            <ChevronRight className="w-5 h-5 text-gray-400 ml-auto" />
+          </Link>
+        </SidebarMenuItem>
         </SidebarMenu>
 
+        {/* Created by section */}
+        <div className="mt-auto px-1 py-1 text-xs text-gray-500  flex items-center justify-center gap-2">
+        
+        <a
+            href="https://jack-robertson.co.uk"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-foreground hover:underline"
+          >
+          <span>Created by</span>
+        
+            <Image
+              src="/Blue_LogoV2.svg"
+              alt="Creator icon"
+              width={20}
+              height={20}
+              className="rounded-s-none"
+            />
+          </a>
+        </div>
+
         {/* User section at bottom */}
-        <div className="mt-auto relative">
+        <div className="relative">
           <button
             onClick={() => setDesktopUserMenuOpen(!desktopUserMenuOpen)}
             className="w-full p-4 border-t flex justify-between items-center hover:bg-gray-50"
@@ -163,10 +180,13 @@ export default function SidebarLayout({ children }) {
                   src={session?.user?.profilePicture || "/Memoji.png"}
                   alt="User Avatar"
                 />
-               <AvatarFallback className="bg-purple-100 text-purple-800">
-  {session?.user?.firstName ? session.user.firstName.charAt(0) : 
-   (session?.user?.name ? session.user.name.charAt(0) : "U")}
-</AvatarFallback>
+                <AvatarFallback className="bg-purple-100 text-purple-800">
+                  {session?.user?.firstName
+                    ? session.user.firstName.charAt(0)
+                    : session?.user?.name
+                    ? session.user.name.charAt(0)
+                    : "U"}
+                </AvatarFallback>
               </Avatar>
               <div className="text-left">
                 <p className="text-sm font-medium text-gray-700">
@@ -195,12 +215,12 @@ export default function SidebarLayout({ children }) {
                 Profile Settings
               </Link>
               <button
-        onClick={handleSignOut}
-        className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-sm text-red-600"
-      >
-        <LogOut className="w-4 h-4" />
-        Sign out
-      </button>
+                onClick={handleSignOut}
+                className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-sm text-red-600"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign out
+              </button>
             </div>
           )}
         </div>
@@ -279,12 +299,12 @@ export default function SidebarLayout({ children }) {
               Profile Settings
             </Link>
             <button
-        onClick={handleSignOut}
-        className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-sm text-red-600"
-      >
-        <LogOut className="w-4 h-4" />
-        Sign out
-      </button>
+              onClick={handleSignOut}
+              className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-sm text-red-600"
+            >
+              <LogOut className="w-4 h-4" />
+              Sign out
+            </button>
           </div>
         )}
       </div>
