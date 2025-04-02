@@ -14,6 +14,6 @@ export const showToast = ({ title, description, variant = "default" }) => {
     title,
     description,
     variant: mappedVariant,
-    duration: 5000,
+    duration: 3500,
   });
 };

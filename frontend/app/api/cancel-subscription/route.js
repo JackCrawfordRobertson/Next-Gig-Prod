@@ -1,6 +1,6 @@
-// pages/api/cancel-subscription/route.js
-
-import { getSession } from "next-auth/react";
+import { NextResponse } from 'next/server';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // Adjust path as needed
 import { db, doc, updateDoc } from "@/lib/firebase";
 
 const paypal = require("@paypal/checkout-server-sdk");
@@ -17,49 +17,48 @@ const paypalClient = new paypal.core.PayPalHttpClient(
   )
 );
 
-export default async function handler(req, res) {
-  if (req.method === "POST") {
-    try {
-      const session = await getSession({ req });
+export async function POST(req) {
+  try {
+    // Get the session
+    const session = await getServerSession(authOptions);
 
-      if (!session) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-
-      const userId = session.user.id;
-
-      // Get the subscription ID from the request query
-      const { subscriptionId } = req.query;
-
-      // Cancel the PayPal subscription
-      const request = new paypal.payments.CancelSubscriptionRequest(
-        subscriptionId
-      );
-      const response = await paypalClient.execute(request);
-
-      if (response.statusCode === 204) {
-        // Update the subscription data in Firestore
-        const subscriptionDocRef = doc(db, "subscriptions", userId);
-        await updateDoc(subscriptionDocRef, {
-          status: "cancelled",
-        });
-
-        // Update the user data in Firestore
-        const userDocRef = doc(db, "users", userId);
-        await updateDoc(userDocRef, {
-          subscribed: false,
-          onTrial: false,
-        });
-
-        return res.status(200).json({ message: "Subscription cancelled" });
-      } else {
-        return res.status(500).json({ error: "Failed to cancel subscription" });
-      }
-    } catch (error) {
-      console.error("Error cancelling subscription:", error);
-      return res.status(500).json({ error: "Internal server error" });
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-  } else {
-    return res.status(405).json({ error: "Method not allowed" });
+
+    // Parse the request body
+    const body = await req.json();
+    const { userId, subscriptionId } = body;
+
+    // Verify the userId matches the session
+    if (userId !== session.user.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    // Cancel the PayPal subscription
+    const request = new paypal.payments.CancelSubscriptionRequest(subscriptionId);
+    const response = await paypalClient.execute(request);
+
+    if (response.statusCode === 204) {
+      // Update the subscription data in Firestore
+      const subscriptionDocRef = doc(db, "subscriptions", userId);
+      await updateDoc(subscriptionDocRef, {
+        status: "cancelled",
+      });
+
+      // Update the user data in Firestore
+      const userDocRef = doc(db, "users", userId);
+      await updateDoc(userDocRef, {
+        subscribed: false,
+        onTrial: false,
+      });
+
+      return NextResponse.json({ message: "Subscription cancelled" }, { status: 200 });
+    } else {
+      return NextResponse.json({ error: "Failed to cancel subscription" }, { status: 500 });
+    }
+  } catch (error) {
+    console.error("Error cancelling subscription:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

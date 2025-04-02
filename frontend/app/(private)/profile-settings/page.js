@@ -247,10 +247,10 @@ export default function ProfileSettingsPage() {
       }
   
       // CHANGED: We must have a valid subscriptionDocId to update
-      if (!subscriptionDocId) {
+      if (!subscriptionData?.subscriptionId) {
         showToast({
           title: "Cancellation Error",
-          description: "No subscription found for this user.",
+          description: "No subscription ID found.",
           variant: "destructive"
         });
         return;
@@ -258,12 +258,20 @@ export default function ProfileSettingsPage() {
   
       // 1. Cancel subscription on your backend
       const userId = session.user.id;
-      const response = await fetch(`/api/cancel-subscription?userId=${userId}`, {
+      const response = await fetch(`/api/cancel-subscription`, {
         method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          subscriptionId: subscriptionData.subscriptionId
+        }),
       });
   
       if (!response.ok) {
-        throw new Error('Subscription cancellation failed');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Subscription cancellation failed');
       }
   
       // 2. Update the subscription doc's status in Firestore
@@ -294,7 +302,7 @@ export default function ProfileSettingsPage() {
       console.error("Error cancelling subscription:", error);
       showToast({
         title: "Cancellation Failed", 
-        description: "Failed to cancel subscription. Please contact support.",
+        description: error.message || "Failed to cancel subscription. Please contact support.",
         variant: "destructive",
       });
     }
