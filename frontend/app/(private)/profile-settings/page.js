@@ -141,45 +141,54 @@ export default function ProfileSettingsPage() {
   });
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        if (status !== "authenticated") return;
+  // In your fetchUserData function in ProfileSettingsPage.js
+const fetchUserData = async () => {
+  try {
+    if (status !== "authenticated") return;
 
-        const userId = session.user.id;
+    const userId = session.user.id;
 
-        // 1. Fetch user data
-        const userDocRef = doc(db, "users", userId);
-        const userDocSnap = await getDoc(userDocRef);
-        if (userDocSnap.exists()) {
-          setUserData(userDocSnap.data());
-        }
+    // 1. Fetch user data
+    const userDocRef = doc(db, "users", userId);
+    const userDocSnap = await getDoc(userDocRef);
+    if (userDocSnap.exists()) {
+      setUserData(userDocSnap.data());
+    }
 
-        // 2. Fetch subscription data by querying subscription docs
-        //    that match userId in the "subscriptions" collection
-        const subQuery = query(
-          collection(db, "subscriptions"),
-          where("userId", "==", userId) // CHANGED: filter on userId field
-        );
-        const subQuerySnap = await getDocs(subQuery);
+    // 2. Fetch subscription data
+    const subQuery = query(
+      collection(db, "subscriptions"),
+      where("userId", "==", userId),
+      // IMPORTANT: Add this to only get active or trial subscriptions
+      where("status", "in", ["active", "trial"]) 
+    );
+    const subQuerySnap = await getDocs(subQuery);
 
-        if (!subQuerySnap.empty) {
-          // For simplicity, assume each user only has 1 subscription doc
-          const docSnap = subQuerySnap.docs[0];
-          setSubscriptionDocId(docSnap.id); // CHANGED: store the actual doc ID
-          setSubscriptionData(docSnap.data());
-        }
+    if (!subQuerySnap.empty) {
+      const docSnap = subQuerySnap.docs[0];
+      setSubscriptionDocId(docSnap.id);
+      setSubscriptionData(docSnap.data());
+      
+      // Add debug logging here
+      console.log("Found active subscription:", docSnap.data());
+    } else {
+      // If no active subscription found, reset the state
+      console.log("No active subscription found");
+      setSubscriptionData(null);
+      setSubscriptionDocId(null);
+    }
 
-        setIsLoading(false);
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-        showToast({
-          title: "Error",
-          description: "Failed to load profile data. Please try again.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-      }
-    };
+    setIsLoading(false);
+  } catch (error) {
+    console.error("Error fetching user data:", error);
+    showToast({
+      title: "Error",
+      description: "Failed to load profile data. Please try again.",
+      variant: "destructive",
+    });
+    setIsLoading(false);
+  }
+};
 
     fetchUserData();
   }, [status, session, router]);
