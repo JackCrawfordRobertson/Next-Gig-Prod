@@ -39,12 +39,21 @@ const toastVariants = cva(
   }
 );
 
-const Toast = React.forwardRef(({ className, variant, ...props }, ref) => {
+const Toast = React.forwardRef(({ className, variant, action, ...props }, ref) => {
   return (
     <ToastPrimitives.Root
       ref={ref}
       className={cn(toastVariants({ variant }), className)}
-      {...props} />
+      {...props}>
+      <div className="flex flex-col gap-1">
+        {props.children}
+      </div>
+      {action && (
+        <ToastAction altText={action.label} onClick={action.onClick}>
+          {action.label}
+        </ToastAction>
+      )}
+    </ToastPrimitives.Root>
   );
 });
 Toast.displayName = ToastPrimitives.Root.displayName;
@@ -54,6 +63,9 @@ const ToastAction = React.forwardRef(({ className, ...props }, ref) => (
     ref={ref}
     className={cn(
       "inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium transition-colors hover:bg-secondary focus:outline-none focus:ring-1 focus:ring-ring disabled:pointer-events-none disabled:opacity-50 group-[.destructive]:border-muted/40 group-[.destructive]:hover:border-destructive/30 group-[.destructive]:hover:bg-destructive group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive",
+      "group-[.success]:border-green-500 group-[.success]:text-green-800 group-[.success]:hover:bg-green-100",
+      "group-[.warning]:border-yellow-500 group-[.warning]:text-yellow-800 group-[.warning]:hover:bg-yellow-100",
+      "group-[.info]:border-blue-500 group-[.info]:text-blue-800 group-[.info]:hover:bg-blue-100",
       className
     )}
     {...props} />

@@ -53,6 +53,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { showToast } from "@/lib/toast";
+import { SubscriptionModal } from "@/components/SubscriptionModal";
+import { storeSubscription } from "@/lib/checkSubscriptionStatus";
+
+
+
 
 const profileFormSchema = z.object({
   firstName: z.string().min(2, {
@@ -79,17 +84,53 @@ const profileFormSchema = z.object({
   notifications: z.boolean().optional(),
 });
 
+// Define the ExistingSubscriptionsModal outside any other functions
+// so it has proper scope
+const ExistingSubscriptionsModal = ({ existingSubscriptions, onClose }) => {
+  if (!existingSubscriptions) return null;
+
+  return (
+    <AlertDialog open={!!existingSubscriptions} onOpenChange={onClose}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Existing Subscription Detected</AlertDialogTitle>
+          <AlertDialogDescription>
+            You already have the following subscription(s):
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        
+        <div className="space-y-2">
+          {existingSubscriptions.map((sub, index) => (
+            <div key={index} className="border p-2 rounded">
+              <p>Plan: {sub.plan}</p>
+              <p>Status: {sub.status}</p>
+              <p>Started: {new Date(sub.startDate).toLocaleDateString()}</p>
+            </div>
+          ))}
+        </div>
+
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={onClose}>Close</AlertDialogCancel>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+};
+
 export default function ProfileSettingsPage() {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
   const [userData, setUserData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedProfilePicture, setSelectedProfilePicture] = useState(null);
+  const [existingSubscriptions, setExistingSubscriptions] = useState(null);
+  const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
 
-    // CHANGED: store subscription data + the Firestore doc ID
-    const [subscriptionData, setSubscriptionData] = useState(null);
-    const [subscriptionDocId, setSubscriptionDocId] = useState(null);
 
+
+  // CHANGED: store subscription data + the Firestore doc ID
+  const [subscriptionData, setSubscriptionData] = useState(null);
+  const [subscriptionDocId, setSubscriptionDocId] = useState(null);
 
   const { data: session, status } = useSession({
     required: true,
@@ -133,8 +174,9 @@ export default function ProfileSettingsPage() {
         showToast({
           title: "Error",
           description: "Failed to load profile data. Please try again.",
-          variant: "destructive"
-        });        setIsLoading(false);
+          variant: "destructive",
+        });
+        setIsLoading(false);
       }
     };
 
@@ -189,19 +231,19 @@ export default function ProfileSettingsPage() {
         router.push("/login");
         return;
       }
-  
+
       const userId = session.user.id;
       const userDocRef = doc(db, "users", userId);
-  
+
       let profilePictureUrl = userData?.profilePicture || "";
-  
+
       if (selectedProfilePicture) {
         const storage = getStorage();
         const storageRef = ref(storage, `users/${userId}/profilePicture`);
         await uploadBytes(storageRef, selectedProfilePicture);
         profilePictureUrl = await getDownloadURL(storageRef);
       }
-  
+
       await updateDoc(userDocRef, {
         firstName: data.firstName,
         lastName: data.lastName,
@@ -220,18 +262,18 @@ export default function ProfileSettingsPage() {
         profilePicture: profilePictureUrl,
         updatedAt: new Date().toISOString(),
       });
-  
+
       showToast({
         title: "Profile Updated Successfully",
         description: "Your profile information has been saved.",
         variant: "success",
       });
-      
     } catch (error) {
       console.error("Error updating profile:", error);
       showToast({
         title: "Update Failed",
-        description: "There was an error saving your profile. Please try again.",
+        description:
+          "There was an error saving your profile. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -245,70 +287,153 @@ export default function ProfileSettingsPage() {
         router.push("/login");
         return;
       }
-  
-      // CHANGED: We must have a valid subscriptionDocId to update
+    
       if (!subscriptionData?.subscriptionId) {
         showToast({
           title: "Cancellation Error",
           description: "No subscription ID found.",
-          variant: "destructive"
+          variant: "destructive",
         });
         return;
       }
-  
-      // 1. Cancel subscription on your backend
+      
+      // Show confirmation toast
+      showToast({
+        title: "Cancelling Subscription...",
+        description: "Please wait while we process your request.",
+        variant: "info",
+      });
+    
+      // Cancel subscription via API
       const userId = session.user.id;
       const response = await fetch(`/api/cancel-subscription`, {
         method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           userId,
-          subscriptionId: subscriptionData.subscriptionId
+          subscriptionId: subscriptionData.subscriptionId,
+          subscriptionDocId: subscriptionDocId
         }),
       });
   
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Subscription cancellation failed');
+        throw new Error(errorData.error || "Subscription cancellation failed");
       }
   
-      // 2. Update the subscription doc's status in Firestore
-      await updateDoc(doc(db, "subscriptions", subscriptionDocId), {
-        status: "cancelled",
-      });
-  
-      // 3. Update user doc in Firestore
-      await updateDoc(doc(db, "users", userId), {
-        subscribed: false,
-        onTrial: false,
-      });
-  
-      showToast({
-        title: "Subscription Cancelled",
-        description: "Your subscription has been successfully cancelled.",
-        variant: "success",
-      });
-  
-      // 4. Refetch data so UI refreshes
+      // Update UI state
       setSubscriptionData((prev) => ({ ...prev, status: "cancelled" }));
       setUserData((prev) => ({
         ...prev,
         subscribed: false,
         onTrial: false,
       }));
+  
+      showToast({
+        title: "Subscription Cancelled",
+        description: "Your subscription has been successfully cancelled.",
+        variant: "success",
+      });
     } catch (error) {
       console.error("Error cancelling subscription:", error);
       showToast({
-        title: "Cancellation Failed", 
-        description: error.message || "Failed to cancel subscription. Please contact support.",
+        title: "Cancellation Failed",
+        description: error.message || "Failed to cancel subscription. Please try again.",
         variant: "destructive",
       });
     }
   };
 
+const [currentPlanType, setCurrentPlanType] = useState('standard');
+
+const handleResubscribe = () => {
+  if (status !== "authenticated") {
+    router.push("/login");
+    return;
+  }
   
+  // Simply open the subscription modal
+  setSubscriptionModalOpen(true);
+};
+
+const handleSubscribe = () => {
+  if (status !== "authenticated") {
+    router.push("/login");
+    return;
+  }
+  
+  // Simply open the subscription modal
+  setSubscriptionModalOpen(true);
+};
+
+const handleSubscriptionSuccess = async (subscriptionData) => {
+  try {
+    // Use the shared function with toast notifications
+    const result = await storeSubscription(
+      session.user.id, 
+      subscriptionData, 
+      userData?.deviceFingerprint || navigator.userAgent,
+      { showToast: true }
+    );
+    
+    // Update local state
+    setSubscriptionData({
+      userId: session.user.id,
+      subscriptionId: subscriptionData.subscriptionId,
+      status: 'trial',
+      plan: 'paypal',
+      price: 1.99,
+      currency: 'GBP',
+      paymentMethod: 'paypal',
+      startDate: new Date().toISOString(),
+      trialEndDate: result.trialEndDate,
+      onTrial: true
+    });
+    
+    if (result.subscriptionDocId) {
+      setSubscriptionDocId(result.subscriptionDocId);
+    }
+    
+    // Update user data in local state
+    setUserData((prev) => ({
+      ...prev,
+      subscribed: true,
+      onTrial: true,
+      subscriptionPlan: "paypal",
+      subscriptionId: subscriptionData.subscriptionId,
+      subscriptionStartDate: new Date().toISOString(),
+      trialEndDate: result.trialEndDate,
+    }));
+    
+    // No navigation here - user stays on the profile page
+  } catch (error) {
+    console.error("Error handling subscription success:", error);
+    // Toast is already shown by the shared function if showToast is true
+  }
+};
+
+  useEffect(() => {
+    // Check URL parameters for subscription status
+    const queryParams = new URLSearchParams(window.location.search);
+    const subscriptionStatus = queryParams.get('subscription');
+    
+    if (subscriptionStatus === 'success') {
+      showToast({
+        title: "Subscription Activated!",
+        description: "Your subscription has been successfully activated.",
+        variant: "success",
+      });
+      
+      // Remove the query parameter
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+      
+      // Refresh the subscription data
+      fetchUserData();
+    }
+  }, []);
 
   if (isLoading) {
     return (
@@ -333,7 +458,6 @@ export default function ProfileSettingsPage() {
           </div>
         </Card>
 
-
         <Tabs defaultValue="general" className="w-full h-full flex flex-col">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="general">General</TabsTrigger>
@@ -354,8 +478,6 @@ export default function ProfileSettingsPage() {
                 <div className="flex flex-col md:flex-row gap-6 mb-6">
                   <div className="flex flex-col items-center space-y-2">
                     <Avatar className="w-24 h-24">
-
-
                       <AvatarImage
                         src={userData?.profilePicture || ""}
                         alt={userData?.firstName}
@@ -365,9 +487,6 @@ export default function ProfileSettingsPage() {
                         {userData?.lastName?.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
-
-
-                    
                   </div>
 
                   <div className="flex-1">
@@ -684,276 +803,299 @@ export default function ProfileSettingsPage() {
           </TabsContent>
 
           <TabsContent value="subscription" className="space-y-4 mt-4">
-  <Card>
-    <CardHeader>
-      <CardTitle>Subscription Management</CardTitle>
-      <CardDescription>
-        Manage your subscription plan and billing information
-      </CardDescription>
-    </CardHeader>
-    <CardContent className="space-y-4">
-      {subscriptionData ? (
-        <>
-          <div className="border rounded-lg p-4 bg-white">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-semibold">Current Plan</h3>
-              <span
-                className={`text-sm rounded-full px-3 py-1 ${
-                  subscriptionData.status === "trial"
-                    ? "bg-yellow-100 text-yellow-800"
-                    : "bg-green-100 text-green-800"
-                }`}
-              >
-                {subscriptionData.status === "trial" ? "Trial" : "Active"}
-              </span>
-            </div>
-            <p className="text-2xl font-bold capitalize">
-              {subscriptionData.plan} Plan
-            </p>
-            <p className="text-muted-foreground">
-              {subscriptionData.currency === "GBP" ? "£" : ""}
-              {subscriptionData.price} per month
-            </p>
-
-            {subscriptionData.status === "trial" && (
-              <div className="mt-4">
-                <div className="flex justify-between mb-2">
-                  <span>Trial Progress</span>
-                  <span>
-                    {Math.ceil(
-                      (new Date(subscriptionData.trialEndDate) - new Date()) /
-                        (1000 * 60 * 60 * 24)
-                    )}{" "}
-                    days left
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2.5">
-                  <div
-                    className="bg-blue-600 h-2.5 rounded-full"
-                    style={{
-                      width: `${
-                        ((new Date() - new Date(subscriptionData.startDate)) /
-                          (new Date(subscriptionData.trialEndDate) -
-                            new Date(subscriptionData.startDate))) *
-                        100
-                      }%`,
-                    }}
-                  ></div>
-                </div>
-              </div>
-            )}
-
-            <p className="text-muted-foreground text-sm mt-4">
-              Subscription started on{" "}
-              {new Date(subscriptionData.startDate).toLocaleDateString(
-                "en-GB"
-              )}
-            </p>
-            <p className="text-muted-foreground text-sm">
-              {subscriptionData.status === "trial"
-                ? `Trial ends on ${new Date(
-                    subscriptionData.trialEndDate
-                  ).toLocaleDateString("en-GB")}`
-                : `Next billing date: ${new Date(
-                    new Date(subscriptionData.startDate).setMonth(
-                      new Date(subscriptionData.startDate).getMonth() + 1
-                    )
-                  ).toLocaleDateString("en-GB")}`}
-            </p>
-          </div>
-
-          <div className="border rounded-lg p-4 bg-white">
-            <h3 className="font-semibold mb-2">Payment Method</h3>
-            <div className="flex items-center gap-2">
-              <div className="bg-gray-100 rounded p-1">
-                {subscriptionData.paymentMethod === "paypal" ? (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="text-blue-600"
-                  >
-                    <path d="M7 11c1.5 0 3.5-1 3.5-4.5S8.33 2 6.5 2H2v12.5h2V9h.5L7 15h2l-3-4Z" />
-                    <path d="M22 8c0 3.5-2 4.5-3.5 4.5h-4c-1.5 0-2.5-1-2.5-2.5s1-2.5 2.5-2.5H19" />
-                    <path d="M22 2v3" />
-                    <path d="M17 15h-5.5c-1.5 0-2.5-1-2.5-2.5 0-1.5 1-2.5 2.5-2.5H17" />
-                    <path d="M22 9v6" />
-                  </svg>
-                ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <rect width="20" height="14" x="2" y="5" rx="2" />
-                    <line x1="2" x2="22" y1="10" y2="10" />
-                  </svg>
-                )}
-              </div>
-              <div>
-                <p className="font-medium capitalize">
-                  {subscriptionData.paymentMethod}
-                </p>
-                {subscriptionData.fingerprint && (
-                  <p className="text-sm text-muted-foreground">
-                    {subscriptionData.paymentMethod === "paypal"
-                      ? `ID: ${subscriptionData.subscriptionId}`
-                      : `Card ending in ${subscriptionData.fingerprint.substring(
-                          subscriptionData.fingerprint.length - 4
-                        )}`}
-                  </p>
-                )}
-              </div>
-            </div>
-            
-          </div>
-        </>
-      ) : (
-        <div className="border rounded-lg p-8 text-center">
-          <h3 className="font-semibold mb-4">No Active Subscription</h3>
-          <p className="text-muted-foreground mb-6">
-            You don't currently have an active subscription.
-          </p>
-          <Button>Subscribe Now</Button>
-        </div>
-      )}
-    </CardContent>
-    {subscriptionData && (
-      <CardFooter className="flex justify-between">
-        <Button variant="destructive" onClick={handleCancelSubscription}>
-          Cancel Subscription
-        </Button>
-      </CardFooter>
-    )}
-  </Card>
-</TabsContent>
-          <TabsContent value="privacy" className="space-y-4 mt-4 flex-1">
-            <Card className="flex flex-col h-full">
+            <Card>
               <CardHeader>
-                <CardTitle>Privacy Settings</CardTitle>
+                <CardTitle>Subscription Management</CardTitle>
                 <CardDescription>
-                  Manage your privacy preferences and data settings
+                  Manage your subscription plan and billing information
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6 flex-1">
-                <Form {...form}>
-                  <form
-                    onSubmit={form.handleSubmit(onSubmit)}
-                    className="space-y-6"
-                  >
-                    <div className="space-y-4">
-                      <Separator />
-
-                      <FormField
-                        control={form.control}
-                        name="notifications"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center justify-between">
-                            <div>
-                              <FormLabel>Email Notifications</FormLabel>
-                              <FormDescription>
-                                Receive email updates about activity
-                              </FormDescription>
-                            </div>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-
-
-                      <Separator />
-
-                      <div>
-                        <h3 className="font-medium mb-2">Data Management</h3>
-                        <div className="space-y-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full justify-start"
-                            onClick={() => {
-                              showToast({
-                                title: "Data Export Requested",
-                                description:
-                                  "Your data export has been queued. You'll receive an email when it's ready.",
-                                variant: "success",
-                              });
-                            }}
-                          >
-                            Request Data Export
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="w-full justify-start text-destructive"
-                              >
-                                Delete Account
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>
-                                  Are you absolutely sure?
-                                </AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action cannot be undone. This will
-                                  permanently delete your account and remove
-                                  your data from our servers.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  className="bg-destructive text-destructive-foreground"
-                                  onClick={() => {
-                                    showToast({
-                                      title: "Account Deletion Initiated",
-                                      description:
-                                        "Your account deletion process has begun. You'll receive a confirmation email.",
-                                      variant: "error",
-                                    });
-                                  }}
-                                >
-                                  Delete Account
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
+              <CardContent className="space-y-4">              
+                {subscriptionData && subscriptionData.status === 'cancelled' ? (
+                  <div className="border rounded-lg p-8 text-center">
+                    <h3 className="font-semibold mb-4">Subscription Cancelled</h3>
+                    <p className="text-muted-foreground mb-6">
+                      Your subscription has been cancelled. Reactivate to continue enjoying our services.
+                    </p>
+                    <Button onClick={() => handleResubscribe()}>Resubscribe Now</Button>
+                  </div>
+                ) : subscriptionData ? (
+                  <>
+                    <div className="border rounded-lg p-4 bg-white">
+                      <div className="flex justify-between items-center mb-2">
+                        <h3 className="font-semibold">Current Plan</h3>
+                        <span
+                          className={`text-sm rounded-full px-3 py-1 ${
+                            subscriptionData.status === "trial"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-green-100 text-green-800"
+                          }`}
+                        >
+                          {subscriptionData.status === "trial"
+                            ? "Trial"
+                            : "Active"}
+                        </span>
                       </div>
+                      <p className="text-2xl font-bold capitalize">
+                        {subscriptionData.plan} Plan
+                      </p>
+                      <p className="text-muted-foreground">
+                        {subscriptionData.currency === "GBP" ? "£" : ""}
+                        {subscriptionData.price} per month
+                      </p>
+
+                      {subscriptionData.status === "trial" && (
+                        <div className="mt-4">
+                          <div className="flex justify-between mb-2">
+                            <span>Trial Progress</span>
+                            <span>
+                              {Math.ceil(
+                                (new Date(subscriptionData.trialEndDate) -
+                                  new Date()) /
+                                  (1000 * 60 * 60 * 24)
+                              )}{" "}
+                              days left
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2.5">
+                            <div
+                              className="bg-blue-600 h-2.5 rounded-full"
+                              style={{
+                                width: `${
+                                  ((new Date() -
+                                    new Date(subscriptionData.startDate)) /
+                                    (new Date(subscriptionData.trialEndDate) -
+                                      new Date(subscriptionData.startDate))) *
+                                  100
+                                }%`,
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      )}
+
+                      <p className="text-muted-foreground text-sm mt-4">
+                        Subscription started on{" "}
+                        {new Date(
+                          subscriptionData.startDate
+                        ).toLocaleDateString("en-GB")}
+                      </p>
+                      <p className="text-muted-foreground text-sm">
+                        {subscriptionData.status === "trial"
+                          ? `Trial ends on ${new Date(
+                              subscriptionData.trialEndDate
+                            ).toLocaleDateString("en-GB")}`
+                          : `Next billing date: ${new Date(
+                              new Date(subscriptionData.startDate).setMonth(
+                                new Date(
+                                  subscriptionData.startDate
+                                ).getMonth() + 1
+                              )
+                            ).toLocaleDateString("en-GB")}`}
+                      </p>
                     </div>
 
-                    <div className="flex justify-end">
-                      <Button type="submit" disabled={isPending}>
-                        {isPending ? "Saving..." : "Save Privacy Settings"}
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
-  );
+                    <div className="border rounded-lg p-4 bg-white">
+                      <h3 className="font-semibold mb-2">Payment Method</h3>
+                      <div className="flex items-center gap-2">
+                        <div className="bg-gray-100 rounded p-1">
+                          {subscriptionData.paymentMethod === "paypal" ? (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="text-blue-600"
+                            >
+                              <path d="M22 8c0 3.5-2 4.5-3.5 4.5h-4c-1.5 0-2.5-1-2.5-2.5s1-2.5 2.5-2.5H19" />
+                             <path d="M22 2v3" />
+                             <path d="M17 15h-5.5c-1.5 0-2.5-1-2.5-2.5 0-1.5 1-2.5 2.5-2.5H17" />
+                             <path d="M22 9v6" />
+                           </svg>
+                         ) : (
+                           <svg
+                             xmlns="http://www.w3.org/2000/svg"
+                             width="24"
+                             height="24"
+                             viewBox="0 0 24 24"
+                             fill="none"
+                             stroke="currentColor"
+                             strokeWidth="2"
+                             strokeLinecap="round"
+                             strokeLinejoin="round"
+                           >
+                             <rect width="20" height="14" x="2" y="5" rx="2" />
+                             <line x1="2" x2="22" y1="10" y2="10" />
+                           </svg>
+                         )}
+                       </div>
+                       <div>
+                         <p className="font-medium capitalize">
+                           {subscriptionData.paymentMethod}
+                         </p>
+                         {subscriptionData.fingerprint && (
+                           <p className="text-sm text-muted-foreground">
+                             {subscriptionData.paymentMethod === "paypal"
+                               ? `ID: ${subscriptionData.subscriptionId}`
+                               : `Card ending in ${subscriptionData.fingerprint.substring(
+                                   subscriptionData.fingerprint.length - 4
+                                 )}`}
+                           </p>
+                         )}
+                       </div>
+                     </div>
+                   </div>
+                 </>
+               ) : (
+                 <div className="border rounded-lg p-8 text-center">
+                   <h3 className="font-semibold mb-4">No Active Subscription</h3>
+                   <p className="text-muted-foreground mb-6">
+                     You don't currently have an active subscription.
+                   </p>
+                   <Button onClick={handleSubscribe}>Subscribe Now</Button>
+                 </div>
+               )}
+             </CardContent>
+             
+             {subscriptionData && subscriptionData.status !== 'cancelled' && (
+               <CardFooter className="flex justify-between">
+                 <Button variant="destructive" onClick={handleCancelSubscription}>
+                   Cancel Subscription
+                 </Button>
+               </CardFooter>
+             )}              
+           </Card>
+         </TabsContent>
+
+         <TabsContent value="privacy" className="space-y-4 mt-4 flex-1">
+           <Card className="flex flex-col h-full">
+             <CardHeader>
+               <CardTitle>Privacy Settings</CardTitle>
+               <CardDescription>
+                 Manage your privacy preferences and data settings
+               </CardDescription>
+             </CardHeader>
+             <CardContent className="space-y-6 flex-1">
+               <Form {...form}>
+                 <form
+                   onSubmit={form.handleSubmit(onSubmit)}
+                   className="space-y-6"
+                 >
+                   <div className="space-y-4">
+                     <Separator />
+
+                     <FormField
+                       control={form.control}
+                       name="notifications"
+                       render={({ field }) => (
+                         <FormItem className="flex items-center justify-between">
+                           <div>
+                             <FormLabel>Email Notifications</FormLabel>
+                             <FormDescription>
+                               Receive email updates about activity
+                             </FormDescription>
+                           </div>
+                           <FormControl>
+                             <Switch
+                               checked={field.value}
+                               onCheckedChange={field.onChange}
+                             />
+                           </FormControl>
+                         </FormItem>
+                       )}
+                     />
+
+                     <Separator />
+
+                     <div>
+                       <h3 className="font-medium mb-2">Data Management</h3>
+                       <div className="space-y-2">
+                         <Button
+                           variant="outline"
+                           size="sm"
+                           className="w-full justify-start"
+                           onClick={() => {
+                             showToast({
+                               title: "Data Export Requested",
+                               description:
+                                 "Your data export has been queued. You'll receive an email when it's ready.",
+                               variant: "success",
+                             });
+                           }}
+                         >
+                           Request Data Export
+                         </Button>
+                         <AlertDialog>
+                           <AlertDialogTrigger asChild>
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               className="w-full justify-start text-destructive"
+                             >
+                               Delete Account
+                             </Button>
+                           </AlertDialogTrigger>
+                           <AlertDialogContent>
+                             <AlertDialogHeader>
+                               <AlertDialogTitle>
+                                 Are you absolutely sure?
+                               </AlertDialogTitle>
+                               <AlertDialogDescription>
+                                 This action cannot be undone. This will
+                                 permanently delete your account and remove
+                                 your data from our servers.
+                               </AlertDialogDescription>
+                             </AlertDialogHeader>
+                             <AlertDialogFooter>
+                               <AlertDialogCancel>Cancel</AlertDialogCancel>
+                               <AlertDialogAction
+                                 className="bg-destructive text-destructive-foreground"
+                                 onClick={() => {
+                                   showToast({
+                                     title: "Account Deletion Initiated",
+                                     description:
+                                       "Your account deletion process has begun. You'll receive a confirmation email.",
+                                     variant: "error",
+                                   });
+                                 }}
+                               >
+                                 Delete Account
+                               </AlertDialogAction>
+                             </AlertDialogFooter>
+                           </AlertDialogContent>
+                         </AlertDialog>
+                       </div>
+                     </div>
+                   </div>
+
+                   <div className="flex justify-end">
+                     <Button type="submit" disabled={isPending}>
+                       {isPending ? "Saving..." : "Save Privacy Settings"}
+                     </Button>
+                   </div>
+                 </form>
+               </Form>
+             </CardContent>
+           </Card>
+         </TabsContent>
+       </Tabs>
+       <SubscriptionModal 
+  isOpen={subscriptionModalOpen}
+  onClose={() => setSubscriptionModalOpen(false)}
+  userId={session?.user?.id}
+  onSuccess={handleSubscriptionSuccess}
+/>
+       {/* Render the ExistingSubscriptionsModal with the needed props */}
+       <ExistingSubscriptionsModal 
+         existingSubscriptions={existingSubscriptions} 
+         onClose={() => setExistingSubscriptions(null)} 
+       />
+     </div>
+   </div>
+ );
 }

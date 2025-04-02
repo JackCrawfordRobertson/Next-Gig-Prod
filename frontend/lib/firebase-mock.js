@@ -5,6 +5,14 @@ import mockUsers from "@/app/mock/users";
 export const getDoc = async (docRef) => {
   const userId = docRef._path.segments[1];
   const userData = mockUsers[userId];
+
+  console.log('Mock getDoc - Query:', {
+    userId,
+    collection: docRef._path.segments[0],
+    userData: userData ? 'Found' : 'Not Found',
+    mockUsers // Log the entire mockUsers object
+  });
+
   return {
     exists: () => !!userData,
     data: () => userData,
@@ -64,6 +72,14 @@ export const query = (collectionRef, ...constraints) => ({
   constraints
 });
 
+export const addDoc = async (collectionRef, data) => {
+  const mockId = `mock-${Math.random().toString(36).substring(2, 15)}`;
+  console.log("Mock addDoc:", collectionRef.name, data, mockId);
+  return {
+    id: mockId,
+    path: `${collectionRef.name}/${mockId}`
+  };
+};
 
 export const getDocs = async (queryObj) => {
   if (queryObj.collection === "subscriptions") {
@@ -73,38 +89,53 @@ export const getDocs = async (queryObj) => {
     const userId = constraint?.value;
     const user = mockUsers[userId];
 
+    console.log('MOCK getDocs - User:', user);
+    console.log('MOCK getDocs - Subscription Query:', {
+      userId,
+      collection: queryObj.collection,
+      constraints: queryObj.constraints,
+      mockUsers // Log the entire mockUsers object
+    });
+
+    // If no user found or user doesn't have a subscription
     if (!user) {
       return { empty: true, docs: [] };
     }
 
-    
+    // Log specific subscription-related fields
+    console.log('Subscription-related fields:', {
+      subscribed: user.subscribed,
+      hadPreviousSubscription: user.hadPreviousSubscription,
+      onTrial: user.onTrial,
+      subscriptionId: user.subscriptionId
+    });
 
+    // Return subscription details directly from user object
     return {
-      empty: false,
-      docs: [
+      empty: !user.subscribed,
+      docs: user.subscribed ? [
         {
           id: user.subscriptionId || "mock-sub-id",
           data: () => ({
             userId,
             plan: user.subscriptionPlan || "mock",
             status: user.onTrial ? "trial" : "active",
-            price: 10,
+            price: 1.99,
             currency: "GBP",
             startDate: user.subscriptionStartDate || new Date().toISOString(),
             trialEndDate: user.trialEndDate || new Date().toISOString(),
-            paymentMethod: "paypal",
+            paymentMethod: user.subscriptionPlan || "paypal",
             fingerprint: "**** **** **** 1234",
             subscriptionId: user.subscriptionId,
+            hadPreviousSubscription: user.hadPreviousSubscription || false,
+            // Explicitly add these fields to ensure they're passed  
+            subscribed: user.subscribed,
+            onTrial: user.onTrial
           })
         }
-      ]
+      ] : []
     };
-
-
-    
   }
-
-  
 
   return { empty: true, docs: [] };
 };

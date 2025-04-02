@@ -1,7 +1,8 @@
+// app/api/cancel-subscription/route.js
 import { NextResponse } from 'next/server';
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // Adjust path as needed
-import { db, doc, updateDoc } from "@/lib/firebase";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { db, doc, updateDoc, collection, query, where, getDocs } from "@/lib/firebase";
 
 const paypal = require("@paypal/checkout-server-sdk");
 
@@ -28,37 +29,85 @@ export async function POST(req) {
 
     // Parse the request body
     const body = await req.json();
-    const { userId, subscriptionId } = body;
+    const { userId, subscriptionId, subscriptionDocId } = body;
 
     // Verify the userId matches the session
     if (userId !== session.user.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    // Cancel the PayPal subscription
-    const request = new paypal.payments.CancelSubscriptionRequest(subscriptionId);
-    const response = await paypalClient.execute(request);
-
-    if (response.statusCode === 204) {
-      // Update the subscription data in Firestore
-      const subscriptionDocRef = doc(db, "subscriptions", userId);
+    try {
+      // Cancel the PayPal subscription
+      const request = new paypal.subscriptions.SubscriptionsCreateRequest(subscriptionId);
+      await paypalClient.execute(request);
+      
+      // Find the subscription document if not provided
+      let docIdToUpdate = subscriptionDocId;
+      
+      if (!docIdToUpdate) {
+        const subscriptionsRef = collection(db, "subscriptions");
+        const q = query(
+          subscriptionsRef,
+          where("subscriptionId", "==", subscriptionId),
+          where("userId", "==", userId)
+        );
+        
+        const querySnapshot = await getDocs(q);
+        
+        if (querySnapshot.empty) {
+          return NextResponse.json({ error: "Subscription not found" }, { status: 404 });
+        }
+        
+        docIdToUpdate = querySnapshot.docs[0].id;
+      }
+      
+      // Update subscription status
+      const subscriptionDocRef = doc(db, "subscriptions", docIdToUpdate);
       await updateDoc(subscriptionDocRef, {
         status: "cancelled",
+        cancelledAt: new Date().toISOString()
       });
-
-      // Update the user data in Firestore
+      
+      // Update user data
       const userDocRef = doc(db, "users", userId);
       await updateDoc(userDocRef, {
         subscribed: false,
-        onTrial: false,
+        onTrial: false
       });
-
-      return NextResponse.json({ message: "Subscription cancelled" }, { status: 200 });
-    } else {
-      return NextResponse.json({ error: "Failed to cancel subscription" }, { status: 500 });
+      
+      return NextResponse.json({
+        success: true,
+        message: "Subscription cancelled successfully"
+      });
+    } catch (error) {
+      console.error("Error cancelling PayPal subscription:", error);
+      
+      // If PayPal API fails, still update our records
+      if (subscriptionDocId) {
+        const subscriptionDocRef = doc(db, "subscriptions", subscriptionDocId);
+        await updateDoc(subscriptionDocRef, {
+          status: "cancelled",
+          cancelledAt: new Date().toISOString(),
+          cancellationNote: "Marked as cancelled but PayPal API failed"
+        });
+        
+        const userDocRef = doc(db, "users", userId);
+        await updateDoc(userDocRef, {
+          subscribed: false,
+          onTrial: false
+        });
+        
+        return NextResponse.json({
+          success: true,
+          warning: "Subscription marked as cancelled, but PayPal API failed",
+          message: "Your subscription has been cancelled in our records"
+        });
+      }
+      
+      throw error;
     }
   } catch (error) {
-    console.error("Error cancelling subscription:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("Error in cancel subscription API:", error);
+    return NextResponse.json({ error: "Failed to cancel subscription" }, { status: 500 });
   }
 }

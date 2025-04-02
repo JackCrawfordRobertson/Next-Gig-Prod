@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { checkSubscriptionStatus, showSubscriptionToast } from "@/lib/checkSubscriptionStatus";
+import { storeSubscription } from "@/lib/checkSubscriptionStatus";
+
 import Image from "next/image";
 import { doc, updateDoc, collection, addDoc, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -85,43 +88,18 @@ function SubscriptionComponent() {
 
     const handleSubscriptionSuccess = async (subscriptionData) => {
         try {
-            console.log("Subscription successful:", subscriptionData);
-            
-            // Calculate trial end date (7 days from now)
-            const trialEndDate = new Date();
-            trialEndDate.setDate(trialEndDate.getDate() + 7);
-            
-            // Update user document with subscription info
-            await updateDoc(doc(db, "users", session.user.id), {
-                subscribed: true,
-                onTrial: true,
-                subscriptionPlan: "paypal",
-                subscriptionId: subscriptionData.subscriptionId,
-                subscriptionStartDate: new Date().toISOString(),
-                trialEndDate: trialEndDate.toISOString(),
-            });
-            
-            // Create a subscription record for tracking and fraud prevention
-            await addDoc(collection(db, "subscriptions"), {
-                userId: session.user.id,
-                subscriptionId: subscriptionData.subscriptionId,
-                plan: "paypal",
-                status: "trial",
-                startDate: new Date().toISOString(),
-                trialEndDate: trialEndDate.toISOString(),
-                fingerprint: fingerprint,
-                paymentMethod: "paypal",
-                price: 1.99,
-                currency: "GBP",
-                createdAt: new Date().toISOString(),
-            });
-
-            router.push("/dashboard");
+          console.log("Subscription successful:", subscriptionData);
+          
+          // Use the shared function to store subscription data
+          await storeSubscription(session.user.id, subscriptionData, fingerprint);
+          
+          // Redirect to dashboard after successful subscription
+          router.push("/dashboard");
         } catch (err) {
-            console.error("Error updating subscription:", err);
-            setErrorMessage("Subscription update failed. Please try again or contact support.");
+          console.error("Error updating subscription:", err);
+          setErrorMessage("Subscription update failed. Please try again or contact support.");
         }
-    };
+      };
 
     return (
         <div className="min-h-screen w-full bg-transparent flex flex-col items-center justify-center py-6 px-4">

@@ -9,6 +9,7 @@ import {
   where as firestoreWhere,
   query as firestoreQuery,
   setDoc as firestoreSetDoc,
+  addDoc as firestoreAddDoc,
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import {
@@ -58,6 +59,7 @@ export const getDocs = isDevelopment ? mockFirebase.getDocs : firestoreGetDocs;
 export const collection = isDevelopment ? mockFirebase.collection : firestoreCollection;
 export const where = isDevelopment ? mockFirebase.where : firestoreWhere;
 export const query = isDevelopment ? mockFirebase.query : firestoreQuery;
+export const addDoc = isDevelopment ? mockFirebase.addDoc : firestoreAddDoc;
 
 // Storage
 export const storage = isDevelopment

@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { showToast } from "@/lib/toast";
+import { SubscriptionChecker } from "./SubscriptionToast";
 
 export default function PrivateRoute({ children }) {
   const { data: session, status } = useSession();
@@ -30,7 +31,12 @@ export default function PrivateRoute({ children }) {
   }
 
   if (status === "authenticated") {
-    return children;
+    return (
+      <>
+        <SubscriptionChecker />
+        {children}
+      </>
+    );
   }
 
   return null;
