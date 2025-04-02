@@ -7,7 +7,6 @@ import { useSession } from "next-auth/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { format } from "date-fns";
 import {
   db,
   doc,
@@ -16,10 +15,8 @@ import {
   collection,
   query,
   where,
-  getDocs, // CHANGED: for querying subscription doc by userId
-} from "@/lib/firebase";import { initializeApp } from "firebase/app";
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+  getDocs,
+} from "@/lib/firebase";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,7 +50,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { showToast } from "@/lib/toast";
@@ -85,7 +81,6 @@ const profileFormSchema = z.object({
 
 export default function ProfileSettingsPage() {
   const router = useRouter();
-  const { toast } = useToast(); // Use the toast hook instead of importing directly
   const [isPending, setIsPending] = useState(false);
   const [userData, setUserData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -135,13 +130,16 @@ export default function ProfileSettingsPage() {
         setIsLoading(false);
       } catch (error) {
         console.error("Error fetching user data:", error);
-        toast.error("Failed to load profile data. Please try again.");
-        setIsLoading(false);
+        showToast({
+          title: "Error",
+          description: "Failed to load profile data. Please try again.",
+          variant: "destructive"
+        });        setIsLoading(false);
       }
     };
 
     fetchUserData();
-  }, [status, session, router, toast]);
+  }, [status, session, router]);
 
   const form = useForm({
     resolver: zodResolver(profileFormSchema),
@@ -191,19 +189,19 @@ export default function ProfileSettingsPage() {
         router.push("/login");
         return;
       }
-
+  
       const userId = session.user.id;
       const userDocRef = doc(db, "users", userId);
-
+  
       let profilePictureUrl = userData?.profilePicture || "";
-
+  
       if (selectedProfilePicture) {
         const storage = getStorage();
         const storageRef = ref(storage, `users/${userId}/profilePicture`);
         await uploadBytes(storageRef, selectedProfilePicture);
         profilePictureUrl = await getDownloadURL(storageRef);
       }
-
+  
       await updateDoc(userDocRef, {
         firstName: data.firstName,
         lastName: data.lastName,
@@ -222,13 +220,20 @@ export default function ProfileSettingsPage() {
         profilePicture: profilePictureUrl,
         updatedAt: new Date().toISOString(),
       });
-
+  
       showToast({
-        title: "Changes saved",
-        description: "Your profile has been updated successfully.",
+        title: "Profile Updated Successfully",
+        description: "Your profile information has been saved.",
         variant: "success",
       });
       
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      showToast({
+        title: "Update Failed",
+        description: "There was an error saving your profile. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsPending(false);
     }
@@ -240,39 +245,45 @@ export default function ProfileSettingsPage() {
         router.push("/login");
         return;
       }
-
+  
       // CHANGED: We must have a valid subscriptionDocId to update
       if (!subscriptionDocId) {
-        toast.error("No subscription doc found for this user.");
+        showToast({
+          title: "Cancellation Error",
+          description: "No subscription found for this user.",
+          variant: "destructive"
+        });
         return;
       }
-
+  
       // 1. Cancel subscription on your backend
       const userId = session.user.id;
-      await fetch(`/api/cancel-subscription?userId=${userId}`, {
+      const response = await fetch(`/api/cancel-subscription?userId=${userId}`, {
         method: "POST",
       });
-
+  
+      if (!response.ok) {
+        throw new Error('Subscription cancellation failed');
+      }
+  
       // 2. Update the subscription doc's status in Firestore
       await updateDoc(doc(db, "subscriptions", subscriptionDocId), {
         status: "cancelled",
       });
-
+  
       // 3. Update user doc in Firestore
       await updateDoc(doc(db, "users", userId), {
         subscribed: false,
         onTrial: false,
       });
-
+  
       showToast({
         title: "Subscription Cancelled",
         description: "Your subscription has been successfully cancelled.",
         variant: "success",
       });
-      
-
+  
       // 4. Refetch data so UI refreshes
-      //    (or manually set your states if you prefer)
       setSubscriptionData((prev) => ({ ...prev, status: "cancelled" }));
       setUserData((prev) => ({
         ...prev,
@@ -281,28 +292,9 @@ export default function ProfileSettingsPage() {
       }));
     } catch (error) {
       console.error("Error cancelling subscription:", error);
-      toast.error("Failed to cancel subscription. Please try again.");
-    }
-  };
-
-  const handleProfilePictureChange = (event) => {
-    const file = event.target.files[0];
-    if (file && file.size <= 1024 * 1024) {
-      setSelectedProfilePicture(file);
-  
-      // Show preview before upload
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setUserData((prev) => ({
-          ...prev,
-          profilePicture: e.target.result,
-        }));
-      };
-      reader.readAsDataURL(file);
-    } else {
-      toast({
-        title: "Error",
-        description: "Please select an image file less than 1 MB.",
+      showToast({
+        title: "Cancellation Failed", 
+        description: "Failed to cancel subscription. Please contact support.",
         variant: "destructive",
       });
     }
@@ -333,6 +325,7 @@ export default function ProfileSettingsPage() {
           </div>
         </Card>
 
+
         <Tabs defaultValue="general" className="w-full h-full flex flex-col">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="general">General</TabsTrigger>
@@ -353,6 +346,8 @@ export default function ProfileSettingsPage() {
                 <div className="flex flex-col md:flex-row gap-6 mb-6">
                   <div className="flex flex-col items-center space-y-2">
                     <Avatar className="w-24 h-24">
+
+
                       <AvatarImage
                         src={userData?.profilePicture || ""}
                         alt={userData?.firstName}
@@ -362,21 +357,9 @@ export default function ProfileSettingsPage() {
                         {userData?.lastName?.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
-                    {/* <label htmlFor="profilePicture" className="cursor-pointer">
-                      <span className="sr-only">Change profile picture</span>
-                      <input
-  id="profilePicture"
-  name="profilePicture"
-  type="file"
-  accept="image/*"
-  className="hidden"
-  onClick={(e) => (e.target.value = null)} 
-  onChange={handleProfilePictureChange}
-/>
-                      <Button variant="outline" size="sm" as="span">
-                        Change Picture
-                      </Button>
-                    </label> */}
+
+
+                    
                   </div>
 
                   <div className="flex-1">
@@ -956,7 +939,6 @@ export default function ProfileSettingsPage() {
                         {isPending ? "Saving..." : "Save Privacy Settings"}
                       </Button>
                     </div>
-                    <ToastContainer />
                   </form>
                 </Form>
               </CardContent>

@@ -4,7 +4,7 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { toast } from "react-toastify";
+import { showToast } from "@/lib/toast";
 
 export default function PrivateRoute({ children }) {
   const { data: session, status } = useSession();
@@ -12,7 +12,11 @@ export default function PrivateRoute({ children }) {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      toast.error("Please log in to access this page");
+      showToast({
+        title: "Authentication Required",
+        description: "Please log in to access this page",
+        variant: "destructive"
+      });
       router.replace("/login");
     }
   }, [status, router]);

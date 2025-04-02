@@ -1,19 +1,19 @@
 // lib/toast.js
-import toast from "react-hot-toast";
+import { toast } from "@/hooks/use-toast";
 
-export const showToast = ({ title, description, variant }) => {
-  const content = (
-    <div>
-      <p className="font-medium">{title}</p>
-      {description && <p className="text-sm text-muted-foreground">{description}</p>}
-    </div>
-  );
+export const showToast = ({ title, description, variant = "default" }) => {
+  // Map variants for backward compatibility
+  const mappedVariant = 
+    variant === "error" ? "destructive" :
+    variant === "success" ? "success" :
+    variant === "warning" ? "warning" :
+    variant === "info" ? "info" :
+    "default";
 
-  if (variant === "destructive" || variant === "error") {
-    return toast.error(content);
-  } else if (variant === "success") {
-    return toast.success(content);
-  } else {
-    return toast(content);
-  }
+  return toast({
+    title,
+    description,
+    variant: mappedVariant,
+    duration: 5000,
+  });
 };

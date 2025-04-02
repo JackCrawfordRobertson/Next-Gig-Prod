@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { toast } from 'react-toastify';
+import { showToast } from "@/lib/toast";
 import {
   Sidebar,
   SidebarProvider,
@@ -14,7 +14,6 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/providers/ThemeProvider";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import {
   ChevronDown,
   ChevronRight,
@@ -49,23 +48,26 @@ export default function SidebarLayout({ children }) {
 
   const handleSignOut = async () => {
     try {
-      // Sign out from NextAuth
       await signOut({ 
-        redirect: false  // Prevent automatic redirect
+        redirect: false 
       });
 
-      // Clear any local storage or additional cleanup if needed
       localStorage.clear();
 
-      // Show success toast
-      toast.success("Successfully signed out");
-
-      // Manually redirect to login page
+   
+      showToast({
+        title: "Success",
+        description: "Successfully signed out",
+        variant: "success"
+      });
       router.push("/login");
     } catch (error) {
       console.error("Sign out error:", error);
-      toast.error("Failed to sign out. Please try again.");
-    }
+      showToast({
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive"
+      });    }
   };
 
   // Desktop Sidebar Component
