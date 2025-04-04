@@ -1,4 +1,4 @@
-import { doc, updateDoc } from "@/lib/firebase";
+import { doc, updateDoc, db } from "@/lib/firebase";
 
 export async function updateJobAppliedStatus({ email, jobId, applied, userId }) {
   try {
