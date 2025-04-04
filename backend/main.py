@@ -1,9 +1,14 @@
+# main.py
+
 import time
 import json
-from config import db
-from fetch.run_scrapers import run_scrapers 
-from store.store_jobs import store_jobs 
 import uuid
+import hashlib
+from datetime import datetime
+
+from config import db
+from fetch.run_scrapers import run_scrapers
+from store.store_jobs import store_jobs, generate_job_id
 
 def create_test_user():
     """
@@ -13,7 +18,8 @@ def create_test_user():
         "email": "test_user@nexgig.com",
         "jobTitles": ["Frontend Engineer", "UX Designer"],
         "jobLocations": ["London", "Remote"],
-        "subscribed": True
+        "subscribed": True,
+        "created_at": datetime.now()
     }
     
     # Check if test user already exists
@@ -31,14 +37,15 @@ def create_test_user():
 
 def get_subscribed_users():
     """Fetch all users who are actively subscribed."""
-    users_ref = db.collection("users").stream()
+    users_ref = db.collection("users").where("subscribed", "==", True).stream()
     return [
         {
             "id": user.id,
             "jobTitles": user.to_dict().get("jobTitles", []),
             "jobLocations": user.to_dict().get("jobLocations", []),
+            "email": user.to_dict().get("email", "")
         }
-        for user in users_ref if user.to_dict().get("subscribed") 
+        for user in users_ref
     ]
 
 def get_unique_job_titles(test_mode=False):
@@ -72,7 +79,7 @@ def get_unique_job_locations(test_mode=False):
     return list(locations)
 
 def job_cycle(test_mode=False):
-    """Fetch new jobs for all subscribed users and store them with unique IDs."""
+    """Fetch new jobs for all subscribed users and store them in a scalable structure."""
     job_titles = get_unique_job_titles(test_mode)
     job_locations = get_unique_job_locations(test_mode)
 
@@ -104,22 +111,13 @@ def job_cycle(test_mode=False):
                    any(loc.lower() in job['location'].lower() for loc in user['jobLocations'])
             ]
 
-            # 🔐 Inject unique IDs into each job
-            user_jobs[source] = [
-                {
-                    **job,
-                    "id": str(uuid.uuid4())
-                } for job in matched_jobs
-            ]
+            # Add source information to each job
+            user_jobs[source] = matched_jobs
+        
+        # Use the improved store_jobs function that uses collections for scalability
+        new_count, dup_count = store_jobs(user_id, user_jobs)
 
-        store_jobs(user_id, user_jobs)
-
-        total_jobs = sum(len(v) for v in user_jobs.values())
-        print(f"💾 Stored {total_jobs} jobs for {user_id}")
-
-        if total_jobs > 0:
-            for source, source_jobs in user_jobs.items():
-                print(f"  {source} jobs: {len(source_jobs)}")
+        print(f"💾 Updated jobs for {user_id}: {new_count} new, {dup_count} duplicates skipped")
 
 def quick_test():
     """
@@ -141,6 +139,13 @@ def cleanup_test_user():
     test_users = db.collection("users").where("email", "==", "test_user@nexgig.com").stream()
     for user in test_users:
         print(f"🗑️ Deleting test user: {user.id}")
+        
+        # Also delete all jobs in the user's subcollection
+        user_jobs = db.collection("users").document(user.id).collection("jobs").stream()
+        for job in user_jobs:
+            job.reference.delete()
+            
+        # Delete the user document
         db.collection("users").document(user.id).delete()
 
 if __name__ == "__main__":
