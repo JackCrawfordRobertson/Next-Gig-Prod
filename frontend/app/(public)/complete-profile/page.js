@@ -127,7 +127,7 @@ export default function CompleteProfile() {
     setAddress((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Add a job title if spelled correctly
+  // Add job title if spelled correctly and under the limit
   const addJobTitle = (title) => {
     const trimmed = title.trim();
     if (!trimmed) return;
@@ -137,8 +137,20 @@ export default function CompleteProfile() {
       return;
     }
 
-    if (!jobTitles.includes(trimmed)) {
-      setJobTitles((prev) => [...prev, trimmed]);
+    // Maximum of 3 job titles
+    if (jobTitles.length >= 3) {
+      alert("You can add a maximum of 3 job titles.");
+      return;
+    }
+
+    // Convert to title case (capitalise first letter of each word)
+    const titleCased = trimmed
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
+
+    if (!jobTitles.includes(titleCased)) {
+      setJobTitles((prev) => [...prev, titleCased]);
     }
     setJobSearch("");
   };
@@ -253,7 +265,7 @@ export default function CompleteProfile() {
         jobTitles,
         jobLocations,
         subscribed: false,
-        userIP, 
+        userIP,
         deviceFingerprint,
         hadPreviousSubscription: true,
       });
@@ -411,6 +423,9 @@ export default function CompleteProfile() {
                 </div>
               ))}
             </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {jobTitles.length}/3 job titles added
+            </p>
           </div>
 
           {/* Job Locations */}

@@ -464,7 +464,7 @@ export default function DashboardPage() {
       ) : (
         <div className="flex flex-col h-full space-y-3 sm:space-y-4">
           {/* Stats Row - Scrollable on mobile, grid on desktop */}
-          <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <MiniStat title="LinkedIn" count={jobCounts.linkedin} />
             {/* <MiniStat title="Workable" count={jobCounts.workable} /> */}
             <MiniStat title="If You Could" count={jobCounts.ifyoucould} />
