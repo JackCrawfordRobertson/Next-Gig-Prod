@@ -306,13 +306,27 @@ export default function DashboardPage() {
   const recentJobs = getRecentJobs();
   const filteredJobs = getFilteredJobs();
 
-  // Count jobs by source
-  const jobCounts = {
-    linkedin: jobs.filter((job) => job.source === "LinkedIn").length,
-    workable: jobs.filter((job) => job.source === "Workable").length,
-    ifyoucould: jobs.filter((job) => job.source === "If You Could").length,
-    unjobs: jobs.filter((job) => job.source === "UN Jobs").length,
-  };
+
+const jobCounts = {
+  linkedin: jobs.filter((job) => 
+    job.source?.toLowerCase().includes("linkedin")).length,
+  workable: jobs.filter((job) => 
+    job.source?.toLowerCase().includes("workable")).length,
+  ifyoucould: jobs.filter((job) => 
+    job.source?.toLowerCase().includes("if you could") || 
+    job.source?.toLowerCase().includes("ifyoucould")).length,
+  unjobs: jobs.filter((job) => 
+    job.source?.toLowerCase().includes("un jobs") || 
+    job.source?.toLowerCase().includes("unjobs")).length,
+};
+
+console.log("Job source distribution:", 
+  jobs.reduce((acc, job) => {
+    const source = job.source || 'undefined';
+    acc[source] = (acc[source] || 0) + 1;
+    return acc;
+  }, {})
+);
 
   return (
     <div className="h-screen w-full flex flex-col bg-transparent p-2 sm:p-4 overflow-auto md:overflow-hidden">
