@@ -112,63 +112,21 @@ export default function LinkedInPage() {
           jobsData = userData.linkedin || [];
           console.log('Fetched jobs from mock API:', jobsData.length);
         } else {
-          // In production, use Firestore directly
-          console.log("Fetching jobs from Firestore");
+          // In production, use the new utility functions
           const userEmail = session?.user?.email;
-
+    
           if (userEmail) {
-            console.log(`Fetching user data for: ${userEmail}`);
+            const { getUserByEmail, getUserJobs } = await import("@/lib/jobDataUtils");
+            const user = await getUserByEmail(userEmail);
             
-            try {
-              console.log("Fetching users collection");
-              const usersSnapshot = await getDocs(collection(db, "users"));
-              console.log(`Found ${usersSnapshot.docs.length} user documents`);
-              
-              const userDoc = usersSnapshot.docs.find(doc => doc.data().email === userEmail);
-              
-              if (!userDoc) {
-                console.log("No user document found with this email");
-                jobsData = [];
-              } else {
-                const userData = userDoc.data();
-                console.log("User data found:", userData);
-                
-                // Check if jobs exist in the user document
-                if (userData.jobs?.linkedin) {
-                  console.log("LinkedIn jobs found in user document");
-                  jobsData = userData.jobs.linkedin.map(job => ({
-                    ...job,
-                    id: `linkedin-${job.id || Math.random().toString(36).substring(2, 9)}`,
-                    source: "linkedin",
-                  }));
-                } else {
-                  console.log("No LinkedIn jobs found in user document");
-                  jobsData = [];
-                }
-              }
-            } catch (error) {
-              console.error("Error querying users:", error);
-              
-              // Fall back to the original approach
-              console.log("Falling back to original collection approach");
-              const querySnapshot = await getDocs(collection(db, "linkedin"));
-              jobsData = querySnapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
-                has_applied: doc.data().has_applied ?? false,
-              }));
+            if (user) {
+              // Get only LinkedIn jobs
+              jobsData = await getUserJobs(user.id, { source: "linkedin" });
+              console.log(`Found ${jobsData.length} LinkedIn jobs`);
             }
-          } else {
-            // Fallback if no user email
-            const querySnapshot = await getDocs(collection(db, "linkedin"));
-            jobsData = querySnapshot.docs.map((doc) => ({
-              id: doc.id,
-              ...doc.data(),
-              has_applied: doc.data().has_applied ?? false,
-            }));
           }
         }
-
+    
         setJobs(jobsData);
 
         // Process job statistics

@@ -191,154 +191,26 @@ export default function DashboardPage() {
 
           setJobs(allJobs);
         } else {
-          // In production, use Firestore directly
-          console.log("Fetching jobs from Firestore");
+          // In production, use the new utility functions
+          console.log("Fetching jobs with new collection structure");
           const userEmail = session?.user?.email;
-
+  
           if (userEmail) {
-            console.log(`Fetching user data for: ${userEmail}`);
-
-            // Get the user document using their email - simpler approach without query
-            try {
-              console.log("Fetching users collection");
-              const usersSnapshot = await getDocs(collection(db, "users"));
-              console.log(`Found ${usersSnapshot.docs.length} user documents`);
-
-              const userDoc = usersSnapshot.docs.find(
-                (doc) => doc.data().email === userEmail
-              );
-
-              if (!userDoc) {
-                console.log("No user document found with this email");
-                setJobs([]);
-              } else {
-                const userData = userDoc.data();
-                console.log("User data found:", userData);
-
-                // Check if jobs exist in the user document
-                if (userData.jobs) {
-                  console.log("Jobs found in user document:", userData.jobs);
-
-                  // Extract and flatten job data
-                  const allJobs = [
-                    ...(userData.jobs.linkedin || []).map((job) => ({
-                      ...job,
-                      source: "LinkedIn",
-                      id: `linkedin-${
-                        job.id || Math.random().toString(36).substring(2, 9)
-                      }`,
-                    })),
-                    ...(userData.jobs.ifyoucould || []).map((job) => ({
-                      ...job,
-                      source: "If You Could",
-                      id: `ifyoucould-${
-                        job.id || Math.random().toString(36).substring(2, 9)
-                      }`,
-                    })),
-                    ...(userData.jobs.unjobs || []).map((job) => ({
-                      ...job,
-                      source: "UN Jobs",
-                      id: `unjobs-${
-                        job.id || Math.random().toString(36).substring(2, 9)
-                      }`,
-                    })),
-                    ...(userData.jobs.workable || []).map((job) => ({
-                      ...job,
-                      source: "Workable",
-                      id: `workable-${
-                        job.id || Math.random().toString(36).substring(2, 9)
-                      }`,
-                    })),
-                  ];
-
-                  console.log(
-                    `Total jobs extracted from user document: ${allJobs.length}`
-                  );
-                  setJobs(allJobs);
-                } else {
-                  console.log("No jobs field found in user document");
-                  setJobs([]);
-                }
-              }
-            } catch (error) {
-              console.error("Error querying users:", error);
-
-              // Fall back to the original approach
-              console.log("Falling back to original collection approach");
-              const jobSources = [
-                "linkedin",
-                "ifyoucould",
-                "unjobs",
-                "workable",
-              ];
-              let allJobs = [];
-
-              for (const source of jobSources) {
-                console.log(`Fetching ${source} jobs from Firestore`);
-                const querySnapshot = await getDocs(collection(db, source));
-                console.log(
-                  `${source} query snapshot:`,
-                  querySnapshot.docs.length,
-                  "documents found"
-                );
-
-                const sourceJobs = querySnapshot.docs.map((doc) => ({
-                  ...doc.data(),
-                  id: `${source}-${doc.id}`,
-                  source: source.charAt(0).toUpperCase() + source.slice(1),
-                }));
-                allJobs = [...allJobs, ...sourceJobs];
-              }
-
-              console.log(
-                `Total jobs fetched from Firestore: ${allJobs.length}`
-              );
-              setJobs(allJobs);
+            const { getUserByEmail, getUserJobs } = await import("@/lib/jobDataUtils");
+            const user = await getUserByEmail(userEmail);
+            
+            if (!user) {
+              console.log("No user document found with this email");
+              setJobs([]);
+              setLoading(false);
+              return;
             }
-          } else {
-            // Original code as fallback if no user email
-            const jobSources = ["linkedin", "ifyoucould", "unjobs", "workable"];
-            let allJobs = [];
-
-            for (const source of jobSources) {
-              console.log(`Fetching ${source} jobs from Firestore`);
-              const querySnapshot = await getDocs(collection(db, source));
-              console.log(
-                `${source} query snapshot:`,
-                querySnapshot.docs.length,
-                "documents found"
-              );
-
-              // Log each document's data for debugging
-              querySnapshot.docs.forEach((docSnap, index) => {
-                const data = docSnap.data();
-                console.log(`${source} job ${index + 1}:`, {
-                  id: docSnap.id,
-                  title: data.title,
-                  company: data.company,
-                  email: data.email,
-                  firstName: data.firstName,
-                  jobTitles: data.jobTitles,
-                  jobLocations: data.jobLocations,
-                  address: data.address
-                    ? {
-                        city: data.address.city,
-                        firstLine: data.address.firstLine,
-                        postcode: data.address.postcode,
-                      }
-                    : "No address data",
-                });
-              });
-
-              const sourceJobs = querySnapshot.docs.map((doc) => ({
-                ...doc.data(),
-                id: `${source}-${doc.id}`,
-                source: source.charAt(0).toUpperCase() + source.slice(1),
-              }));
-              allJobs = [...allJobs, ...sourceJobs];
-            }
-
-            console.log(`Total jobs fetched from Firestore: ${allJobs.length}`);
+            
+            setUserData(user);
+            
+            // Fetch all jobs for this user
+            const allJobs = await getUserJobs(user.id);
+            console.log(`Total jobs fetched: ${allJobs.length}`);
             setJobs(allJobs);
           }
         }
@@ -348,7 +220,7 @@ export default function DashboardPage() {
         setLoading(false);
       }
     }
-
+  
     fetchUserData();
   }, [status, isDev, session]);
 
@@ -402,9 +274,9 @@ export default function DashboardPage() {
       console.log("No selected job to mark as applied");
       return;
     }
-
+  
     console.log("Marking job as applied:", selectedJob.title, applied);
-
+  
     try {
       // Update the local state
       const updatedJobs = jobs.map((job) =>
@@ -412,26 +284,22 @@ export default function DashboardPage() {
       );
       setJobs(updatedJobs);
       console.log("Updated local state");
-
+  
       // Update Firestore if in production
       if (!isDev && selectedJob.id) {
-        // Extract collection name and document ID from the combined ID
-        const [collectionName, docId] = selectedJob.id.split("-");
-        console.log("Updating Firestore document:", collectionName, docId);
-
-        await updateDoc(doc(db, collectionName, docId), {
-          has_applied: applied,
+        const { updateJobAppliedStatus } = await import("@/lib/updateJobApplied");
+        await updateJobAppliedStatus({
+          email: session.user.email,
+          jobId: selectedJob.id,
+          applied
         });
         console.log("Firestore updated successfully");
-      } else {
-        console.log("Not updating Firestore (dev mode or no job ID)");
       }
     } catch (error) {
       console.error("Error updating application status:", error);
     } finally {
       setShowApplyDialog(false);
       setSelectedJob(null);
-      console.log("Dialog closed and selected job cleared");
     }
   };
 

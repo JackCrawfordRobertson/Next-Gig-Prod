@@ -11,8 +11,29 @@ export async function GET(req) {
     const userId = mockSession.user.id;
     const userData = mockUsers[userId];
     
+    // Transform the data to match new structure
+    const mockUserJobs = [];
+    
+    if (userData.jobs) {
+      // For each job source (linkedin, ifyoucould, etc.)
+      Object.entries(userData.jobs).forEach(([source, jobsList]) => {
+        // For each job in the source
+        jobsList.forEach(job => {
+          mockUserJobs.push({
+            ...job,
+            source,
+            id: job.id || `${source}-${Math.random().toString(36).substring(2, 9)}`,
+          });
+        });
+      });
+    }
+    
+    // Instead of returning the userData directly, attach the transformed jobs
     return new Response(
-      JSON.stringify(userData || {}), 
+      JSON.stringify({
+        ...userData,
+        jobsCollection: mockUserJobs
+      }), 
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   }

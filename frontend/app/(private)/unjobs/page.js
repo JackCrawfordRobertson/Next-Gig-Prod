@@ -116,64 +116,21 @@ export default function UNJobsPage() {
           jobsData = userData.unjobs || [];
           console.log('Fetched jobs from mock API:', jobsData.length);
         } else {
-          // In production, use Firestore directly
-          console.log("Fetching jobs from Firestore");
+          // In production, use the new utility functions
           const userEmail = session?.user?.email;
-
+    
           if (userEmail) {
-            console.log(`Fetching user data for: ${userEmail}`);
+            const { getUserByEmail, getUserJobs } = await import("@/lib/jobDataUtils");
+            const user = await getUserByEmail(userEmail);
             
-            try {
-              console.log("Fetching users collection");
-              const usersSnapshot = await getDocs(collection(db, "users"));
-              console.log(`Found ${usersSnapshot.docs.length} user documents`);
-              
-              const userDoc = usersSnapshot.docs.find(doc => doc.data().email === userEmail);
-              
-              if (!userDoc) {
-                console.log("No user document found with this email");
-                jobsData = [];
-              } else {
-                const userData = userDoc.data();
-                console.log("User data found:", userData);
-                
-                // Check if jobs exist in the user document
-                if (userData.jobs?.unjobs) {
-                  console.log("UN jobs found in user document");
-
-                  jobsData = userData.jobs.unjobs.map((job) => ({
-                    ...job,
-                    id: `unjobs-${job.id || Math.random().toString(36).substring(2, 9)}`,
-                    source: "unjobs",
-                  }));
-                } else {
-                  console.log("No UN jobs found in user document");
-                  jobsData = [];
-                }
-              }
-            } catch (error) {
-              console.error("Error querying users:", error);
-              
-              // Fall back to the original approach
-              console.log("Falling back to original collection approach");
-              const querySnapshot = await getDocs(collection(db, "jobs_unjobs"));
-              jobsData = querySnapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
-                has_applied: doc.data().has_applied ?? false,
-              }));
+            if (user) {
+              // Get only LinkedIn jobs
+              jobsData = await getUserJobs(user.id, { source: "linkedin" });
+              console.log(`Found ${jobsData.length} LinkedIn jobs`);
             }
-          } else {
-            // Fallback if no user email
-            const querySnapshot = await getDocs(collection(db, "jobs_unjobs"));
-            jobsData = querySnapshot.docs.map((doc) => ({
-              id: doc.id,
-              ...doc.data(),
-              has_applied: doc.data().has_applied ?? false,
-            }));
           }
         }
-
+    
         setJobs(jobsData);
 
         // Aggregate jobs by weekday
@@ -232,25 +189,30 @@ export default function UNJobsPage() {
   };
 
   const handleMarkApplied = async (applied) => {
-    if (!selectedJob || !session?.user?.email) return;
+    if (!selectedJob) {
+      console.log("No selected job to mark as applied");
+      return;
+    }
   
     console.log("Marking job as applied:", selectedJob.title, applied);
   
     try {
-      // 1. Update local state
+      // Update the local state
       const updatedJobs = jobs.map((job) =>
         job.id === selectedJob.id ? { ...job, has_applied: applied } : job
       );
       setJobs(updatedJobs);
+      console.log("Updated local state");
   
-      // 2. Firestore update
-      if (!isDev && selectedJob?.source) {
+      // Update Firestore if in production
+      if (!isDev && selectedJob.id) {
+        const { updateJobAppliedStatus } = await import("@/lib/updateJobApplied");
         await updateJobAppliedStatus({
           email: session.user.email,
           jobId: selectedJob.id,
-          applied,
-          source: selectedJob.source,
+          applied
         });
+        console.log("Firestore updated successfully");
       }
     } catch (error) {
       console.error("Error updating application status:", error);
