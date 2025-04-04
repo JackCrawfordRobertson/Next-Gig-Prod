@@ -306,27 +306,26 @@ export default function DashboardPage() {
   const recentJobs = getRecentJobs();
   const filteredJobs = getFilteredJobs();
 
+// First add this diagnostic code to see all unique sources
+useEffect(() => {
+  if (jobs.length > 0) {
+    // Log all unique sources to see what we're working with
+    const uniqueSources = [...new Set(jobs.map(job => job.source))];
+    console.log("Unique job sources:", uniqueSources);
+  }
+}, [jobs]);
 
+// Then update your job counting logic
 const jobCounts = {
   linkedin: jobs.filter((job) => 
-    job.source?.toLowerCase().includes("linkedin")).length,
+    job.source?.toLowerCase() === "linkedin").length,
   workable: jobs.filter((job) => 
-    job.source?.toLowerCase().includes("workable")).length,
+    job.source?.toLowerCase() === "workable").length,
   ifyoucould: jobs.filter((job) => 
-    job.source?.toLowerCase().includes("if you could") || 
-    job.source?.toLowerCase().includes("ifyoucould")).length,
+    job.source?.toLowerCase() === "ifyoucould").length,
   unjobs: jobs.filter((job) => 
-    job.source?.toLowerCase().includes("un jobs") || 
-    job.source?.toLowerCase().includes("unjobs")).length,
+    job.source?.toLowerCase() === "unjobs").length,
 };
-
-console.log("Job source distribution:", 
-  jobs.reduce((acc, job) => {
-    const source = job.source || 'undefined';
-    acc[source] = (acc[source] || 0) + 1;
-    return acc;
-  }, {})
-);
 
   return (
     <div className="h-screen w-full flex flex-col bg-transparent p-2 sm:p-4 overflow-auto md:overflow-hidden">
