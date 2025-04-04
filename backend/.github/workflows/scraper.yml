@@ -1,3 +1,5 @@
+# .github/workflows/scraper.yml
+
 name: Job Scraper Bot
 
 on:
@@ -30,13 +32,11 @@ jobs:
           echo "FIREBASE_CREDENTIALS_PATH=/tmp/firebase_credentials.json" >> $GITHUB_ENV
           echo "EMAIL_ADDRESS=${{ secrets.EMAIL_ADDRESS }}" >> $GITHUB_ENV
           echo "EMAIL_PASSWORD=${{ secrets.EMAIL_PASSWORD }}" >> $GITHUB_ENV
-          echo "RECIPIENT_EMAIL=${{ secrets.RECIPIENT_EMAIL }}" >> $GITHUB_ENV
-          echo "LOCATION=${{ secrets.LOCATION }}" >> $GITHUB_ENV
           echo "SMTP_SERVER=${{ secrets.SMTP_SERVER }}" >> $GITHUB_ENV
           echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> $GITHUB_ENV
 
       - name: Run Job Scraper
-        run: python main.py  # Run the scraper
+        run: python main.py
 
       - name: Send Job Alert Emails
         run: python email_service/send_email.py

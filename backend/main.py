@@ -78,6 +78,8 @@ def get_unique_job_locations(test_mode=False):
         locations.update(user["jobLocations"])
     return list(locations)
 
+# main.py - Add a new function to call after job scraping
+
 def job_cycle(test_mode=False):
     """Fetch new jobs for all subscribed users and store them in a scalable structure."""
     job_titles = get_unique_job_titles(test_mode)
@@ -85,14 +87,14 @@ def job_cycle(test_mode=False):
 
     if not job_titles:
         print("❌ No active users or job titles found. Skipping scraper.")
-        return
+        return False  # Return false to indicate no jobs were processed
 
     print(f"\n🔄 Fetching jobs for: {job_titles} in {job_locations}")
     jobs = run_scrapers(job_titles, job_locations) 
     
     if not any(jobs.values()):
         print("❌ No jobs found in this cycle.")
-        return
+        return False  # Return false to indicate no jobs were processed
 
     print("✅ Scraping complete. Storing results per user...")
 
@@ -118,6 +120,27 @@ def job_cycle(test_mode=False):
         new_count, dup_count = store_jobs(user_id, user_jobs)
 
         print(f"💾 Updated jobs for {user_id}: {new_count} new, {dup_count} duplicates skipped")
+    
+    return True  # Return true to indicate jobs were processed successfully
+
+if __name__ == "__main__":
+    start_time = time.time()
+    
+    try:
+        # Run the job cycle
+        success = job_cycle()
+        
+        if success:
+            print("🔄 Job cycle completed. Sending email notifications...")
+            # Import the email functionality 
+            from email_service.send_email import send_job_emails
+            send_job_emails()
+        
+    except Exception as e:
+        print(f"❌ Error during execution: {e}")
+    finally:
+        elapsed_time = time.time() - start_time
+        print(f"\n🕒 Total time taken: {elapsed_time:.2f} seconds.")
 
 def quick_test():
     """
