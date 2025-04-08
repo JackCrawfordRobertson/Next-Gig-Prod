@@ -141,7 +141,7 @@ export async function storeSubscription(userId, subscriptionData, deviceFingerpr
       subscriptionId: subscriptionData.subscriptionID || subscriptionData.subscriptionId,
       status: onTrial ? 'trial' : 'active',
       plan: 'paypal',
-      price: 1.99,
+      price: 2.99,
       currency: 'GBP',
       paymentMethod: 'paypal',
       startDate: new Date().toISOString(),

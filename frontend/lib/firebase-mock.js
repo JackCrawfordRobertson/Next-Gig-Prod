@@ -120,7 +120,7 @@ export const getDocs = async (queryObj) => {
             userId,
             plan: user.subscriptionPlan || "mock",
             status: user.onTrial ? "trial" : "active",
-            price: 1.99,
+            price: 2.99,
             currency: "GBP",
             startDate: user.subscriptionStartDate || new Date().toISOString(),
             trialEndDate: user.trialEndDate || new Date().toISOString(),

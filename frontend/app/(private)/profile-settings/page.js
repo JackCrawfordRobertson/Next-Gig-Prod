@@ -394,7 +394,7 @@ const handleSubscriptionSuccess = async (subscriptionData) => {
       subscriptionId: subscriptionData.subscriptionID || subscriptionData.subscriptionId,
       status: result.onTrial ? 'trial' : 'active',
       plan: 'paypal',
-      price: 1.99,
+      price: 2.99,
       currency: 'GBP',
       paymentMethod: 'paypal',
       startDate: new Date().toISOString(),

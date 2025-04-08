@@ -133,7 +133,7 @@ const PayPalButton = ({ userId, onSuccess }) => {
               <li>Go to <a href="https://developer.paypal.com/dashboard/" target="_blank" rel="noopener noreferrer" className="underline">PayPal Developer Dashboard</a></li>
               <li>Navigate to "Products & Plans" in your PayPal Sandbox account</li>
               <li>Create a new product, then create a plan for that product</li>
-              <li>Set up the trial period (7 days) and recurring billing (£1.99/month)</li>
+              <li>Set up the trial period (7 days) and recurring billing (£2.99/month)</li>
               <li>Copy the Plan ID and set it as <code>NEXT_PUBLIC_PAYPAL_PLAN_ID</code> in your <code>.env.local</code> file</li>
             </ol>
             

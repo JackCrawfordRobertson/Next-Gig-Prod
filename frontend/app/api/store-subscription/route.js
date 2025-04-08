@@ -30,7 +30,7 @@ export async function POST(req) {
       subscriptionId,
       status: 'active',
       plan: 'standard',
-      price: 1.99,
+      price: 2.99,
       currency: 'GBP',
       paymentMethod: 'paypal',
       startDate: startDate || new Date().toISOString(),
