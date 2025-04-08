@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UserPlus } from "lucide-react";
 import { showToast } from "@/lib/toast";
+import { auth } from "@/lib/firebase";
 
 import Link from "next/link";
 import Image from "next/image";
@@ -31,18 +32,50 @@ export default function LoginPage() {
   const [resetEmail, setResetEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showResetForm, setShowResetForm] = useState(false);
+  
+  // Add this check to prevent auto-login loops
+  const [redirectedFromSignOut, setRedirectedFromSignOut] = useState(false);
 
-  // Redirect authenticated users directly to dashboard
+  // Check if we came from a sign-out operation
   useEffect(() => {
-    if (status === "authenticated") {
+    const queryParams = new URLSearchParams(window.location.search);
+    if (queryParams.get('signedOut') === 'true') {
+      setRedirectedFromSignOut(true);
+      
+      // Clear the URL parameter
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  }, []);
+
+  // Redirect authenticated users directly to dashboard, unless they just signed out
+  useEffect(() => {
+    if (status === "authenticated" && !redirectedFromSignOut) {
       router.push("/dashboard");
     }
-  }, [status, router]);
+  }, [status, router, redirectedFromSignOut]);
 
   // Handle Email/Password Login
   const handleLogin = async () => {
+    if (!email || !password) {
+      showToast({
+        title: "Error",
+        description: "Please enter both email and password",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       setIsLoading(true);
+      
+      // Clear any existing auth state first
+      try {
+        await auth.signOut();
+      } catch (e) {
+        console.log("No Firebase user to sign out");
+      }
+      
       const result = await signIn("credentials", {
         email,
         password,
@@ -57,9 +90,12 @@ export default function LoginPage() {
         description: "Successfully logged in",
         variant: "success",
       });
+      
       // Directly push to dashboard on successful login
       router.push("/dashboard");
     } catch (error) {
+      console.error("Login error:", error);
+      
       showToast({
         title: "Error",
         description: "Login failed. Please check your details and try again.",
@@ -109,6 +145,13 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+  
+  // Handle keypress events for the login form
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleLogin();
+    }
+  };
 
   // Display password reset form
   if (showResetForm) {
@@ -131,6 +174,7 @@ export default function LoginPage() {
                 placeholder="you@example.com"
                 value={resetEmail}
                 onChange={(e) => setResetEmail(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleResetPassword()}
               />
             </div>
           </CardContent>
@@ -185,6 +229,7 @@ export default function LoginPage() {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onKeyPress={handleKeyPress}
             />
           </div>
 
@@ -196,8 +241,15 @@ export default function LoginPage() {
               placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onKeyPress={handleKeyPress}
             />
           </div>
+          
+          {redirectedFromSignOut && (
+            <div className="bg-blue-50 p-3 rounded-md text-blue-700 text-sm">
+              You have been signed out successfully. Please log in again to continue.
+            </div>
+          )}
         </CardContent>
 
         <CardFooter className="flex flex-col gap-2 w-full">

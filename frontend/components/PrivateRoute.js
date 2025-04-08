@@ -1,18 +1,17 @@
-// components/PrivateRoute.js
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/providers/AuthProvider";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { showToast } from "@/lib/toast";
 import { SubscriptionChecker } from "./SubscriptionToast";
 
 export default function PrivateRoute({ children }) {
-  const { data: session, status } = useSession();
+  const { firebaseUser, nextAuthSession, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (status === "unauthenticated") {
+    if (!isLoading && !nextAuthSession) {
       showToast({
         title: "Authentication Required",
         description: "Please log in to access this page",
@@ -20,9 +19,9 @@ export default function PrivateRoute({ children }) {
       });
       router.replace("/login");
     }
-  }, [status, router]);
+  }, [isLoading, nextAuthSession, router]);
 
-  if (status === "loading") {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="spinner">Loading...</div>
@@ -30,7 +29,7 @@ export default function PrivateRoute({ children }) {
     );
   }
 
-  if (status === "authenticated") {
+  if (nextAuthSession) {
     return (
       <>
         <SubscriptionChecker />

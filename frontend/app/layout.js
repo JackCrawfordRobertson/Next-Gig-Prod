@@ -1,6 +1,7 @@
 // app/layout.jsx
 import "./globals.css";
 import { Inter } from "next/font/google";
+import { AuthProvider } from "@/providers/AuthProvider";
 import SessionProvider from "@/components/SessionProvider";
 import { Toaster } from "@/components/ui/toaster";
 
@@ -22,7 +23,9 @@ export default function RootLayout({ children }) {
     <html lang="en" className={inter.className}>
       <body className="antialiased">
         <SessionProvider>
+          <AuthProvider>
           {children}
+          </AuthProvider>
         </SessionProvider>
         <Toaster />
       </body>

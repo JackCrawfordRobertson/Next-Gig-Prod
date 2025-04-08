@@ -48,18 +48,24 @@ export default function SidebarLayout({ children }) {
 
   const handleSignOut = async () => {
     try {
+      // Use the new comprehensive sign-out function from firebase.js
+      await signOutCompletely();
+      
+      // Then sign out from NextAuth with the signedOut parameter
       await signOut({
-        redirect: false,
+        redirect: true,
+        callbackUrl: "/login?signedOut=true"
       });
-
-      localStorage.clear();
-
+      
+      // The code below will likely not execute due to the redirect,
+      // but included as a fallback
       showToast({
         title: "Success",
         description: "Successfully signed out",
         variant: "success",
       });
-      router.push("/login");
+      
+      router.push("/login?signedOut=true");
     } catch (error) {
       console.error("Sign out error:", error);
       showToast({
@@ -67,6 +73,9 @@ export default function SidebarLayout({ children }) {
         description: "Failed to sign out. Please try again.",
         variant: "destructive",
       });
+      
+      // Force reload as last resort
+      window.location.href = "/login?signedOut=true";
     }
   };
 
