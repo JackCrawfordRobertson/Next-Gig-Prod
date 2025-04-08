@@ -3,9 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { checkSubscriptionStatus, showSubscriptionToast } from "@/lib/checkSubscriptionStatus";
-import { storeSubscription } from "@/lib/checkSubscriptionStatus";
-
 import Image from "next/image";
 import { doc, updateDoc, collection, addDoc, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
