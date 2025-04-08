@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://next-gig.co.uk/sitemap.xml

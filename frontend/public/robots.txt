@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://next-gig.co.uk
+
+# Sitemaps
+Sitemap: https://next-gig.co.uk/sitemap.xml
