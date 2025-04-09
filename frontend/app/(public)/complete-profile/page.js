@@ -26,8 +26,9 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Upload, X, Plus } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { toast } from "@/components/ui/toast";
+import { showToast } from "@/lib/toast";
 import { Progress } from "@/components/ui/progress";
+
 
 function isSpelledCorrectly(text) {
   return /^[a-zA-Z\s]+$/.test(text);
@@ -65,7 +66,7 @@ export default function CompleteProfile() {
     city: "",
     postcode: "",
   });
-  const [profilePicture, setProfilePicture] = useState("/av.jpeg");
+  const [profilePicture, setProfilePicture] = useState("/av.svg");
   const [hasUploadedPicture, setHasUploadedPicture] = useState(false);
   const [jobTitles, setJobTitles] = useState([]);
   const [jobLocations, setJobLocations] = useState([]);
@@ -94,50 +95,70 @@ export default function CompleteProfile() {
     fetchSecurityData();
   }, []);
 
-  // Update form completion status
-  // Update form completion status
-  useEffect(() => {
-    const missingFields = [];
+// Update form completion status
+// Update form completion status
+useEffect(() => {
+  const missingFields = [];
 
-    if (!firstName.trim()) missingFields.push("First Name");
-    if (!lastName.trim()) missingFields.push("Last Name");
-    if (!email.trim()) missingFields.push("Email");
-    if (!password.trim()) missingFields.push("Password");
-    if (!confirmPassword.trim()) missingFields.push("Confirm Password");
-    if (passwordError) missingFields.push("Valid Password");
-    if (password !== confirmPassword) missingFields.push("Matching Passwords");
-    if (!address.firstLine.trim()) missingFields.push("Address");
-    if (!address.city.trim()) missingFields.push("City");
-    if (!address.postcode.trim()) missingFields.push("Postcode");
-    if (jobTitles.length === 0) missingFields.push("Job Titles");
-    if (jobLocations.length === 0) missingFields.push("Job Locations");
-    if (!hasUploadedPicture) missingFields.push("Profile Picture");
+  // Basic field checks
+  if (!firstName.trim()) missingFields.push("First Name");
+  if (!lastName.trim()) missingFields.push("Last Name");
+  if (!email.trim()) missingFields.push("Email");
+  if (!password.trim()) missingFields.push("Password");
+  if (!confirmPassword.trim()) missingFields.push("Confirm Password");
+  
+  // Only check password validity if a password is entered
+  if (password.trim() && passwordError) missingFields.push("Valid Password");
+  
+  // Only check if passwords match if both are entered
+  if ((password.trim() || confirmPassword.trim()) && password !== confirmPassword) 
+    missingFields.push("Matching Passwords");
+  
+  if (!address.firstLine.trim()) missingFields.push("Address");
+  if (!address.city.trim()) missingFields.push("City");
+  if (!address.postcode.trim()) missingFields.push("Postcode");
+  if (jobTitles.length === 0) missingFields.push("Job Titles");
+  if (jobLocations.length === 0) missingFields.push("Job Locations");
+  if (!hasUploadedPicture) missingFields.push("Profile Picture");
 
-    setIncompleteFields(missingFields);
+  setIncompleteFields(missingFields);
 
-    // Calculate completion percentage
-    const totalFields = 13; // Total number of required fields
+  // Calculate completion percentage
+  const totalFields = 13; // Total number of required fields
+  
+  // Force to 0 when form is empty by checking if any field has input
+  const hasAnyInput = 
+    firstName.trim() || 
+    lastName.trim() || 
+    email.trim() || 
+    password.trim() || 
+    confirmPassword.trim() || 
+    address.firstLine.trim() || 
+    address.city.trim() || 
+    address.postcode.trim() || 
+    jobTitles.length > 0 || 
+    jobLocations.length > 0 || 
+    hasUploadedPicture;
+  
+  if (!hasAnyInput) {
+    setFormCompletion(0);
+  } else {
     const completedFields = totalFields - missingFields.length;
-
-    // Ensure it's exactly 0 when nothing is completed
-    const completionPercentage =
-      completedFields === 0
-        ? 0
-        : Math.floor((completedFields / totalFields) * 100);
-
+    const completionPercentage = Math.floor((completedFields / totalFields) * 100);
     setFormCompletion(completionPercentage);
-  }, [
-    firstName,
-    lastName,
-    email,
-    password,
-    confirmPassword,
-    passwordError,
-    address,
-    jobTitles,
-    jobLocations,
-    hasUploadedPicture,
-  ]);
+  }
+}, [
+  firstName,
+  lastName,
+  email,
+  password,
+  confirmPassword,
+  passwordError,
+  address,
+  jobTitles,
+  jobLocations,
+  hasUploadedPicture,
+]);
 
   // Validate Password Strength
   const validatePassword = (value) => {
@@ -194,7 +215,7 @@ export default function CompleteProfile() {
     if (!trimmed) return;
 
     if (!isSpelledCorrectly(trimmed)) {
-      toast({
+      showToast({
         title: "Spelling Check",
         description: "Please use only letters and spaces in job titles.",
         variant: "destructive",
@@ -204,7 +225,7 @@ export default function CompleteProfile() {
 
     // Maximum of 3 job titles
     if (jobTitles.length >= 3) {
-      toast({
+      showToast({
         title: "Maximum Reached",
         description: "You can add a maximum of 3 job titles.",
         variant: "destructive",
@@ -252,7 +273,7 @@ export default function CompleteProfile() {
 
   const handleSignUp = async () => {
     if (!userIP || !deviceFingerprint) {
-      toast({
+      showToast({
         title: "Please Wait",
         description: "Please wait a moment before signing up.",
         variant: "destructive",
@@ -261,7 +282,7 @@ export default function CompleteProfile() {
     }
 
     if (!isFormValid()) {
-      toast({
+      showToast({
         title: "Incomplete Form",
         description: `Please complete all required fields: ${incompleteFields.join(
           ", "
@@ -288,7 +309,7 @@ export default function CompleteProfile() {
       ]);
 
       if (!ipSnapshot.empty || !fingerprintSnapshot.empty) {
-        toast({
+        showToast({
           title: "Trial Already Used",
           description: "You have already used a free trial.",
           variant: "destructive",
@@ -312,7 +333,7 @@ export default function CompleteProfile() {
           deviceFingerprint,
         });
         setLoading(false);
-        toast({
+        showToast({
           title: "Dev Mode",
           description: "Sign up flow skipped. Check console logs.",
         });
@@ -351,7 +372,7 @@ export default function CompleteProfile() {
 
       if (signInResult.error) {
         console.error("NextAuth signIn error:", signInResult.error);
-        toast({
+        showToast({
           title: "Sign In Error",
           description:
             "Unable to automatically sign you in. Please log in manually.",
@@ -365,7 +386,7 @@ export default function CompleteProfile() {
       router.push("/subscription");
     } catch (error) {
       console.error("Sign-Up Error:", error);
-      toast({
+      showToast({
         title: "Sign-Up Error",
         description: error.message,
         variant: "destructive",
