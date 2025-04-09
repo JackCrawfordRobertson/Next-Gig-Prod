@@ -28,7 +28,15 @@ jobs:
           pip install -r requirements.txt
 
       - name: Write Firebase Credentials to File
-        run: echo '${{ secrets.FIREBASE_CREDENTIALS_JSON }}' > /tmp/firebase_credentials.json
+        run: |
+          echo '${{ secrets.FIREBASE_CREDENTIALS_JSON }}' > /tmp/firebase_credentials.json
+          # Verify file was created properly
+          if [ -s /tmp/firebase_credentials.json ]; then
+            echo "✅ Credentials file created successfully"
+          else
+            echo "❌ Failed to create credentials file"
+            exit 1
+          fi
 
       - name: Set Up Environment Variables
         run: |
