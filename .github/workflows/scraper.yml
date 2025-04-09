@@ -10,6 +10,9 @@ on:
 jobs:
   scrape-and-email:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
 
     steps:
       - name: Checkout Repository
@@ -35,8 +38,13 @@ jobs:
           echo "SMTP_SERVER=${{ secrets.SMTP_SERVER }}" >> $GITHUB_ENV
           echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> $GITHUB_ENV
 
-      - name: Run Job Scraper
+      - name: Check for Subscribed Users
+        run: python check_subscribed_users.py
+
+      - name: Run Job Scraper (only if users exist)
+        if: ${{ success() }}
         run: python main.py
 
       - name: Send Job Alert Emails
+        if: ${{ success() }}
         run: python email_service/send_email.py

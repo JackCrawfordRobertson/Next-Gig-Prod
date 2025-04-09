@@ -78,16 +78,40 @@ def get_unique_job_locations(test_mode=False):
         locations.update(user["jobLocations"])
     return list(locations)
 
-# main.py - Add a new function to call after job scraping
-
+def log_subscription_changes():
+    """Log changes in user subscription status"""
+    users_ref = db.collection("users").stream()
+    subscribed_count = 0
+    unsubscribed_count = 0
+    
+    for user in users_ref:
+        user_data = user.to_dict()
+        status = "subscribed" if user_data.get("subscribed", False) else "unsubscribed"
+        print(f"User {user_data.get('email')}: {status}")
+        
+        if status == "subscribed":
+            subscribed_count += 1
+        else:
+            unsubscribed_count += 1
+            
+    print(f"📊 Subscription Status: {subscribed_count} subscribed, {unsubscribed_count} unsubscribed")
+    
+    return subscribed_count > 0
 def job_cycle(test_mode=False):
     """Fetch new jobs for all subscribed users and store them in a scalable structure."""
+    
+    # Explicitly check for subscribed users first
+    users = get_subscribed_users()
+    if not users:
+        print("❌ No subscribed users found. Skipping scraper.")
+        return False
+        
     job_titles = get_unique_job_titles(test_mode)
     job_locations = get_unique_job_locations(test_mode)
 
     if not job_titles:
-        print("❌ No active users or job titles found. Skipping scraper.")
-        return False  # Return false to indicate no jobs were processed
+        print("❌ No job titles found. Skipping scraper.")
+        return False
 
     print(f"\n🔄 Fetching jobs for: {job_titles} in {job_locations}")
     jobs = run_scrapers(job_titles, job_locations) 
