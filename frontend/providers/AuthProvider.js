@@ -64,8 +64,10 @@ export function AuthProvider({ children }) {
       // Sign out from Firebase
       await auth.signOut();
       
-      // Sign out from NextAuth
-      window.location.href = "/api/auth/signout";
+      // Sign out from NextAuth 
+      const response = await fetch('/api/auth/signout', {
+        method: 'POST'
+      });
       
       // Clear all storage
       localStorage.clear();
@@ -75,6 +77,9 @@ export function AuthProvider({ children }) {
       document.cookie.split(";").forEach(c => {
         document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
       });
+      
+      // Hard redirect to login page
+      window.location.href = "/login?signedOut=true";
       
       return true;
     } catch (error) {

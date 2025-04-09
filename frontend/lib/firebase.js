@@ -64,14 +64,23 @@ export const signOutCompletely = async () => {
     // Sign out from Firebase
     await firebaseSignOut(auth);
     
+    // Clear all storage 
+    localStorage.clear();
+    sessionStorage.clear();
+    
     // Clear cookies (more thorough approach)
     document.cookie.split(";").forEach(c => {
       document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
     });
     
-    // Clear local storage
-    localStorage.clear();
-    sessionStorage.clear();
+    // Invalidate any cached data
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        names.forEach(name => {
+          caches.delete(name);
+        });
+      });
+    }
     
     return true;
   } catch (error) {

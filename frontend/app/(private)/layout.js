@@ -13,11 +13,12 @@ export const metadata = {
 export default async function PrivateLayout({ children }) {
     // Server-side session check with Next-Auth
     const session = await getServerSession(authOptions);
-
+  
     if (!session) {
-        redirect('/login');
+        // Use a more direct redirect
+        return Response.redirect(new URL('/login', request.url));
     }
-
+  
     return (
         <PrivateRoute>
             <div className="relative min-h-screen">
@@ -29,4 +30,4 @@ export default async function PrivateLayout({ children }) {
             </div>
         </PrivateRoute>
     );
-}
+  }

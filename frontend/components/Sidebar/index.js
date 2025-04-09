@@ -28,6 +28,8 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useState } from "react";
+import { signOutCompletely } from "@/lib/firebase";
+
 
 export default function SidebarLayout({ children }) {
   const router = useRouter();

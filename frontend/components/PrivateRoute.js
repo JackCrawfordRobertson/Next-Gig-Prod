@@ -17,7 +17,9 @@ export default function PrivateRoute({ children }) {
         description: "Please log in to access this page",
         variant: "destructive"
       });
-      router.replace("/login");
+      
+      // Use window.location for a hard redirect
+      window.location.href = "/login";
     }
   }, [isLoading, nextAuthSession, router]);
 
