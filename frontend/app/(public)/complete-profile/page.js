@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Upload, X, Plus } from "lucide-react";
+import { Upload, X, Plus, Calendar } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { showToast } from "@/lib/toast";
 import { Progress } from "@/components/ui/progress";
@@ -85,6 +85,10 @@ export default function CompleteProfile() {
   const [formCompletion, setFormCompletion] = useState(0);
   const [incompleteFields, setIncompleteFields] = useState([]);
 
+  //Dob
+  const [dateOfBirth, setDateOfBirth] = useState("");
+
+
   useEffect(() => {
     const fetchSecurityData = async () => {
       const ip = await getUserIP();
@@ -117,11 +121,14 @@ useEffect(() => {
   if (!address.firstLine.trim()) missingFields.push("Address");
   if (!address.city.trim()) missingFields.push("City");
   if (!address.postcode.trim()) missingFields.push("Postcode");
+  if (!dateOfBirth.trim()) missingFields.push("Date of Birth");
   if (jobTitles.length === 0) missingFields.push("Job Titles");
   if (jobLocations.length === 0) missingFields.push("Job Locations");
   if (!hasUploadedPicture) missingFields.push("Profile Picture");
 
   setIncompleteFields(missingFields);
+
+  
 
   // Calculate completion percentage
   const totalFields = 13; // Total number of required fields
@@ -136,6 +143,8 @@ useEffect(() => {
     address.firstLine.trim() || 
     address.city.trim() || 
     address.postcode.trim() || 
+    dateOfBirth.trim() ||  // Add this line
+
     jobTitles.length > 0 || 
     jobLocations.length > 0 || 
     hasUploadedPicture;
@@ -155,6 +164,7 @@ useEffect(() => {
   confirmPassword,
   passwordError,
   address,
+  dateOfBirth,
   jobTitles,
   jobLocations,
   hasUploadedPicture,
@@ -202,6 +212,11 @@ useEffect(() => {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  // Handle date of birth changes
+  const handleDateOfBirthChange = (e) => {
+    setDateOfBirth(e.target.value);
   };
 
   // Handle address changes
@@ -353,6 +368,7 @@ useEffect(() => {
         email,
         firstName,
         lastName,
+        dateOfBirth,
         address,
         profilePicture,
         jobTitles,
@@ -456,31 +472,79 @@ useEffect(() => {
               />
             </div>
 
-            {/* Name Fields */}
-            <div className="flex-1 space-y-2">
-              <div>
-                <Label htmlFor="firstName" className="text-xs">
-                  First Name *
-                </Label>
-                <Input
-                  id="firstName"
-                  placeholder="First Name"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="lastName" className="text-xs">
-                  Last Name *
-                </Label>
-                <Input
-                  id="lastName"
-                  placeholder="Last Name"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                />
-              </div>
-            </div>
+{/* Name Fields */}
+<div className="flex-1 space-y-2">
+  {/* First & Last Name on one line */}
+  <div className="grid grid-cols-2 gap-2">
+    <div>
+      <Label htmlFor="firstName" className="text-xs">
+        First Name *
+      </Label>
+      <Input
+        id="firstName"
+        placeholder="First Name"
+        value={firstName}
+        onChange={(e) => setFirstName(e.target.value)}
+      />
+    </div>
+    <div>
+      <Label htmlFor="lastName" className="text-xs">
+        Last Name *
+      </Label>
+      <Input
+        id="lastName"
+        placeholder="Last Name"
+        value={lastName}
+        onChange={(e) => setLastName(e.target.value)}
+      />
+    </div>
+  </div>
+  
+  {/* Date of Birth */}
+  <div>
+  <Label htmlFor="dateOfBirth" className="text-xs">
+    Date of Birth *
+  </Label>
+  <div className="relative">
+    <Input
+      id="dateOfBirth"
+      type="text" 
+      placeholder="DD/MM/YYYY"
+      value={dateOfBirth}
+      onChange={(e) => {
+        // Allow only digits and slashes
+        const value = e.target.value.replace(/[^\d\/]/g, '');
+        setDateOfBirth(value);
+      }}
+      className="h-10 w-full"
+    />
+    <div 
+      className="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer"
+      onClick={() => {
+        const input = document.getElementById('dateOfBirth-hidden');
+        if (input) input.showPicker();
+      }}
+    >
+      <Calendar className="h-4 w-4 text-gray-400" />
+    </div>
+    <input
+      id="dateOfBirth-hidden"
+      type="date"
+      className="sr-only"
+      onChange={(e) => {
+        if (e.target.value) {
+          // Format the date as DD/MM/YYYY
+          const date = new Date(e.target.value);
+          const day = date.getDate().toString().padStart(2, '0');
+          const month = (date.getMonth() + 1).toString().padStart(2, '0');
+          const year = date.getFullYear();
+          setDateOfBirth(`${day}/${month}/${year}`);
+        }
+      }}
+    />
+  </div>
+</div>
+</div>
           </div>
 
           {/* Account Details Section */}
