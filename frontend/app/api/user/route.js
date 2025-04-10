@@ -4,10 +4,29 @@ import { doc, getDoc } from "firebase/firestore";
 import { getServerSession } from "next-auth";
 import mockUsers from "@/app/mock/users";
 import { mockSession } from "@/app/mock/auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export async function GET(req) {
-  // Use mock data in development
-  if (process.env.NODE_ENV === "development") {
+  // Improved environment detection
+  const url = new URL(req.url);
+  const hostname = url.hostname;
+  const isProdDomain = 
+    hostname.includes('next-gig.co.uk') || 
+    hostname.includes('jack-robertson.co.uk');
+  
+  // Force production mode on production domains
+  const isDevEnvironment = process.env.NODE_ENV === "development" && !isProdDomain;
+  
+  console.log("API User Route - Environment Check:", {
+    NODE_ENV: process.env.NODE_ENV,
+    hostname: hostname,
+    isProdDomain: isProdDomain,
+    isUsingMockData: isDevEnvironment
+  });
+  
+  // Use mock data ONLY in true development environments
+  if (isDevEnvironment) {
+    console.log("API User Route - Using MOCK data");
     const userId = mockSession.user.id;
     const userData = mockUsers[userId];
     
@@ -38,15 +57,43 @@ export async function GET(req) {
     );
   }
   
-  // Production code
-  const session = await getServerSession();
-  if (!session) return new Response("Unauthorized", { status: 401 });
-  
-  const userId = session.user.id;
-  const userDoc = await getDoc(doc(db, "users", userId));
-  
-  return new Response(
-    JSON.stringify(userDoc.data() || {}), 
-    { status: 200, headers: { 'Content-Type': 'application/json' } }
-  );
+  // Production code - always use real data on production domains
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session) {
+      console.log("API User Route - No session found");
+      return new Response("Unauthorized", { status: 401 });
+    }
+    
+    // Log production mode session details for debugging
+    console.log("API User Route - PRODUCTION Mode", {
+      userEmail: session.user.email,
+      userId: session.user.id,
+      timestamp: new Date().toISOString()
+    });
+    
+    const userId = session.user.id;
+    const userRef = doc(db, "users", userId);
+    const userDoc = await getDoc(userRef);
+    
+    if (!userDoc.exists()) {
+      console.warn(`No user document found for ID: ${userId}`);
+      return new Response(
+        JSON.stringify({ error: "User data not found" }), 
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    return new Response(
+      JSON.stringify(userDoc.data() || {}), 
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error("API User Route - Error:", error);
+    return new Response(
+      JSON.stringify({ error: "Server error", message: error.message }), 
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
 }

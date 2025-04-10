@@ -5,6 +5,8 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import SidebarLayout from "@/components/Sidebar";
 import ArrowsBackgroundWrapper from "@/components/AnimatedBlocks/ArrowsBackgroundCompiler";
 import PrivateRoute from "@/components/PrivateRoute";
+import SessionVerifier from "@/components/SessionVerifier";
+
 
 export const metadata = {
     title: "Next Gig",
@@ -21,6 +23,8 @@ export default async function PrivateLayout({ children }) {
   
     return (
         <PrivateRoute>
+                  <SessionVerifier />
+
             <div className="relative min-h-screen">
                 <ArrowsBackgroundWrapper />
                 <div className="absolute inset-0 bg-white/30 backdrop-blur-lg w-screen h-screen" />

@@ -14,7 +14,6 @@ import {
 import { 
   getAuth, 
   setPersistence, 
-  browserLocalPersistence, 
   browserSessionPersistence,
   signOut as firebaseSignOut
 } from "firebase/auth";
@@ -39,12 +38,30 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
+// Improved environment detection logic
+let isDevelopment = process.env.NODE_ENV === "development";
+
+// Client-side check for production domains
+if (typeof window !== 'undefined') {
+  const hostname = window.location.hostname;
+  if (hostname.includes('next-gig.co.uk') || 
+      hostname.includes('jack-robertson.co.uk') ||
+      !(hostname === 'localhost' || hostname === '127.0.0.1')) {
+    // Force production mode on production domains
+    isDevelopment = false;
+  }
+}
+
+console.log(`Firebase initializing in ${isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION'} mode`, {
+  environment: process.env.NODE_ENV,
+  hostname: typeof window !== 'undefined' ? window.location.hostname : 'server-side'
+});
+
 // Initialize Firebase app
 const app = initializeApp(firebaseConfig);
-const isDevelopment = process.env.NODE_ENV === "development";
 const appUrl = isDevelopment
   ? "http://localhost:3000"
-  : "https://next.gig.jack-robertson.co.uk";
+  : "https://next-gig.jack-robertson.co.uk";
 
 // Auth + DB initialization
 export const auth = getAuth(app);
@@ -95,24 +112,26 @@ export const actionCodeSettings = {
   handleCodeInApp: false,
 };
 
-// Firestore exports - uses mock implementations in development
-export const doc = isDevelopment ? mockFirebase.doc : firestoreDoc;
-export const getDoc = isDevelopment ? mockFirebase.getDoc : firestoreGetDoc;
-export const setDoc = isDevelopment ? mockFirebase.setDoc : firestoreSetDoc;
-export const updateDoc = isDevelopment ? mockFirebase.updateDoc : firestoreUpdateDoc;
-export const getDocs = isDevelopment ? mockFirebase.getDocs : firestoreGetDocs;
-export const collection = isDevelopment ? mockFirebase.collection : firestoreCollection;
-export const where = isDevelopment ? mockFirebase.where : firestoreWhere;
-export const query = isDevelopment ? mockFirebase.query : firestoreQuery;
-export const addDoc = isDevelopment ? mockFirebase.addDoc : firestoreAddDoc;
+// Determine if we should use mocks or real implementations
+// CRITICAL: We NEVER use mocks in production!
+const useMocks = isDevelopment;
 
-// Storage exports - uses mock implementations in development
-export const storage = isDevelopment
-  ? mockStorage.getStorage()
-  : realGetStorage(app);
-export const ref = isDevelopment ? mockStorage.ref : storageRef;
-export const uploadBytes = isDevelopment ? mockStorage.uploadBytes : realUploadBytes;
-export const getDownloadURL = isDevelopment ? mockStorage.getDownloadURL : realGetDownloadURL;
+// Firestore exports - switch based on environment
+export const doc = useMocks ? mockFirebase.doc : firestoreDoc;
+export const getDoc = useMocks ? mockFirebase.getDoc : firestoreGetDoc;
+export const setDoc = useMocks ? mockFirebase.setDoc : firestoreSetDoc;
+export const updateDoc = useMocks ? mockFirebase.updateDoc : firestoreUpdateDoc;
+export const getDocs = useMocks ? mockFirebase.getDocs : firestoreGetDocs;
+export const collection = useMocks ? mockFirebase.collection : firestoreCollection;
+export const where = useMocks ? mockFirebase.where : firestoreWhere;
+export const query = useMocks ? mockFirebase.query : firestoreQuery;
+export const addDoc = useMocks ? mockFirebase.addDoc : firestoreAddDoc;
+
+// Storage exports - switch based on environment
+export const storage = useMocks ? mockStorage.getStorage() : realGetStorage(app);
+export const ref = useMocks ? mockStorage.ref : storageRef;
+export const uploadBytes = useMocks ? mockStorage.uploadBytes : realUploadBytes;
+export const getDownloadURL = useMocks ? mockStorage.getDownloadURL : realGetDownloadURL;
 
 // Utility function to check if a user is currently signed in
 export const isUserSignedIn = () => {
@@ -122,4 +141,12 @@ export const isUserSignedIn = () => {
 // Function to get current auth state synchronously
 export const getCurrentUser = () => {
   return auth.currentUser;
+};
+
+// Force production mode function (can be called from client components if needed)
+export const forceProductionMode = () => {
+  if (isDevelopment) {
+    console.log("Forcing PRODUCTION mode for Firebase services");
+    isDevelopment = false;
+  }
 };

@@ -46,7 +46,7 @@ export default function DashboardPage() {
   const [userData, setUserData] = useState(null);
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const isDev = process.env.NODE_ENV === "development";
+  const [isDev, setIsDev] = useState(process.env.NODE_ENV === "development");
   const [showApplyDialog, setShowApplyDialog] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
   const lastClickTimeRef = useRef(null);
@@ -80,6 +80,17 @@ export default function DashboardPage() {
         job.location?.toLowerCase().includes(query)
     );
   };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname;
+      if (hostname.includes('next-gig.co.uk') || 
+          hostname.includes('jack-robertson.co.uk') ||
+          !hostname.includes('localhost')) {
+        setIsDev(false);
+      }
+    }
+  }, []);
 
   // Handle visibility change (user returns from external link)
   const handleVisibilityChange = () => {
@@ -137,6 +148,13 @@ export default function DashboardPage() {
     async function fetchUserData() {
       try {
         if (status === "loading") return;
+
+        console.log("Environment detection:", {
+          NODE_ENV: process.env.NODE_ENV,
+          isDev: isDev,
+          hostname: typeof window !== 'undefined' ? window.location.hostname : 'server-side',
+          userEmail: session?.user?.email
+        });
 
         console.log("User session:", session?.user?.email);
         console.log("Environment:", process.env.NODE_ENV);
