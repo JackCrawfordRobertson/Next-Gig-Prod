@@ -10,7 +10,7 @@ from config import db
 def generate_job_id(job):
     """Generate a unique identifier for a job."""
     unique_string = f"{job['url']}_{job['title']}"
-    return hashlib.md5(unique_string.encode()).hexdigest()
+    return hashlib.md5(job["url"].encode()).hexdigest()
 
 def migrate_to_new_structure():
     """

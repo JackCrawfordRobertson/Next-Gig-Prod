@@ -1,5 +1,3 @@
-# email_service/send_email.py
-
 import os
 import hashlib
 import smtplib
@@ -10,74 +8,67 @@ from email.mime.text import MIMEText
 from dotenv import load_dotenv
 from collections import defaultdict
 from datetime import datetime
-import json
+import random
 
 # Load environment variables
 load_dotenv()
 
-# Get Firebase credentials path
 FIREBASE_CREDENTIALS_PATH = os.getenv("FIREBASE_CREDENTIALS_PATH")
 
 if not FIREBASE_CREDENTIALS_PATH:
     raise ValueError("Missing FIREBASE_CREDENTIALS_PATH in environment variables. Please set it in the .env file.")
 
-# Prevent multiple Firebase initializations
 if not firebase_admin._apps:
     cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
     firebase_admin.initialize_app(cred)
 
-# Initialize Firestore
 db = firestore.client()
 
 def generate_document_id(job_url):
-    """Generate a Firestore-safe document ID from a job URL using hashing."""
     return hashlib.md5(job_url.encode()).hexdigest()
 
 def get_unsent_jobs():
-    """Retrieve unsent jobs from Firestore."""
     jobs_collection = db.collection("jobs_compiled")
-    
-    # Query for jobs that have not been sent or sent is False
     unsent_jobs_query = jobs_collection.where("sent", "==", False)
-    
     unsent_jobs = unsent_jobs_query.stream()
     jobs = [job.to_dict() for job in unsent_jobs]
-    
     print(f"📋 Found {len(jobs)} unsent jobs")
     return jobs
 
 def mark_jobs_as_sent(jobs):
-    """Update Firestore to mark jobs as sent"""
     for job in jobs:
         try:
-            # Generate a consistent job ID
             doc_id = generate_document_id(job["url"])
-            
-            # Reference to the job in the jobs_compiled collection
             job_ref = db.collection("jobs_compiled").document(doc_id)
-            
-            # Check if document exists
             job_doc = job_ref.get()
-            
+
             if job_doc.exists:
-                # Update the document to mark as sent
                 job_ref.update({
                     "sent": True,
                     "sent_timestamp": firestore.SERVER_TIMESTAMP
                 })
                 print(f"✅ Marked job as sent: {job.get('title', 'Unknown Job')} ({doc_id})")
             else:
-                print(f"⚠️ Job document not found: {job.get('url', 'Unknown URL')}")
-        
+                fallback_data = {
+                    "title": job.get("title", "Unknown"),
+                    "url": job.get("url", ""),
+                    "company": job.get("company", "Unknown"),
+                    "location": job.get("location", "Unknown"),
+                    "sent": True,
+                    "sent_timestamp": firestore.SERVER_TIMESTAMP,
+                    "source": job.get("source", "unknown"),
+                    "first_seen": firestore.SERVER_TIMESTAMP
+                }
+                job_ref.set(fallback_data)
+                print(f"✅ Created and marked job as sent: {job.get('title', 'Unknown Job')} ({doc_id})")
         except Exception as e:
             print(f"❌ Error marking job as sent: {e}")
 
 def get_source_platform(url):
-    """Extracts job platform based on the URL."""
     if "linkedin.com" in url:
         return "LinkedIn"
     elif "workable.com" in url:
-        return "Workable" 
+        return "Workable"
     elif "unjobs.org" in url:
         return "UN Jobs"
     elif "ifyoucouldjobs.com" in url:
@@ -88,7 +79,6 @@ def get_source_platform(url):
         return "Other"
 
 def get_platform_icon(platform):
-    """Returns an emoji for each platform."""
     icons = {
         "LinkedIn": "🔵",
         "Workable": "🟠",
@@ -100,7 +90,6 @@ def get_platform_icon(platform):
     return icons.get(platform, "🌐")
 
 def get_subscribed_users():
-    """Fetches all users who are subscribed."""
     users_ref = db.collection("users").where("subscribed", "==", True).stream()
     return [
         {
@@ -127,7 +116,6 @@ def generate_html_email(jobs_by_platform, job_count):
     "Fresh jobs, no fluff. Just the good stuff, ready to go."
     ]
     
-    import random
     witty_intro = random.choice(witty_intros)
     
     html = f"""
@@ -338,122 +326,99 @@ Next Gig Team
 
 Unsubscribe: https://next-gig.co.uk/unsubscribe
 """
-    
-    # Attach both plain text and HTML versions
     msg.attach(MIMEText(plain_text, 'plain'))
     msg.attach(MIMEText(html_content, 'html'))
-    
-    # Additional headers to improve deliverability
     msg['List-Unsubscribe'] = '<https://next-gig.co.uk/unsubscribe>'
     msg['Precedence'] = 'bulk'
-    
-    # Add Message-ID to help with email tracking and reduce spam likelihood
     msg['Message-ID'] = f"<{generate_document_id(recipient_email + str(datetime.now()))}@next-gig.co.uk>"
-    
+
     try:
-        # Use a more robust connection method
         with smtplib.SMTP(smtp_server, smtp_port) as server:
             server.starttls()
             server.login(sender_email, email_password)
-            
-            # Send the email with additional SMTP debugging
-            server.set_debuglevel(1)  # Uncomment for detailed debug info
-            
-            # Send the email
+            server.set_debuglevel(1)
             server.sendmail(sender_email, recipient_email, msg.as_string())
-            
-            print(f"✅ Email sent successfully to {recipient_email}!")
-            return True
-    
+        print(f"✅ Email sent successfully to {recipient_email}!")
+        return True
     except smtplib.SMTPException as smtp_error:
         print(f"❌ SMTP Error sending email to {recipient_email}: {smtp_error}")
         return False
     except Exception as e:
         print(f"❌ Unexpected error sending email to {recipient_email}: {e}")
         return False
-    
 
 def send_job_emails():
-    """Send job listings to all subscribed users with personalised content."""
     jobs = get_unsent_jobs()
     if not jobs:
         print("❌ No new jobs found. Skipping email.")
         return False
 
-    # Get all subscribed users
     users = get_subscribed_users()
     if not users:
         print("❌ No subscribed users found. Skipping email.")
         return False
 
     print(f"📧 Preparing to send job alerts to {len(users)} users...")
-
-    # Track email sending statistics
     total_emails_sent = 0
     total_users_processed = 0
     users_with_matching_jobs = 0
 
-    # Process each user and send personalised emails
     for user in users:
         total_users_processed += 1
-
-        # Filter jobs based on user preferences
         user_jobs = []
-        user_job_titles = [title.lower() for title in user.get("jobTitles", [])]
-        user_job_locations = [loc.lower() for loc in user.get("jobLocations", [])]
+        titles = [t.lower() for t in user.get("jobTitles", [])]
+        locations = [l.lower() for l in user.get("jobLocations", [])]
 
-        # Only include jobs that match this user's preferences
         for job in jobs:
-            job_title = job.get("title", "").lower()
-            job_location = job.get("location", "").lower()
-
-            if any(title in job_title for title in user_job_titles) and \
-               any(loc in job_location for loc in user_job_locations):
+            if any(t in job.get("title", "").lower() for t in titles) and \
+               any(l in job.get("location", "").lower() for l in locations):
                 user_jobs.append(job)
 
         if not user_jobs:
-            print(f"⚠️ No matching jobs for user {user.get('email', 'Unknown email')}. Skipping email.")
+            print(f"⚠️ No matching jobs for {user['email']}. Skipping.")
             continue
 
         users_with_matching_jobs += 1
-
-        # Organise jobs by platform and company
         jobs_by_platform = defaultdict(lambda: defaultdict(list))
         for job in user_jobs:
             platform = get_source_platform(job["url"])
-            company_name = job.get("company", "Unknown Company")
-            jobs_by_platform[platform][company_name].append(job)
+            company = job.get("company", "Unknown Company")
+            jobs_by_platform[platform][company].append(job)
 
-        # Generate HTML email
-        try:
-            html_content = generate_html_email(jobs_by_platform, len(user_jobs))
+        html_content = generate_html_email(jobs_by_platform, len(user_jobs))
+        success = send_email_to_user(user["email"], html_content, len(user_jobs), jobs_by_platform)
 
-            # Send email to this user
-            success = send_email_to_user(
-                user.get('email', ''), 
-                html_content, 
-                len(user_jobs), 
-                jobs_by_platform
-            )
+        if success:
+            total_emails_sent += 1
+            print(f"✅ Sent {len(user_jobs)} job listings to {user['email']}")
+        else:
+            print(f"❌ Failed to send email to {user['email']}")
 
-            if success:
-                total_emails_sent += 1
-                print(f"✅ Sent {len(user_jobs)} job listings to {user.get('email', 'Unknown email')}")
-            else:
-                print(f"❌ Failed to send email to {user.get('email', 'Unknown email')}")
-
-        except Exception as e:
-            print(f"❌ Error processing email for user {user.get('email', 'Unknown email')}: {e}")
-            import traceback
-            traceback.print_exc()
-
-    # Mark all processed jobs as sent
     mark_jobs_as_sent(jobs)
 
-    # Provide comprehensive summary
     print("\n📊 Email Sending Summary:")
     print(f"Total Users Processed: {total_users_processed}")
     print(f"Users with Matching Jobs: {users_with_matching_jobs}")
     print(f"Total Emails Sent: {total_emails_sent}")
 
     return total_emails_sent > 0
+
+# Optional debug tool
+def debug_user_job_matches():
+    users = get_subscribed_users()
+    for user in users:
+        email = user.get("email", "Unknown")
+        titles = [t.lower() for t in user.get("jobTitles", [])]
+        locations = [l.lower() for l in user.get("jobLocations", [])]
+        matches = []
+        for job in db.collection("jobs_compiled").stream():
+            job_data = job.to_dict()
+            if any(t in job_data.get("title", "").lower() for t in titles) and \
+               any(l in job_data.get("location", "").lower() for l in locations):
+                matches.append(job_data)
+        print(f"📧 {email} matched {len(matches)} jobs")
+
+if __name__ == "__main__":
+    send_job_emails()
+    # Uncomment this to debug job matches:
+    # debug_user_job_matches()
