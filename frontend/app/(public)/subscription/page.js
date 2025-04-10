@@ -83,48 +83,30 @@ function SubscriptionComponent() {
         return <div className="flex items-center justify-center h-screen text-lg">Loading...</div>;
     }
 
-   const handlePayPallSubscriptionSuccess = async (subscriptionData) => {
-    try {
-      console.log("Subscription successful:", subscriptionData);
-
-      // Calculate trial end date (7 days from now)
-      const trialEndDate = new Date();
-      trialEndDate.setDate(trialEndDate.getDate() + 7);
-
-      // 1) Update user document
-      await updateDoc(doc(db, "users", session.user.id), {
-        subscribed: true,
-        onTrial: true,
-        subscriptionPlan: "paypal",
-        subscriptionId: subscriptionData.subscriptionId,
-        subscriptionStartDate: new Date().toISOString(),
-        trialEndDate: trialEndDate.toISOString(),
-      });
-
-      // 2) Create subscription record in "subscriptions" collection
-      await addDoc(collection(db, "subscriptions"), {
-        userId: session.user.id,
-        subscriptionId: subscriptionData.subscriptionId,
-        plan: "paypal",
-        status: "trial",
-        startDate: new Date().toISOString(),
-        trialEndDate: trialEndDate.toISOString(),
-        fingerprint: fingerprint,
-        paymentMethod: "paypal",
-        price: 2.99,
-        currency: "GBP",
-        createdAt: new Date().toISOString(),
-      });
-
-      // Finally, redirect to dashboard
-      router.push("/dashboard");
-    } catch (err) {
-      console.error("Error updating subscription:", err);
-      setErrorMessage(
-        "Subscription update failed. Please try again or contact support."
-      );
-    }
-  };
+    const handlePayPallSubscriptionSuccess = async (subscriptionData) => {
+        try {
+          console.log("Subscription successful:", subscriptionData);
+      
+          // Import the utility function that handles all the logic
+          const { storeSubscription } = await import("@/lib/checkSubscriptionStatus");
+          
+          // Use the shared function to handle all subscription updates
+          await storeSubscription(
+            session.user.id, 
+            subscriptionData, 
+            fingerprint, 
+            { showToast: true }
+          );
+      
+          // Redirect to dashboard
+          router.push("/dashboard");
+        } catch (err) {
+          console.error("Error updating subscription:", err);
+          setErrorMessage(
+            "Subscription update failed. Please try again or contact support."
+          );
+        }
+      };
 
     return (
         <div className="min-h-screen w-full bg-transparent flex flex-col items-center justify-center py-6 px-4">

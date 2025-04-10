@@ -38,7 +38,7 @@ def create_test_user():
 def get_subscribed_users():
     """Fetch all users who are actively subscribed."""
     users_ref = db.collection("users").where("subscribed", "==", True).stream()
-    return [
+    users = [
         {
             "id": user.id,
             "jobTitles": user.to_dict().get("jobTitles", []),
@@ -47,6 +47,8 @@ def get_subscribed_users():
         }
         for user in users_ref
     ]
+    print(f"🔍 Found {len(users)} subscribed users in database")
+    return users
 
 def get_unique_job_titles(test_mode=False):
     """Get unique job titles from all subscribed users."""
@@ -57,10 +59,20 @@ def get_unique_job_titles(test_mode=False):
         if test_user:
             return test_user[0].to_dict().get("jobTitles", [])
     
+    # Get all subscribed users
     users = get_subscribed_users()
+    
+    # Create a set to store unique job titles
     job_titles = set()
+    
+    # Add all job titles from all users to the set
     for user in users:
-        job_titles.update(user["jobTitles"])
+        user_titles = user.get("jobTitles", [])
+        if user_titles:
+            print(f"  - User {user.get('email')}: {len(user_titles)} job titles")
+            job_titles.update(user_titles)
+    
+    print(f"✅ Consolidated {len(job_titles)} unique job titles from {len(users)} subscribed users")
     return list(job_titles)
 
 def get_unique_job_locations(test_mode=False):
@@ -72,11 +84,44 @@ def get_unique_job_locations(test_mode=False):
         if test_user:
             return test_user[0].to_dict().get("jobLocations", [])
     
+    # Get all subscribed users
     users = get_subscribed_users()
+    
+    # Create a set to store unique locations
     locations = set()
+    
+    # Add all locations from all users to the set
     for user in users:
-        locations.update(user["jobLocations"])
+        user_locations = user.get("jobLocations", [])
+        if user_locations:
+            print(f"  - User {user.get('email')}: {len(user_locations)} job locations")
+            locations.update(user_locations)
+    
+    print(f"✅ Consolidated {len(locations)} unique job locations from {len(users)} subscribed users")
     return list(locations)
+
+def check_user_subscription_status():
+    """Debug function to check subscription status of all users"""
+    print("\n🔍 Checking subscription status for all users...")
+    all_users = db.collection("users").stream()
+    users_list = list(all_users)
+    
+    print(f"📊 Total users in database: {len(users_list)}")
+    
+    for user in users_list:
+        user_data = user.to_dict()
+        email = user_data.get("email", "Unknown")
+        subscribed = user_data.get("subscribed", False)
+        job_titles = user_data.get("jobTitles", [])
+        job_locations = user_data.get("jobLocations", [])
+        
+        print(f"\nUser: {email}")
+        print(f"  ID: {user.id}")
+        print(f"  Subscribed: {subscribed}")
+        print(f"  Job Titles: {job_titles}")
+        print(f"  Job Locations: {job_locations}")
+    
+    print("\n")
 
 def log_subscription_changes():
     """Log changes in user subscription status"""
@@ -101,11 +146,18 @@ def log_subscription_changes():
 def job_cycle(test_mode=False):
     """Fetch new jobs for all subscribed users and store them in a scalable structure."""
     
+    print("\n🚀 Starting job cycle")
+    
+    # Check all users in the database first (for debugging)
+    check_user_subscription_status()
+    
     # Explicitly check for subscribed users first
     users = get_subscribed_users()
     if not users:
         print("❌ No subscribed users found. Skipping scraper.")
         return False
+    
+    print(f"✅ Found {len(users)} subscribed users")
         
     job_titles = get_unique_job_titles(test_mode)
     job_locations = get_unique_job_locations(test_mode)
@@ -126,25 +178,43 @@ def job_cycle(test_mode=False):
     users = [next(db.collection("users").where("email", "==", "test_user@nexgig.com").stream())] if test_mode else get_subscribed_users()
 
     for user_doc in users:
-        user = user_doc.to_dict() if hasattr(user_doc, 'to_dict') else user_doc
-        user_id = user_doc.id if hasattr(user_doc, 'id') else user.get('id')
+        if hasattr(user_doc, 'to_dict'):
+            user = user_doc.to_dict()
+            user_id = user_doc.id
+            email = user.get('email', 'Unknown')
+        else:
+            user = user_doc
+            user_id = user.get('id')
+            email = user.get('email', 'Unknown')
 
+        print(f"\n🔍 Processing jobs for user: {email}")
+        
         user_jobs = {}
+        total_matches = 0
 
         for source, job_list in jobs.items():
             matched_jobs = [
                 job for job in job_list
-                if any(title.lower() in job['title'].lower() for title in user['jobTitles']) and
-                   any(loc.lower() in job['location'].lower() for loc in user['jobLocations'])
+                if any(title.lower() in job['title'].lower() for title in user.get('jobTitles', []))
+                and any(loc.lower() in job['location'].lower() for loc in user.get('jobLocations', []))
             ]
+            
+            if matched_jobs:
+                print(f"  ✅ Found {len(matched_jobs)} matching jobs from {source}")
+                total_matches += len(matched_jobs)
+            else:
+                print(f"  ❌ No matching jobs from {source}")
 
             # Add source information to each job
             user_jobs[source] = matched_jobs
         
-        # Use the improved store_jobs function that uses collections for scalability
-        new_count, dup_count = store_jobs(user_id, user_jobs)
-
-        print(f"💾 Updated jobs for {user_id}: {new_count} new, {dup_count} duplicates skipped")
+        # Only proceed if we found matches
+        if total_matches > 0:
+            # Use the improved store_jobs function that uses collections for scalability
+            new_count, dup_count = store_jobs(user_id, user_jobs)
+            print(f"💾 Updated jobs for {email} ({user_id}): {new_count} new, {dup_count} duplicates skipped")
+        else:
+            print(f"⚠️ No matching jobs found for {email}")
     
     return True  # Return true to indicate jobs were processed successfully
 
@@ -208,6 +278,8 @@ if __name__ == "__main__":
                 mode = "test"
             elif sys.argv[1] == "cleanup":
                 mode = "cleanup"
+            elif sys.argv[1] == "check":
+                mode = "check"
         
         # Run the appropriate mode
         if mode == "test":
@@ -216,6 +288,9 @@ if __name__ == "__main__":
         elif mode == "cleanup":
             print("🧹 Running CLEANUP mode")
             cleanup_test_user()
+        elif mode == "check":
+            print("🔍 Running CHECK mode")
+            check_user_subscription_status()
         else:
             print("🚀 Running NORMAL job cycle")
             success = job_cycle()
@@ -232,6 +307,8 @@ if __name__ == "__main__":
     
     except Exception as e:
         print(f"❌ Error during execution: {e}")
+        import traceback
+        traceback.print_exc()
     
     finally:
         elapsed_time = time.time() - start_time
