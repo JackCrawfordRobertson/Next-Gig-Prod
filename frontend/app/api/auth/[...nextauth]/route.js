@@ -37,7 +37,14 @@ export const authOptions = {
   ],
   callbacks: {
     async session({ session, token }) {
+      // Always ensure user object exists in session
+      if (!session.user) session.user = {};
+      
+      // Add Firebase UID to session
       session.user.id = token.sub;
+      
+      // Store auth timestamp to track session freshness
+      session.authTimestamp = token.authTimestamp || Date.now();
       
       // Fetch subscription information from Firestore
       try {
@@ -48,6 +55,7 @@ export const authOptions = {
           
           // Add user profile data to the session
           session.user.firstName = userData.firstName || '';
+          session.user.lastName = userData.lastName || '';
           
           // Add subscription data to the session
           session.user.subscribed = userData.subscribed || false;
@@ -56,7 +64,6 @@ export const authOptions = {
           session.user.subscriptionId = userData.subscriptionId;
           session.user.subscriptionActive = userData.subscriptionActive || false;
           session.user.profilePicture = userData.profilePicture || '';
-
           
           // Add trial information if relevant
           if (userData.trialEndDate) {
@@ -70,8 +77,8 @@ export const authOptions = {
         }
       } catch (error) {
         console.error("Error fetching user subscription data:", error);
-        // Don't fail the session if we can't get subscription data
-        // Just proceed with the basic user info
+        // Add error flag to session to help client identify problems
+        session.dataError = true;
       }
       
       return session;
@@ -79,8 +86,11 @@ export const authOptions = {
     
     async jwt({ token, user }) {
       if (user) {
+        // When user signs in, update token with user data and timestamp
         token.sub = user.id;
+        token.authTimestamp = Date.now();
       }
+      
       return token;
     }
   },
@@ -91,7 +101,8 @@ export const authOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60,
+    maxAge: 14 * 24 * 60 * 60, // 14 days in seconds
+    updateAge: 24 * 60 * 60, // Refresh the JWT once per day
   },
   cookies: {
     sessionToken: {
@@ -101,10 +112,36 @@ export const authOptions = {
         sameSite: 'lax',
         path: '/',
         secure: process.env.NODE_ENV === "production",
+        maxAge: 14 * 24 * 60 * 60, // 14 days in seconds - match session maxAge
+        domain: process.env.NODE_ENV === "production" 
+          ? 'next-gig.co.uk' 
+          : undefined, // Only set domain in production
       },
+    },
+    callbackUrl: {
+      name: 'next-auth.callback-url',
+      options: {
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === "production",
+        httpOnly: true,
+        maxAge: 60 * 5, // 5 minutes - short-lived
+      }
+    },
+    csrfToken: {
+      name: 'next-auth.csrf-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 14 * 24 * 60 * 60, // 14 days in seconds
+      }
     },
   },
   debug: process.env.NODE_ENV === "development",
+  // Add explicit secret to enhance security
+  secret: process.env.NEXTAUTH_SECRET || "your-development-secret",
 };
 
 const handler = NextAuth(authOptions);

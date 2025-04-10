@@ -38,25 +38,42 @@ export function AuthProvider({ children }) {
     }
   }, [status]);
 
-  // Sync auth states (optional feature)
-  useEffect(() => {
-    const syncAuthState = async () => {
-      // Example logic: If Firebase is logged in but NextAuth isn't
-      if (firebaseUser && status === "unauthenticated" && !isLoading) {
-        // Force logout from Firebase or handle this inconsistency
-        await auth.signOut();
-        console.warn("Auth state inconsistency detected: Signed out of Firebase");
-      }
-      
-      // Example logic: If NextAuth is logged in but Firebase isn't
-      if (!firebaseUser && status === "authenticated" && !isLoading) {
-        // This is more complex to handle and may require a re-login
-        console.warn("Auth state inconsistency detected: NextAuth session without Firebase");
-      }
-    };
+// Sync auth states
+useEffect(() => {
+  const syncAuthState = async () => {
+    // If Firebase is logged in but NextAuth isn't
+    if (firebaseUser && status === "unauthenticated" && !isLoading) {
+      // Force logout from Firebase
+      await auth.signOut();
+      console.warn("Auth state inconsistency detected: Signed out of Firebase");
+    }
     
-    syncAuthState();
-  }, [firebaseUser, status, isLoading]);
+    // If NextAuth is logged in but Firebase isn't
+    if (!firebaseUser && status === "authenticated" && !isLoading) {
+      console.warn("Auth state inconsistency detected: NextAuth session without Firebase");
+      
+      try {
+        // Attempt to sign out from NextAuth to resolve the inconsistency
+        await fetch('/api/auth/signout', { method: 'POST' });
+        
+        // Clear all cookies to ensure clean state
+        document.cookie.split(";").forEach(c => {
+          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        });
+        
+        // Redirect to login page with error message
+        router.push('/login?error=session_expired');
+      } catch (error) {
+        console.error("Failed to resolve auth inconsistency:", error);
+        
+        // Fallback: force page reload to trigger new auth flow
+        window.location.href = '/login?error=auth_error';
+      }
+    }
+  };
+  
+  syncAuthState();
+}, [firebaseUser, status, isLoading, router]);
 
   // Comprehensive sign out function
   const signOutFromAll = async () => {

@@ -5,6 +5,7 @@ import { AuthProvider } from "@/providers/AuthProvider";
 import SessionProvider from "@/components/SessionProvider";
 import { Toaster } from "@/components/ui/toaster";
 
+
 const inter = Inter({
   subsets: ["latin"],
   display: "swap",
