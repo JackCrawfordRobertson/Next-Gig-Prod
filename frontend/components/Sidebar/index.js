@@ -30,7 +30,6 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useState } from "react";
 import { signOutCompletely } from "@/lib/firebase";
 
-
 export default function SidebarLayout({ children }) {
   const router = useRouter();
   const { data: session } = useSession();
@@ -52,13 +51,13 @@ export default function SidebarLayout({ children }) {
     try {
       // Use the new comprehensive sign-out function from firebase.js
       await signOutCompletely();
-      
+
       // Then sign out from NextAuth with the signedOut parameter
       await signOut({
         redirect: true,
-        callbackUrl: "/login?signedOut=true"
+        callbackUrl: "/login?signedOut=true",
       });
-      
+
       // The code below will likely not execute due to the redirect,
       // but included as a fallback
       showToast({
@@ -66,7 +65,7 @@ export default function SidebarLayout({ children }) {
         description: "Successfully signed out",
         variant: "success",
       });
-      
+
       router.push("/login?signedOut=true");
     } catch (error) {
       console.error("Sign out error:", error);
@@ -75,7 +74,7 @@ export default function SidebarLayout({ children }) {
         description: "Failed to sign out. Please try again.",
         variant: "destructive",
       });
-      
+
       // Force reload as last resort
       window.location.href = "/login?signedOut=true";
     }
@@ -160,15 +159,14 @@ export default function SidebarLayout({ children }) {
 
         {/* Created by section */}
         <div className="mt-auto px-1 py-1 text-xs text-gray-500  flex items-center justify-center gap-2">
-        
-        <a
+          <a
             href="https://jack-robertson.co.uk"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1 text-foreground hover:underline"
           >
-          <span>Created by</span>
-        
+            <span>Created by</span>
+
             <Image
               src="/Blue_LogoV2.svg"
               alt="Creator icon"
@@ -188,7 +186,7 @@ export default function SidebarLayout({ children }) {
             <div className="flex items-center gap-3">
               <Avatar className="w-9 h-9 rounded-full border">
                 <AvatarImage
-                  src={session?.user?.profilePicture || "/Memoji.png"}
+                  src={session?.user?.profilePicture || "/av.svg"}
                   alt="User Avatar"
                 />
                 <AvatarFallback className="bg-purple-100 text-purple-800">

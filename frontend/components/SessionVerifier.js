@@ -12,6 +12,7 @@ export default function SessionVerifier() {
       console.log("Current session verified:", {
         email: session.user.email,
         name: session.user.name,
+        profilePicture: session.user.profilePicture, 
         time: new Date().toISOString()
       });
     }

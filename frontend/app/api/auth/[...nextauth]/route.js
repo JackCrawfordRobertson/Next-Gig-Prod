@@ -55,6 +55,8 @@ export const authOptions = {
           session.user.subscriptionPlan = userData.subscriptionPlan;
           session.user.subscriptionId = userData.subscriptionId;
           session.user.subscriptionActive = userData.subscriptionActive || false;
+          session.user.profilePicture = userData.profilePicture || '';
+
           
           // Add trial information if relevant
           if (userData.trialEndDate) {
