@@ -54,7 +54,6 @@ import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { showToast } from "@/lib/toast";
 import { SubscriptionModal } from "@/components/SubscriptionModal";
-import { storeSubscription } from "@/lib/checkSubscriptionStatus";
 
 // Importing the subscription service
 import { getUserSubscriptionStatus, cancelSubscription, storeSubscription } from "@/lib/subscriptionService";
