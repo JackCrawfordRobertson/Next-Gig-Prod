@@ -10,6 +10,7 @@ from email.mime.text import MIMEText
 from dotenv import load_dotenv
 from collections import defaultdict
 from datetime import datetime
+import json
 
 # Load environment variables
 load_dotenv()
@@ -28,21 +29,48 @@ if not firebase_admin._apps:
 # Initialize Firestore
 db = firestore.client()
 
-def generate_document_id(url):
+def generate_document_id(job_url):
     """Generate a Firestore-safe document ID from a job URL using hashing."""
-    return hashlib.md5(url.encode()).hexdigest()
+    return hashlib.md5(job_url.encode()).hexdigest()
 
 def get_unsent_jobs():
     """Retrieve unsent jobs from Firestore."""
-    jobs_collection = db.collection("jobs_compiled").stream()
-    unsent_jobs = [job.to_dict() for job in jobs_collection if not job.to_dict().get("sent", False)]
-    return unsent_jobs
+    jobs_collection = db.collection("jobs_compiled")
+    
+    # Query for jobs that have not been sent or sent is False
+    unsent_jobs_query = jobs_collection.where("sent", "==", False)
+    
+    unsent_jobs = unsent_jobs_query.stream()
+    jobs = [job.to_dict() for job in unsent_jobs]
+    
+    print(f"📋 Found {len(jobs)} unsent jobs")
+    return jobs
 
 def mark_jobs_as_sent(jobs):
-    """Update Firestore to mark jobs as sent."""
+    """Update Firestore to mark jobs as sent"""
     for job in jobs:
-        doc_id = generate_document_id(job["url"])
-        db.collection("jobs_compiled").document(doc_id).update({"sent": True})
+        try:
+            # Generate a consistent job ID
+            doc_id = generate_document_id(job["url"])
+            
+            # Reference to the job in the jobs_compiled collection
+            job_ref = db.collection("jobs_compiled").document(doc_id)
+            
+            # Check if document exists
+            job_doc = job_ref.get()
+            
+            if job_doc.exists:
+                # Update the document to mark as sent
+                job_ref.update({
+                    "sent": True,
+                    "sent_timestamp": firestore.SERVER_TIMESTAMP
+                })
+                print(f"✅ Marked job as sent: {job.get('title', 'Unknown Job')} ({doc_id})")
+            else:
+                print(f"⚠️ Job document not found: {job.get('url', 'Unknown URL')}")
+        
+        except Exception as e:
+            print(f"❌ Error marking job as sent: {e}")
 
 def get_source_platform(url):
     """Extracts job platform based on the URL."""
@@ -350,52 +378,82 @@ def send_job_emails():
     jobs = get_unsent_jobs()
     if not jobs:
         print("❌ No new jobs found. Skipping email.")
-        return
-    
+        return False
+
     # Get all subscribed users
     users = get_subscribed_users()
     if not users:
         print("❌ No subscribed users found. Skipping email.")
-        return
-    
+        return False
+
     print(f"📧 Preparing to send job alerts to {len(users)} users...")
-    
-    # Mark all jobs as sent once we process them
-    mark_jobs_as_sent(jobs)
-    
+
+    # Track email sending statistics
+    total_emails_sent = 0
+    total_users_processed = 0
+    users_with_matching_jobs = 0
+
     # Process each user and send personalised emails
     for user in users:
+        total_users_processed += 1
+
         # Filter jobs based on user preferences
         user_jobs = []
         user_job_titles = [title.lower() for title in user.get("jobTitles", [])]
         user_job_locations = [loc.lower() for loc in user.get("jobLocations", [])]
-        
+
         # Only include jobs that match this user's preferences
         for job in jobs:
             job_title = job.get("title", "").lower()
             job_location = job.get("location", "").lower()
-            
+
             if any(title in job_title for title in user_job_titles) and \
                any(loc in job_location for loc in user_job_locations):
                 user_jobs.append(job)
-        
+
         if not user_jobs:
-            print(f"⚠️ No matching jobs for user {user['email']}. Skipping email.")
+            print(f"⚠️ No matching jobs for user {user.get('email', 'Unknown email')}. Skipping email.")
             continue
-        
+
+        users_with_matching_jobs += 1
+
         # Organise jobs by platform and company
         jobs_by_platform = defaultdict(lambda: defaultdict(list))
         for job in user_jobs:
             platform = get_source_platform(job["url"])
             company_name = job.get("company", "Unknown Company")
             jobs_by_platform[platform][company_name].append(job)
-        
+
         # Generate HTML email
-        html_content = generate_html_email(jobs_by_platform, len(user_jobs))
-        
-        # Send email to this user
-        success = send_email_to_user(user["email"], html_content, len(user_jobs), jobs_by_platform)
-        if success:
-            print(f"✅ Sent {len(user_jobs)} job listings to {user['email']}")
-    
-    print("✅ Job alert emails sent to all subscribed users.")
+        try:
+            html_content = generate_html_email(jobs_by_platform, len(user_jobs))
+
+            # Send email to this user
+            success = send_email_to_user(
+                user.get('email', ''), 
+                html_content, 
+                len(user_jobs), 
+                jobs_by_platform
+            )
+
+            if success:
+                total_emails_sent += 1
+                print(f"✅ Sent {len(user_jobs)} job listings to {user.get('email', 'Unknown email')}")
+            else:
+                print(f"❌ Failed to send email to {user.get('email', 'Unknown email')}")
+
+        except Exception as e:
+            print(f"❌ Error processing email for user {user.get('email', 'Unknown email')}: {e}")
+            import traceback
+            traceback.print_exc()
+
+    # Mark all processed jobs as sent
+    mark_jobs_as_sent(jobs)
+
+    # Provide comprehensive summary
+    print("\n📊 Email Sending Summary:")
+    print(f"Total Users Processed: {total_users_processed}")
+    print(f"Users with Matching Jobs: {users_with_matching_jobs}")
+    print(f"Total Emails Sent: {total_emails_sent}")
+
+    return total_emails_sent > 0

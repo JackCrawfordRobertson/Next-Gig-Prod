@@ -32,8 +32,7 @@ CACHE_FILE = "unjobs_cache.json"
 CACHE_EXPIRY_HOURS = 24  # Cache results for 24 hours
 MAX_WORKERS = 3  # Number of concurrent workers (keep low to avoid triggering CloudFlare)
 
-# Filtering rules
-EXCLUDED_KEYWORDS = ["senior", "director", "lead", "head", "manager", "principal"]
+# Location aliases for better matching
 LOCATION_ALIASES = {
     "uk": ["united kingdom", "britain", "england", "scotland", "wales", "northern ireland"],
     "london": ["greater london"],
@@ -299,11 +298,6 @@ def process_job_keyword(job_keyword, locations, shared_cache, shared_visited_url
                     shared_visited_urls[1].add(url)
                     local_visited_job_urls.add(url)
                 
-                # Skip senior roles
-                if any(keyword.lower() in title.lower() for keyword in EXCLUDED_KEYWORDS):
-                    logger.debug(f"Skipping senior role: {title}")
-                    continue
-                
                 # Check if title matches the search term
                 if job_keyword.lower() not in title.lower():
                     continue
@@ -428,6 +422,9 @@ def fetch_unjobs_sync(job_titles=None, locations=None):
     Legacy wrapper for compatibility - calls parallel version
     """
     return fetch_unjobs_parallel(job_titles, locations, max_workers=1)
+
+# Create an alias for backward compatibility with other modules
+fetch_unjobs = fetch_unjobs_parallel
 
 if __name__ == "__main__":
     # Test the parallel scraper with appropriate worker count

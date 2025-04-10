@@ -16,8 +16,6 @@ import config  # Import the config file
 BASE_URL = "https://www.ifyoucouldjobs.com/jobs"
 MAX_PAGES = 2  # Scrape first 2 pages
 
-EXCLUDED_KEYWORDS = ["senior", "director", "lead", "head"]
-
 def parse_job_location(location):
     """
     Normalize location for more flexible matching.
@@ -83,10 +81,6 @@ def fetch_ifyoucould_jobs(job_titles=None, locations=None):
                 title = title_element[0].text.strip() if title_element else None
                 if not title:
                     print("⚠️ Skipping job due to missing title")
-                    continue
-
-                if any(keyword.lower() in title.lower() for keyword in EXCLUDED_KEYWORDS):
-                    print(f"⚠️ Skipping senior role: {title}")
                     continue
 
                 company_element = job.find_elements(By.CSS_SELECTOR, "h3.type-style-4")

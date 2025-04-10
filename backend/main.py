@@ -97,6 +97,7 @@ def log_subscription_changes():
     print(f"📊 Subscription Status: {subscribed_count} subscribed, {unsubscribed_count} unsubscribed")
     
     return subscribed_count > 0
+
 def job_cycle(test_mode=False):
     """Fetch new jobs for all subscribed users and store them in a scalable structure."""
     
@@ -147,25 +148,6 @@ def job_cycle(test_mode=False):
     
     return True  # Return true to indicate jobs were processed successfully
 
-if __name__ == "__main__":
-    start_time = time.time()
-    
-    try:
-        # Run the job cycle
-        success = job_cycle()
-        
-        if success:
-            print("🔄 Job cycle completed. Sending email notifications...")
-            # Import the email functionality 
-            from email_service.send_email import send_job_emails
-            send_job_emails()
-        
-    except Exception as e:
-        print(f"❌ Error during execution: {e}")
-    finally:
-        elapsed_time = time.time() - start_time
-        print(f"\n🕒 Total time taken: {elapsed_time:.2f} seconds.")
-
 def quick_test():
     """
     Quick test function to validate job scraping and storing.
@@ -195,19 +177,62 @@ def cleanup_test_user():
         # Delete the user document
         db.collection("users").document(user.id).delete()
 
+def send_email_notifications():
+    """
+    Send email notifications for new jobs
+    """
+    try:
+        print("📧 Sending email notifications...")
+        # Import here to avoid circular imports
+        from email_service import send_job_emails
+        send_job_emails()
+        print("✅ Email notifications sent successfully")
+        return True
+    except Exception as e:
+        print(f"❌ Error sending email notifications: {e}")
+        return False
+
 if __name__ == "__main__":
     start_time = time.time()
     
     try:
-        # Uncomment the function you want to run
-        job_cycle()  # Normal job cycle
-        # quick_test()  # Quick test mode
-    except Exception as e:
-        print(f"❌ Error during testing: {e}")
-    finally:
-        # Optional: Cleanup test user
-        # Uncomment if you want to remove the test user after each run
-        # cleanup_test_user()
+        # Determine which mode to run
+        import sys
         
+        # Default to normal job cycle
+        mode = "normal"
+        
+        # Check command line args for mode
+        if len(sys.argv) > 1:
+            if sys.argv[1] == "test":
+                mode = "test"
+            elif sys.argv[1] == "cleanup":
+                mode = "cleanup"
+        
+        # Run the appropriate mode
+        if mode == "test":
+            print("🧪 Running in TEST mode")
+            quick_test()
+        elif mode == "cleanup":
+            print("🧹 Running CLEANUP mode")
+            cleanup_test_user()
+        else:
+            print("🚀 Running NORMAL job cycle")
+            success = job_cycle()
+            
+            if success:
+                print("🔄 Job cycle completed. Sending email notifications...")
+                try:
+                    from email_service.send_email import send_job_emails
+                    send_job_emails()
+                except Exception as e:
+                    print(f"❌ Detailed error sending email notifications: {e}")
+                    import traceback
+                    traceback.print_exc()
+    
+    except Exception as e:
+        print(f"❌ Error during execution: {e}")
+    
+    finally:
         elapsed_time = time.time() - start_time
         print(f"\n🕒 Total time taken: {elapsed_time:.2f} seconds.")

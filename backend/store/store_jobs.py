@@ -1,5 +1,3 @@
-# store/store_jobs.py
-
 import firebase_admin
 from firebase_admin import firestore
 import hashlib
@@ -39,6 +37,8 @@ def store_jobs(user_id, new_jobs):
             
             # Generate a consistent ID for this job
             job_id = generate_job_id(job)
+            
+            print(f"🔍 Storing job: {job_id} - {job['title']} from {source}")
             
             # Check if this job already exists in the main collection
             existing_job_ref = jobs_collection.document(job_id)

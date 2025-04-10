@@ -14,8 +14,8 @@ HEADERS = {
     "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 }
 
-EXCLUDED_KEYWORDS = ["director", "senior"] 
 DATE_THRESHOLD = datetime.today() - timedelta(days=14) 
+
 def parse_relative_date(date_text):
     today = datetime.today()
 
@@ -29,15 +29,26 @@ def parse_relative_date(date_text):
 
     return today 
 
-def fetch_all_linkedin_jobs(job_titles, locations, max_jobs=5, max_per_title=5):
+def fetch_all_linkedin_jobs(job_titles, locations, max_jobs=20, max_per_title=10):
     """
     Fetches LinkedIn job listings for dynamically provided job titles and locations.
     Limits to max_per_title per job role and max_jobs per keyword.
+    
+    :param job_titles: List of job titles to search for
+    :param locations: List or string of locations to search in
+    :param max_jobs: Maximum jobs to retrieve per job title (default: 20)
+    :param max_per_title: Maximum identical job titles to include (default: 10)
+    :return: List of job dictionaries
     """
     all_jobs = []
+    total_api_calls = 0
+    start_time = time.time()
 
     if not isinstance(locations, list):
         locations = [locations]
+
+    print(f"🔍 Starting LinkedIn job search for {len(job_titles)} job titles across {len(locations)} locations")
+    print(f"🎯 Target: Up to {max_jobs} jobs per title-location combination")
 
     for location in locations:
         print(f"\n🌍 Scraping jobs in {location}...")
@@ -52,118 +63,160 @@ def fetch_all_linkedin_jobs(job_titles, locations, max_jobs=5, max_per_title=5):
                 max_per_title=max_per_title
             )
 
+            total_api_calls += (len(jobs) // 25) + 1  # Estimate API calls
+
             if jobs:
                 print(f"✅ Found {len(jobs)} jobs for {job_title} in {location}")
                 all_jobs.extend(jobs)
             else:
                 print(f"❌ No jobs found for {job_title} in {location}")
 
-    print(f"\n✅ Scraped {len(all_jobs)} total jobs from LinkedIn.")
+    # Add statistics at the end
+    elapsed_time = time.time() - start_time
+    print(f"\n📊 LINKEDIN SCRAPER STATISTICS:")
+    print(f"✅ Total jobs found: {len(all_jobs)}")
+    print(f"🔍 Total search combinations: {len(job_titles) * len(locations)}")
+    print(f"📡 Estimated API calls: {total_api_calls}")
+    print(f"⏱️ Total time: {elapsed_time:.2f} seconds")
+    print(f"⚡ Rate: {len(all_jobs)/elapsed_time:.2f} jobs/second")
+
     return all_jobs
 
-# ✅ Fetch LinkedIn jobs for a single job title and location
-def fetch_linkedin_jobs(search_term, location, max_jobs=5, max_per_title=5):
+def fetch_linkedin_jobs(search_term, location, max_jobs=20, max_per_title=10):
     """
     Fetches LinkedIn job listings for a specific job title and location.
-    Limits results to a maximum per job title and keyword.
-    Filters out jobs posted more than 14 days ago.
+    
+    :param search_term: Job title to search for
+    :param location: Location to search in
+    :param max_jobs: Maximum jobs to retrieve (default: 20)
+    :param max_per_title: Maximum identical job titles to include (default: 10)
+    :return: List of job dictionaries
     """
     jobs = []
     start = 0  # LinkedIn paginates results (increments of 25)
     seen_job_ids = set()
-    job_title_counts = {}  # ✅ Track count per job title
+    job_title_counts = {}  # Track count per job title
+    page_count = 0
+    max_pages = 3  # Limit to reasonable number of pages (8 pages = 200 potential listings)
 
-    while len(jobs) < max_jobs and start < 1000:
+    print(f"🔎 Searching for: {search_term} in {location}")
+
+    while len(jobs) < max_jobs and start < 1000 and page_count < max_pages:
+        page_count += 1
+        
+        # Create URL with pagination
         url = (
             f"https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?"
-            f"keywords={search_term.replace(' ', '%20')}&location={location.replace(' ', '%20')}&start={start}"
+            f"keywords={search_term.replace(' ', '%20')}&location={location.replace(' ', '%20')}"
+            f"&start={start}&sort=R"  # Sort by relevance
         )
 
-        response = requests.get(url, headers=HEADERS, timeout=10)
-        if response.status_code != 200:
-            print(f"❌ LinkedIn request failed: {response.status_code}")
-            break
-
-        soup = BeautifulSoup(response.text, "html.parser")
-        job_cards = soup.find_all("div", class_="base-search-card")
-
-        if not job_cards:
-            print(f"❌ No job listings found for {search_term} in {location}.")
-            break
-
-        for job_card in job_cards:
-            if len(jobs) >= max_jobs:
-                print(f"🚫 Stopping search for {search_term} (max {max_jobs} jobs found)")
+        # Add randomized delay to avoid rate limiting
+        time.sleep(random.uniform(2.0, 4.0))
+        
+        try:
+            print(f"📄 Fetching page {page_count} (results {start}-{start+25})...")
+            response = requests.get(url, headers=HEADERS, timeout=15)
+            
+            if response.status_code == 429:
+                print(f"⚠️ Rate limited! Waiting longer before retry...")
+                time.sleep(random.uniform(30, 60))  # Longer wait on rate limit
+                response = requests.get(url, headers=HEADERS, timeout=15)
+            
+            if response.status_code != 200:
+                print(f"❌ LinkedIn request failed: {response.status_code}")
                 break
 
-            # ✅ Extract Job URL
-            href_tag = job_card.find("a", class_="base-card__full-link")
-            if not href_tag or "href" not in href_tag.attrs:
-                continue
-            job_url = href_tag["href"].split("?")[0]
+            soup = BeautifulSoup(response.text, "html.parser")
+            job_cards = soup.find_all("div", class_="base-search-card")
 
-            # ✅ Extract Job ID
-            job_id = job_url.split("-")[-1]
-            if job_id in seen_job_ids:
-                continue
-            seen_job_ids.add(job_id)
+            if not job_cards:
+                print(f"📭 No more job listings found on page {page_count}.")
+                break
+                
+            print(f"📑 Found {len(job_cards)} job cards on page {page_count}")
 
-            # ✅ Extract Job Title
-            title_tag = job_card.find("span", class_="sr-only")
-            title = title_tag.get_text(strip=True) if title_tag else "N/A"
+            for job_card in job_cards:
+                if len(jobs) >= max_jobs:
+                    print(f"🛑 Reached maximum of {max_jobs} jobs for this search")
+                    break
 
-            # ✅ Extract Company Name
-            company_tag = job_card.find("h4", class_="base-search-card__subtitle")
-            company_name = company_tag.get_text(strip=True) if company_tag else "N/A"
+                # Extract Job URL
+                href_tag = job_card.find("a", class_="base-card__full-link")
+                if not href_tag or "href" not in href_tag.attrs:
+                    continue
+                job_url = href_tag["href"].split("?")[0]
 
-            # ✅ Extract Location
-            location_tag = job_card.find("span", class_="job-search-card__location")
-            job_location = location_tag.get_text(strip=True) if location_tag else "N/A"
+                # Extract Job ID to avoid duplicates
+                job_id = job_url.split("-")[-1]
+                if job_id in seen_job_ids:
+                    continue
+                seen_job_ids.add(job_id)
 
-            # ✅ Extract Salary (if available)
-            salary_tag = job_card.find("span", class_="job-search-card__salary-info")
-            salary = salary_tag.get_text(strip=True) if salary_tag else "Not Provided"
+                # Extract Job Title
+                title_tag = job_card.find("span", class_="sr-only")
+                title = title_tag.get_text(strip=True) if title_tag else "N/A"
 
-            # ✅ Extract & Validate Job Posting Date
-            date_tag = job_card.find("time", class_="job-search-card__listdate")
-            job_date = datetime.today()
+                # Extract Company Name
+                company_tag = job_card.find("h4", class_="base-search-card__subtitle")
+                company_name = company_tag.get_text(strip=True) if company_tag else "N/A"
 
-            if date_tag:
-                if date_tag.has_attr("datetime"):
-                    job_date = datetime.strptime(date_tag["datetime"], "%Y-%m-%d")
-                else:
-                    relative_date_text = date_tag.get_text(strip=True).lower()
-                    job_date = parse_relative_date(relative_date_text)
+                # Extract Location
+                location_tag = job_card.find("span", class_="job-search-card__location")
+                job_location = location_tag.get_text(strip=True) if location_tag else "N/A"
 
-                if job_date < DATE_THRESHOLD:
-                    print(f"⏳ Skipping old job: {title} at {company_name} (Posted {job_date.date()})")
+                # Extract Salary (if available)
+                salary_tag = job_card.find("span", class_="job-search-card__salary-info")
+                salary = salary_tag.get_text(strip=True) if salary_tag else "Not Provided"
+
+                # Extract & Validate Job Posting Date
+                date_tag = job_card.find("time", class_="job-search-card__listdate")
+                job_date = datetime.today()
+
+                if date_tag:
+                    if date_tag.has_attr("datetime"):
+                        job_date = datetime.strptime(date_tag["datetime"], "%Y-%m-%d")
+                    else:
+                        relative_date_text = date_tag.get_text(strip=True).lower()
+                        job_date = parse_relative_date(relative_date_text)
+
+                    if job_date < DATE_THRESHOLD:
+                        print(f"⏳ Skipping old job: {title} (Posted {job_date.date()})")
+                        continue
+
+                # Limit identical job titles
+                if job_title_counts.get(title, 0) >= max_per_title:
                     continue
 
-            # ✅ FILTER OUT SENIOR ROLES
-            if any(word.lower() in title.lower() for word in EXCLUDED_KEYWORDS):
-                print(f"⚠️ Skipping job: {title} at {company_name} (Filtered out)")
-                continue
+                # Job passed all filters - add to results
+                jobs.append({
+                    "title": title,
+                    "company": company_name,
+                    "location": job_location,
+                    "url": job_url,
+                    "salary": salary,
+                    "date_posted": job_date.strftime("%Y-%m-%d"),
+                    "date_added": datetime.utcnow().strftime("%Y-%m-%d"),
+                    "has_applied": False,
+                    "source": "linkedin"
+                })
 
-            # ✅ LIMIT JOBS PER TITLE
-            if job_title_counts.get(title, 0) >= max_per_title:
-                print(f"⚠️ Skipping extra '{title}' jobs (Already found {max_per_title})")
-                continue
+                job_title_counts[title] = job_title_counts.get(title, 0) + 1
+                print(f"✅ Added: {title} at {company_name}")
 
-            # ✅ Add to job list
-            jobs.append({
-                "title": title,
-                "company": company_name,
-                "location": job_location,
-                "url": job_url,
-                "salary": salary,
-                "date_posted": job_date.strftime("%Y-%m-%d"),
-                "date_added": datetime.utcnow().strftime("%Y-%m-%d"),
-                "has_applied": False,
-            })
+            # If we didn't find any new jobs on this page, break
+            if len(jobs) == 0 and page_count > 1:
+                print("🔍 No new matching jobs found. Ending search.")
+                break
 
-            job_title_counts[title] = job_title_counts.get(title, 0) + 1
+            # Move to next page
+            start += 25
+            
+        except Exception as e:
+            print(f"❌ Error processing page {page_count}: {str(e)}")
+            break
 
-        start += 25  # ✅ Paginate in increments of 25
-        time.sleep(random.uniform(3, 6))  # ✅ Avoid detection
-
+    print(f"🏁 Completed search for '{search_term}' in {location}")
+    print(f"📊 Found {len(jobs)} jobs across {page_count} pages")
+    
     return jobs
