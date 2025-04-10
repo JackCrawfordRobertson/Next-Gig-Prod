@@ -19,10 +19,12 @@ import { auth } from "@/lib/firebase";
 import Script from "next/script";
 import Link from "next/link";
 import Image from "next/image";
+import { isDevelopmentMode } from "@/lib/environment";
+
 
 export default function LoginPage() {
   const router = useRouter();
-  const isDev = process.env.NODE_ENV === "development";
+  const isDev = isDevelopmentMode();
 
   const { data: session, status } = useSession();
 

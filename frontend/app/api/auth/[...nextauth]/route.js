@@ -57,22 +57,67 @@ export const authOptions = {
           session.user.firstName = userData.firstName || '';
           session.user.lastName = userData.lastName || '';
           
-          // Add subscription data to the session
-          session.user.subscribed = userData.subscribed || false;
-          session.user.onTrial = userData.onTrial || false;
+          // Add subscription data to the session with better handling
+          session.user.subscribed = !!userData.subscribed;
+          
+          // Handle trial status with date checking
+          let isOnTrial = !!userData.onTrial;
+          if (isOnTrial && userData.trialEndDate) {
+            try {
+              const trialEndDate = new Date(userData.trialEndDate);
+              const now = new Date();
+              // If trial end date has passed, they're no longer on trial
+              if (trialEndDate < now) {
+                isOnTrial = false;
+                // We would ideally update the user document here, but for
+                // session callbacks it's better to avoid writes
+              }
+            } catch (error) {
+              console.warn("Invalid trial end date format:", userData.trialEndDate);
+              isOnTrial = false;
+            }
+          }
+          
+          session.user.onTrial = isOnTrial;
           session.user.subscriptionPlan = userData.subscriptionPlan;
           session.user.subscriptionId = userData.subscriptionId;
-          session.user.subscriptionActive = userData.subscriptionActive || false;
+          
+          // Ensure subscription active status is consistent with subscribed and trial status
+          session.user.subscriptionActive = userData.subscriptionActive || 
+                                            userData.subscribed || 
+                                            isOnTrial || 
+                                            false;
+          
           session.user.profilePicture = userData.profilePicture || '';
           
-          // Add trial information if relevant
+          // Add trial information with safety checks
           if (userData.trialEndDate) {
             session.user.trialEndDate = userData.trialEndDate;
             
-            // Calculate if trial is still active based on the end date
-            const trialEndDate = new Date(userData.trialEndDate);
-            const now = new Date();
-            session.user.trialActive = trialEndDate > now;
+            try {
+              // Calculate if trial is still active based on the end date
+              const trialEndDate = new Date(userData.trialEndDate);
+              const now = new Date();
+              session.user.trialActive = trialEndDate > now;
+              
+              // Add remaining days information for UI display
+              const msPerDay = 1000 * 60 * 60 * 24;
+              const daysRemaining = Math.max(0, Math.ceil((trialEndDate - now) / msPerDay));
+              session.user.trialDaysRemaining = daysRemaining;
+            } catch (error) {
+              console.warn("Error calculating trial status:", error);
+              session.user.trialActive = false;
+              session.user.trialDaysRemaining = 0;
+            }
+          }
+          
+          // Additional helpful information for the frontend
+          if (userData.subscriptionStartDate) {
+            session.user.subscriptionStartDate = userData.subscriptionStartDate;
+          }
+          
+          if (userData.hadPreviousSubscription) {
+            session.user.hadPreviousSubscription = !!userData.hadPreviousSubscription;
           }
         }
       } catch (error) {

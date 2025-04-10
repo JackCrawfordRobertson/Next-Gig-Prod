@@ -46,6 +46,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { isDevelopmentMode } from "@/lib/environment";
+
 
 // Helper function to format date
 const formatDate = (dateString) => {
@@ -59,7 +61,7 @@ export default function UNJobsPage() {
   const [jobStats, setJobStats] = useState([]);
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [loading, setLoading] = useState(true);
-  const isDev = process.env.NODE_ENV === "development";
+  const isDev = isDevelopmentMode();
   const [showApplyDialog, setShowApplyDialog] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
   const lastClickTimeRef = useRef(null);

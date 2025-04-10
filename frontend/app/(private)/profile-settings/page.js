@@ -56,6 +56,10 @@ import { showToast } from "@/lib/toast";
 import { SubscriptionModal } from "@/components/SubscriptionModal";
 import { storeSubscription } from "@/lib/checkSubscriptionStatus";
 
+// Importing the subscription service
+import { getUserSubscriptionStatus, cancelSubscription, storeSubscription } from "@/lib/subscriptionService";
+
+
 
 
 
@@ -140,58 +144,44 @@ export default function ProfileSettingsPage() {
     },
   });
 
-  useEffect(() => {
-  // In your fetchUserData function in ProfileSettingsPage.js
-const fetchUserData = async () => {
-  try {
-    if (status !== "authenticated") return;
-
-    const userId = session.user.id;
-
-    // 1. Fetch user data
-    const userDocRef = doc(db, "users", userId);
-    const userDocSnap = await getDoc(userDocRef);
-    if (userDocSnap.exists()) {
-      setUserData(userDocSnap.data());
-    }
-
-    // 2. Fetch subscription data
-    const subQuery = query(
-      collection(db, "subscriptions"),
-      where("userId", "==", userId),
-      // IMPORTANT: Add this to only get active or trial subscriptions
-      where("status", "in", ["active", "trial"]) 
-    );
-    const subQuerySnap = await getDocs(subQuery);
-
-    if (!subQuerySnap.empty) {
-      const docSnap = subQuerySnap.docs[0];
-      setSubscriptionDocId(docSnap.id);
-      setSubscriptionData(docSnap.data());
+  const fetchUserData = async () => {
+    try {
+      if (status !== "authenticated") return;
+  
+      const userId = session.user.id;
       
-      // Add debug logging here
-      console.log("Found active subscription:", docSnap.data());
-    } else {
-      // If no active subscription found, reset the state
-      console.log("No active subscription found");
-      setSubscriptionData(null);
-      setSubscriptionDocId(null);
+      // Use our new service to get both user data and subscription data
+      const result = await getUserSubscriptionStatus(userId);
+      
+      if (result.error) {
+        console.error("Error fetching subscription data:", result.error);
+        showToast({
+          title: "Error",
+          description: "Failed to load subscription data. Please try again.",
+          variant: "destructive",
+        });
+      }
+      
+      // Set user data from result
+      if (result.userData) {
+        setUserData(result.userData);
+      }
+      
+      // Set subscription data from result
+      setSubscriptionData(result.subscriptionData);
+      setSubscriptionDocId(result.subscriptionDocId);
+      
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+      showToast({
+        title: "Error",
+        description: "Failed to load profile data. Please try again.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
-  } catch (error) {
-    console.error("Error fetching user data:", error);
-    showToast({
-      title: "Error",
-      description: "Failed to load profile data. Please try again.",
-      variant: "destructive",
-    });
-    setIsLoading(false);
-  }
-};
-
-    fetchUserData();
-  }, [status, session, router]);
+  };
 
   const form = useForm({
     resolver: zodResolver(profileFormSchema),
@@ -297,7 +287,7 @@ const fetchUserData = async () => {
         router.push("/login");
         return;
       }
-    
+      
       if (!subscriptionData?.subscriptionId) {
         showToast({
           title: "Cancellation Error",
@@ -313,26 +303,19 @@ const fetchUserData = async () => {
         description: "Please wait while we process your request.",
         variant: "info",
       });
-    
-      // Cancel subscription via API
+      
+      // Cancel subscription via the service
       const userId = session.user.id;
-      const response = await fetch(`/api/cancel-subscription`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId,
-          subscriptionId: subscriptionData.subscriptionId,
-          subscriptionDocId: subscriptionDocId
-        }),
-      });
-  
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Subscription cancellation failed");
+      const result = await cancelSubscription(
+        userId, 
+        subscriptionData.subscriptionId, 
+        subscriptionDocId
+      );
+      
+      if (!result.success) {
+        throw new Error("Subscription cancellation failed");
       }
-  
+      
       // Update UI state
       setSubscriptionData((prev) => ({ ...prev, status: "cancelled" }));
       setUserData((prev) => ({
@@ -340,7 +323,7 @@ const fetchUserData = async () => {
         subscribed: false,
         onTrial: false,
       }));
-  
+      
       showToast({
         title: "Subscription Cancelled",
         description: "Your subscription has been successfully cancelled.",
@@ -380,7 +363,7 @@ const handleSubscribe = () => {
 
 const handleSubscriptionSuccess = async (subscriptionData) => {
   try {
-    // Use the shared function with toast notifications
+    // Use the improved service function
     const result = await storeSubscription(
       session.user.id, 
       subscriptionData, 
@@ -388,7 +371,7 @@ const handleSubscriptionSuccess = async (subscriptionData) => {
       { showToast: true }
     );
     
-    // Update local state
+    // Update local state with the result
     setSubscriptionData({
       userId: session.user.id,
       subscriptionId: subscriptionData.subscriptionID || subscriptionData.subscriptionId,
@@ -421,16 +404,6 @@ const handleSubscriptionSuccess = async (subscriptionData) => {
       trialEndDate: result.trialEndDate,
       trialEligibilityReason: result.trialEligibilityReason
     }));
-    
-    showToast({
-      title: result.onTrial ? "Trial Activated!" : "Subscription Activated!",
-      description: result.onTrial 
-        ? `Your trial has been activated.`
-        : "Your subscription has been successfully activated.",
-      variant: "success",
-    });
-    
-    // No navigation here - user stays on the profile page
   } catch (error) {
     console.error("Error handling subscription success:", error);
     showToast({
@@ -848,182 +821,196 @@ const handleSubscriptionSuccess = async (subscriptionData) => {
         Manage your subscription plan and billing information
       </CardDescription>
     </CardHeader>
-    <CardContent className="space-y-4">              
-      {subscriptionData && subscriptionData.status === 'cancelled' ? (
-        <div className="border rounded-lg p-8 text-center">
-          <h3 className="font-semibold mb-4">Subscription Cancelled</h3>
-          <p className="text-muted-foreground mb-6">
-            Your subscription has been cancelled. Reactivate to continue enjoying our services.
-          </p>
-          <Button onClick={() => handleResubscribe()}>Resubscribe Now</Button>
+    // In the SubscriptionManagement Card, replace the content with this more robust UI
+<CardContent className="space-y-4">
+  {isLoading ? (
+    <div className="border rounded-lg p-6 text-center">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto"></div>
+      <p className="mt-4 text-muted-foreground">Loading subscription information...</p>
+    </div>
+  ) : error ? (
+    <div className="border rounded-lg p-6 text-center bg-red-50">
+      <h3 className="font-semibold mb-2 text-red-600">Error Loading Subscription</h3>
+      <p className="text-muted-foreground mb-4">{error}</p>
+      <Button onClick={() => fetchUserData()}>Try Again</Button>
+    </div>
+  ) : subscriptionData && subscriptionData.status === 'cancelled' ? (
+    <div className="border rounded-lg p-8 text-center">
+      <h3 className="font-semibold mb-4">Subscription Cancelled</h3>
+      <p className="text-muted-foreground mb-6">
+        Your subscription has been cancelled. Reactivate to continue enjoying our services.
+      </p>
+      <Button onClick={() => handleResubscribe()}>Resubscribe Now</Button>
+    </div>
+  ) : subscriptionData ? (
+    <>
+      <div className="border rounded-lg p-4 bg-white">
+        <div className="flex justify-between items-center mb-2">
+          <h3 className="font-semibold">Current Plan</h3>
+          <span
+            className={`text-sm rounded-full px-3 py-1 ${
+              subscriptionData.status === "trial"
+                ? "bg-yellow-100 text-yellow-800"
+                : "bg-green-100 text-green-800"
+            }`}
+          >
+            {subscriptionData.status === "trial"
+              ? "Trial"
+              : "Active"}
+          </span>
         </div>
-      ) : subscriptionData ? (
-        <>
-          <div className="border rounded-lg p-4 bg-white">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-semibold">Current Plan</h3>
-              <span
-                className={`text-sm rounded-full px-3 py-1 ${
-                  subscriptionData.status === "trial"
-                    ? "bg-yellow-100 text-yellow-800"
-                    : "bg-green-100 text-green-800"
-                }`}
-              >
-                {subscriptionData.status === "trial"
-                  ? "Trial"
-                  : "Active"}
-              </span>
-            </div>
-            <p className="text-2xl font-bold capitalize">
-              {subscriptionData.plan} Plan
-            </p>
-            <p className="text-muted-foreground">
-              {subscriptionData.currency === "GBP" ? "£" : ""}
-              {subscriptionData.price} per month
-            </p>
+        <p className="text-2xl font-bold capitalize">
+          {subscriptionData.plan} Plan
+        </p>
+        <p className="text-muted-foreground">
+          {subscriptionData.currency === "GBP" ? "£" : ""}
+          {subscriptionData.price} per month
+        </p>
 
-            {subscriptionData.status === "trial" && (
-              <div className="mt-4">
-                <div className="flex justify-between mb-2">
-                  <span>Trial Progress</span>
-                  <span>
-                    {Math.ceil(
-                      (new Date(subscriptionData.trialEndDate) -
-                        new Date()) /
-                        (1000 * 60 * 60 * 24)
-                    )}{" "}
-                    days left
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2.5">
-                  <div
-                    className="bg-blue-600 h-2.5 rounded-full"
-                    style={{
-                      width: `${
-                        ((new Date() -
-                          new Date(subscriptionData.startDate)) /
-                          (new Date(subscriptionData.trialEndDate) -
-                            new Date(subscriptionData.startDate))) *
-                        100
-                      }%`,
-                    }}
-                  ></div>
-                </div>
-                
-                {/* Add this section to show trial eligibility details */}
-                {subscriptionData.trialEligibility && (
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    <p>
-                      {subscriptionData.trialEligibility.reason || 
-                       (subscriptionData.trialEligibility.duration < 7 ? 
-                         "Partial trial based on previous usage" : 
-                         "Full trial period")}
-                    </p>
-                  </div>
-                )}
+        {subscriptionData.status === "trial" && subscriptionData.trialEndDate && (
+          <div className="mt-4">
+            <div className="flex justify-between mb-2">
+              <span>Trial Progress</span>
+              {(() => {
+                try {
+                  const trialEndDate = new Date(subscriptionData.trialEndDate);
+                  const now = new Date();
+                  const daysLeft = Math.max(0, Math.ceil(
+                    (trialEndDate - now) / (1000 * 60 * 60 * 24)
+                  ));
+                  return <span>{daysLeft} days left</span>;
+                } catch (e) {
+                  return <span>Trial active</span>;
+                }
+              })()}
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+              {(() => {
+                try {
+                  const startDate = new Date(subscriptionData.startDate);
+                  const endDate = new Date(subscriptionData.trialEndDate);
+                  const now = new Date();
+                  const totalDuration = endDate - startDate;
+                  const elapsed = now - startDate;
+                  const percentage = Math.min(100, Math.max(0, 
+                    Math.round((elapsed / totalDuration) * 100)
+                  ));
+                  return (
+                    <div
+                      className="bg-blue-600 h-2.5 rounded-full"
+                      style={{ width: `${percentage}%` }}
+                    ></div>
+                  );
+                } catch (e) {
+                  return <div className="bg-blue-600 h-2.5 rounded-full w-0"></div>;
+                }
+              })()}
+            </div>
+            
+            {/* Add trial eligibility details */}
+            {subscriptionData.trialEligibility && (
+              <div className="mt-2 text-xs text-muted-foreground">
+                <p>
+                  {subscriptionData.trialEligibility.reason || 
+                   (subscriptionData.trialEligibility.duration < 7 ? 
+                     "Partial trial based on previous usage" : 
+                     "Full trial period")}
+                </p>
               </div>
             )}
+          </div>
+        )}
 
-            <p className="text-muted-foreground text-sm mt-4">
-              Subscription started on{" "}
-              {new Date(
-                subscriptionData.startDate
-              ).toLocaleDateString("en-GB")}
+        <p className="text-muted-foreground text-sm mt-4">
+          Subscription started on{" "}
+          {(() => {
+            try {
+              return new Date(subscriptionData.startDate)
+                .toLocaleDateString("en-GB");
+            } catch (e) {
+              return "N/A";
+            }
+          })()}
+        </p>
+        <p className="text-muted-foreground text-sm">
+          {subscriptionData.status === "trial" && subscriptionData.trialEndDate
+            ? `Trial ends on ${new Date(
+                subscriptionData.trialEndDate
+              ).toLocaleDateString("en-GB")}`
+            : `Next billing date: ${(() => {
+                try {
+                  const nextBillingDate = new Date(subscriptionData.startDate);
+                  nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+                  return nextBillingDate.toLocaleDateString("en-GB");
+                } catch (e) {
+                  return "N/A";
+                }
+              })()}`}
+        </p>
+      </div>
+
+      <div className="border rounded-lg p-4 bg-white">
+        <h3 className="font-semibold mb-2">Payment Method</h3>
+        <div className="flex items-center gap-2">
+          <div className="bg-gray-100 rounded p-1">
+            {subscriptionData.paymentMethod === "paypal" ? (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-blue-600"
+              >
+                <path d="M22 8c0 3.5-2 4.5-3.5 4.5h-4c-1.5 0-2.5-1-2.5-2.5s1-2.5 2.5-2.5H19" />
+                <path d="M22 2v3" />
+                <path d="M17 15h-5.5c-1.5 0-2.5-1-2.5-2.5 0-1.5 1-2.5 2.5-2.5H17" />
+                <path d="M22 9v6" />
+              </svg>
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect width="20" height="14" x="2" y="5" rx="2" />
+                <line x1="2" x2="22" y1="10" y2="10" />
+              </svg>
+            )}
+          </div>
+          <div>
+            <p className="font-medium capitalize">
+              {subscriptionData.paymentMethod || "PayPal"}
             </p>
-            <p className="text-muted-foreground text-sm">
-              {subscriptionData.status === "trial"
-                ? `Trial ends on ${new Date(
-                    subscriptionData.trialEndDate
-                  ).toLocaleDateString("en-GB")}`
-                : `Next billing date: ${new Date(
-                    new Date(subscriptionData.startDate).setMonth(
-                      new Date(
-                        subscriptionData.startDate
-                      ).getMonth() + 1
-                    )
-                  ).toLocaleDateString("en-GB")}`}
+            <p className="text-sm text-muted-foreground">
+              {subscriptionData.subscriptionId ? 
+                `ID: ${subscriptionData.subscriptionId.substring(0, 8)}...` : 
+                "Subscription ID not available"}
             </p>
           </div>
-
-          <div className="border rounded-lg p-4 bg-white">
-            <h3 className="font-semibold mb-2">Payment Method</h3>
-            <div className="flex items-center gap-2">
-              <div className="bg-gray-100 rounded p-1">
-                {subscriptionData.paymentMethod === "paypal" ? (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="text-blue-600"
-                  >
-                    <path d="M22 8c0 3.5-2 4.5-3.5 4.5h-4c-1.5 0-2.5-1-2.5-2.5s1-2.5 2.5-2.5H19" />
-                    <path d="M22 2v3" />
-                    <path d="M17 15h-5.5c-1.5 0-2.5-1-2.5-2.5 0-1.5 1-2.5 2.5-2.5H17" />
-                    <path d="M22 9v6" />
-                  </svg>
-                ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <rect width="20" height="14" x="2" y="5" rx="2" />
-                    <line x1="2" x2="22" y1="10" y2="10" />
-                  </svg>
-                )}
-              </div>
-              <div>
-                <p className="font-medium capitalize">
-                  {subscriptionData.paymentMethod}
-                </p>
-                {subscriptionData.fingerprint && (
-                  <p className="text-sm text-muted-foreground">
-                    {subscriptionData.paymentMethod === "paypal"
-                      ? `ID: ${subscriptionData.subscriptionId}`
-                      : `Card ending in ${subscriptionData.fingerprint.substring(
-                          subscriptionData.fingerprint.length - 4
-                        )}`}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          {/* Add this section to show subscription history */}
-          {subscriptionData.previousSubscription && (
-            <div className="border rounded-lg p-4 bg-white">
-              <h3 className="font-semibold mb-2">Subscription History</h3>
-              <div className="text-sm text-muted-foreground">
-                <p>Previous subscription: {new Date(subscriptionData.previousSubscription.cancelledAt).toLocaleDateString("en-GB")}</p>
-                {subscriptionData.previousSubscription.trialConsumedDays > 0 && (
-                  <p>Used {subscriptionData.previousSubscription.trialConsumedDays} days of trial previously</p>
-                )}
-              </div>
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="border rounded-lg p-8 text-center">
-          <h3 className="font-semibold mb-4">No Active Subscription</h3>
-          <p className="text-muted-foreground mb-6">
-            You don't currently have an active subscription.
-          </p>
-          <Button onClick={handleSubscribe}>Subscribe Now</Button>
         </div>
-      )}
-    </CardContent>
+      </div>
+    </>
+  ) : (
+    <div className="border rounded-lg p-8 text-center">
+      <h3 className="font-semibold mb-4">No Active Subscription</h3>
+      <p className="text-muted-foreground mb-6">
+        You don't currently have an active subscription.
+      </p>
+      <Button onClick={handleSubscribe}>Subscribe Now</Button>
+    </div>
+  )}
+</CardContent>
     
     {subscriptionData && subscriptionData.status !== 'cancelled' && (
       <CardFooter className="flex justify-between">

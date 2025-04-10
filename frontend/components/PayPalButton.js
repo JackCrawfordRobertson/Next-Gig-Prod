@@ -160,49 +160,50 @@ const PayPalButton = ({ userId, onSuccess }) => {
       ) : (
         <>
           {!showPlanHelper && (
-            <PayPalScriptProvider options={paypalOptions}>
-              <PayPalButtons
-                style={{
-                  layout: "vertical",
-                  color: "blue",
-                  shape: "rect",
-                  label: "subscribe",
-                }}
-                createSubscription={handleCreateSubscription}
-                onApprove={(data, actions) => {
-                  console.log("Subscription approved:", data);
-                  
-                  // Calculate trial end date (7 days from now)
-                  const trialEndDate = new Date();
-                  trialEndDate.setDate(trialEndDate.getDate() + 7);
-                  
-                  // Subscription successful - call onSuccess with subscription data
-                  if (onSuccess && typeof onSuccess === "function") {
-                    onSuccess({
-                      subscriptionId: data.subscriptionID,
-                      orderId: data.orderID,
-                      startTime: new Date().toISOString(),
-                      trialEndDate: trialEndDate.toISOString(),
-                    });
-                  }
-                  
-                  return actions.subscription.get().then((details) => {
-                    console.log("Subscription details:", details);
-                  }).catch(err => {
-                    console.warn("Could not fetch subscription details:", err);
-                    // We still consider this a success since the subscription was created
-                  });
-                }}
-                onError={(err) => {
-                  console.error("PayPal error:", err);
-                  setError("There was a problem setting up your subscription. Please try again.");
-                }}
-                onCancel={() => {
-                  console.log("Subscription canceled");
-                  setError("Subscription process was canceled. Please try again when you're ready.");
-                }}
-              />
-            </PayPalScriptProvider>
+           <PayPalScriptProvider options={paypalOptions}>
+           <PayPalButtons
+             style={{
+               layout: "vertical",
+               color: "blue",
+               shape: "rect",
+               label: "subscribe",
+             }}
+             createSubscription={handleCreateSubscription}
+             onApprove={(data, actions) => {
+               console.log("Subscription approved:", data);
+               
+               // Calculate trial end date (7 days from now)
+               const trialEndDate = new Date();
+               trialEndDate.setDate(trialEndDate.getDate() + 7);
+               
+               // Subscription successful - call onSuccess with normalized data
+               // Always use subscriptionId, not subscriptionID
+               if (onSuccess && typeof onSuccess === "function") {
+                 onSuccess({
+                   subscriptionId: data.subscriptionID, // Use consistent naming
+                   orderId: data.orderID,
+                   startTime: new Date().toISOString(),
+                   trialEndDate: trialEndDate.toISOString(),
+                 });
+               }
+               
+               return actions.subscription.get().then((details) => {
+                 console.log("Subscription details:", details);
+               }).catch(err => {
+                 console.warn("Could not fetch subscription details:", err);
+                 // We still consider this a success since the subscription was created
+               });
+             }}
+             onError={(err) => {
+               console.error("PayPal error:", err);
+               setError("There was a problem setting up your subscription. Please try again.");
+             }}
+             onCancel={() => {
+               console.log("Subscription canceled");
+               setError("Subscription process was canceled. Please try again when you're ready.");
+             }}
+           />
+         </PayPalScriptProvider>
           )}
           
           {/* Development helper button for creating a test plan */}

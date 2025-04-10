@@ -28,6 +28,8 @@ import { Upload, X, Plus, Calendar } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { showToast } from "@/lib/toast";
 import { Progress } from "@/components/ui/progress";
+import { isDevelopmentMode } from "@/lib/environment";
+
 
 
 function isSpelledCorrectly(text) {
@@ -51,7 +53,7 @@ const getDeviceFingerprint = () =>
 
 export default function CompleteProfile() {
   const router = useRouter();
-  const isDev = process.env.NODE_ENV === "development";
+  const isDev = isDevelopmentMode();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
