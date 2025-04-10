@@ -4,219 +4,210 @@ import time
 import json
 import hashlib
 from datetime import datetime
+import logging
 
-from config import db
+from config import db, MAX_SEARCH_RADIUS_KM
 from fetch.run_scrapers import run_scrapers
 from store.store_jobs import store_jobs
+from utils.location_matcher import find_matching_jobs
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("job_cycle.log"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 def get_subscribed_users():
     """Fetch all users who are actively subscribed."""
-    users_ref = db.collection("users").where("subscribed", "==", True).stream()
-    users = [
-        {
-            "id": user.id,
-            "jobTitles": user.to_dict().get("jobTitles", []),
-            "jobLocations": user.to_dict().get("jobLocations", []),
-            "email": user.to_dict().get("email", "")
-        }
-        for user in users_ref
-    ]
-    print(f"🔍 Found {len(users)} subscribed users in database")
-    return users
+    try:
+        users_ref = db.collection("users").where("subscribed", "==", True).stream()
+        users = [
+            {
+                "id": user.id,
+                "jobTitles": user.to_dict().get("jobTitles", []),
+                "jobLocations": user.to_dict().get("jobLocations", []),
+                "email": user.to_dict().get("email", "")
+            }
+            for user in users_ref
+        ]
+        logger.info(f"🔍 Found {len(users)} subscribed users in database")
+        return users
+    except Exception as e:
+        logger.error(f"Error fetching subscribed users: {e}")
+        return []
 
-def get_unique_job_location_pairs():
-    """Get unique job title + location pairs from all subscribed users."""
-    # Get all subscribed users
-    users = get_subscribed_users()
+def get_unique_job_location_pairs(users):
+    """
+    Get unique job title + location pairs from all subscribed users.
     
-    # Create a set to store unique job title + location pairs
+    :param users: List of subscribed users
+    :return: List of unique (job_title, location) pairs
+    """
     pairs = set()
     
-    # Add all combinations that users are interested in
     for user in users:
         job_titles = user.get("jobTitles", [])
         job_locations = user.get("jobLocations", [])
         
         if job_titles and job_locations:
-            print(f"  - User {user.get('email')}: {len(job_titles)} job titles × {len(job_locations)} locations")
+            logger.info(f"  - User {user.get('email')}: {len(job_titles)} job titles × {len(job_locations)} locations")
             for title in job_titles:
                 for location in job_locations:
                     pairs.add((title, location))
     
-    print(f"✅ Identified {len(pairs)} unique job title + location pairs from {len(users)} subscribed users")
+    logger.info(f"✅ Identified {len(pairs)} unique job title + location pairs from {len(users)} subscribed users")
     return list(pairs)
 
-def check_user_subscription_status():
-    """Debug function to check subscription status of all users"""
-    print("\n🔍 Checking subscription status for all users...")
-    all_users = db.collection("users").stream()
-    users_list = list(all_users)
+def advanced_job_matching(all_jobs, user):
+    """
+    Advanced job matching with location and title intelligence
     
-    print(f"📊 Total users in database: {len(users_list)}")
+    :param all_jobs: Dictionary of jobs from all sources
+    :param user: User dictionary
+    :return: Matched jobs for the user
+    """
+    user_preferences = {
+        'job_titles': user.get('jobTitles', []),
+        'locations': user.get('jobLocations', [])
+    }
     
-    for user in users_list:
-        user_data = user.to_dict()
-        email = user_data.get("email", "Unknown")
-        subscribed = user_data.get("subscribed", False)
-        job_titles = user_data.get("jobTitles", [])
-        job_locations = user_data.get("jobLocations", [])
+    # Collect jobs from all sources
+    combined_jobs = []
+    for source_jobs in all_jobs.values():
+        combined_jobs.extend(source_jobs)
+    
+    # Find matching jobs with location intelligence
+    try:
+        matched_jobs = find_matching_jobs(
+            combined_jobs, 
+            user_preferences, 
+            max_radius_km=MAX_SEARCH_RADIUS_KM
+        )
         
-        print(f"\nUser: {email}")
-        print(f"  ID: {user.id}")
-        print(f"  Subscribed: {subscribed}")
-        print(f"  Job Titles: {job_titles}")
-        print(f"  Job Locations: {job_locations}")
-    
-    print("\n")
+        logger.info(f"User {user.get('email')} - Found {len(matched_jobs)} location-matched jobs")
+        return matched_jobs
+    except Exception as e:
+        logger.error(f"Error in advanced job matching for user {user.get('email')}: {e}")
+        return []
 
-def log_subscription_changes():
-    """Log changes in user subscription status"""
-    users_ref = db.collection("users").stream()
-    subscribed_count = 0
-    unsubscribed_count = 0
+def categorize_matched_jobs(matched_jobs, all_jobs):
+    """
+    Categorize matched jobs by their original source
     
-    for user in users_ref:
-        user_data = user.to_dict()
-        status = "subscribed" if user_data.get("subscribed", False) else "unsubscribed"
-        print(f"User {user_data.get('email')}: {status}")
+    :param matched_jobs: List of matched jobs
+    :param all_jobs: Original job sources
+    :return: Dictionary of matched jobs by source
+    """
+    categorized_jobs = {}
+    
+    for source, source_jobs in all_jobs.items():
+        source_matched_jobs = [
+            job for job in source_jobs 
+            if job in matched_jobs
+        ]
         
-        if status == "subscribed":
-            subscribed_count += 1
-        else:
-            unsubscribed_count += 1
-            
-    print(f"📊 Subscription Status: {subscribed_count} subscribed, {unsubscribed_count} unsubscribed")
+        if source_matched_jobs:
+            categorized_jobs[source] = source_matched_jobs
     
-    return subscribed_count > 0
+    return categorized_jobs
 
 def job_cycle():
-    """Fetch new jobs for all subscribed users and store them in a scalable structure."""
+    """
+    Fetch new jobs for all subscribed users and store them in a scalable structure.
+    """
+    logger.info("\n🚀 Starting job cycle")
     
-    print("\n🚀 Starting job cycle")
-    
-    # Check all users in the database first (for debugging)
-    check_user_subscription_status()
-    
-    # Explicitly check for subscribed users first
+    # Get subscribed users
     users = get_subscribed_users()
     if not users:
-        print("❌ No subscribed users found. Skipping scraper.")
+        logger.warning("❌ No subscribed users found. Skipping scraper.")
         return False
     
-    print(f"✅ Found {len(users)} subscribed users")
-    
-    # Get unique job title + location pairs
-    job_location_pairs = get_unique_job_location_pairs()
-
+    # Get unique job search combinations
+    job_location_pairs = get_unique_job_location_pairs(users)
     if not job_location_pairs:
-        print("❌ No job search criteria found. Skipping scraper.")
+        logger.warning("❌ No job search criteria found. Skipping scraper.")
         return False
-
-    print(f"\n🔄 Fetching jobs for {len(job_location_pairs)} unique search combinations")
+    
+    # Run scrapers for all unique combinations
+    logger.info(f"\n🔄 Fetching jobs for {len(job_location_pairs)} unique search combinations")
     jobs = run_scrapers(job_location_pairs)
     
     if not any(jobs.values()):
-        print("❌ No jobs found in this cycle.")
-        return False  # Return false to indicate no jobs were processed
-
-    print("✅ Scraping complete. Storing results per user...")
-
-    users = get_subscribed_users()
-
-    for user_doc in users:
-        if hasattr(user_doc, 'to_dict'):
-            user = user_doc.to_dict()
-            user_id = user_doc.id
-            email = user.get('email', 'Unknown')
-        else:
-            user = user_doc
+        logger.warning("❌ No jobs found in this cycle.")
+        return False
+    
+    logger.info("✅ Scraping complete. Storing results per user...")
+    
+    # Process jobs for each user
+    for user in users:
+        try:
             user_id = user.get('id')
             email = user.get('email', 'Unknown')
-
-        print(f"\n🔍 Processing jobs for user: {email}")
-        
-        user_jobs = {}
-        total_matches = 0
-
-        for source, job_list in jobs.items():
-            matched_jobs = [
-                job for job in job_list
-                if any(title.lower() in job['title'].lower() for title in user.get('jobTitles', []))
-                and any(loc.lower() in job['location'].lower() for loc in user.get('jobLocations', []))
-            ]
             
-            if matched_jobs:
-                print(f"  ✅ Found {len(matched_jobs)} matching jobs from {source}")
-                total_matches += len(matched_jobs)
-            else:
-                print(f"  ❌ No matching jobs from {source}")
-
-            # Add source information to each job
-            user_jobs[source] = matched_jobs
-        
-        # Only proceed if we found matches
-        if total_matches > 0:
-            # Use the improved store_jobs function that uses collections for scalability
+            logger.info(f"\n🔍 Processing jobs for user: {email}")
+            
+            # Advanced location-aware job matching
+            matched_jobs = advanced_job_matching(jobs, user)
+            
+            if not matched_jobs:
+                logger.info(f"⚠️ No matching jobs found for {email}")
+                continue
+            
+            # Categorize matched jobs by source
+            user_jobs = categorize_matched_jobs(matched_jobs, jobs)
+            
+            # Store matched jobs
             new_count, dup_count = store_jobs(user_id, user_jobs)
-            print(f"💾 Updated jobs for {email} ({user_id}): {new_count} new, {dup_count} duplicates skipped")
-        else:
-            print(f"⚠️ No matching jobs found for {email}")
+            logger.info(f"💾 Updated jobs for {email} ({user_id}): {new_count} new, {dup_count} duplicates skipped")
+        
+        except Exception as e:
+            logger.error(f"Error processing jobs for user {email}: {e}")
     
-    return True  # Return true to indicate jobs were processed successfully
+    return True
 
 def send_email_notifications():
     """
     Send email notifications for new jobs
     """
     try:
-        print("📧 Sending email notifications...")
+        logger.info("📧 Sending email notifications...")
         # Import here to avoid circular imports
         from email_service import send_job_emails
         send_job_emails()
-        print("✅ Email notifications sent successfully")
+        logger.info("✅ Email notifications sent successfully")
         return True
     except Exception as e:
-        print(f"❌ Error sending email notifications: {e}")
+        logger.error(f"❌ Error sending email notifications: {e}")
         return False
 
-if __name__ == "__main__":
+def main():
+    """
+    Main execution function with comprehensive error handling and timing
+    """
     start_time = time.time()
     
     try:
-        # Determine which mode to run
-        import sys
+        # Run job cycle
+        jobs_processed = job_cycle()
         
-        # Default to normal job cycle
-        mode = "normal"
-        
-        # Check command line args for mode
-        if len(sys.argv) > 1:
-            if sys.argv[1] == "check":
-                mode = "check"
-        
-        # Run the appropriate mode
-        if mode == "check":
-            print("🔍 Running CHECK mode")
-            check_user_subscription_status()
-        else:
-            print("🚀 Running NORMAL job cycle")
-            success = job_cycle()
-            
-            if success:
-                print("🔄 Job cycle completed. Sending email notifications...")
-                try:
-                    from email_service.send_email import send_job_emails
-                    send_job_emails()
-                except Exception as e:
-                    print(f"❌ Detailed error sending email notifications: {e}")
-                    import traceback
-                    traceback.print_exc()
+        # Send notifications if jobs were processed
+        if jobs_processed:
+            send_email_notifications()
     
     except Exception as e:
-        print(f"❌ Error during execution: {e}")
+        logger.error(f"❌ Unexpected error during job cycle: {e}")
         import traceback
         traceback.print_exc()
     
     finally:
         elapsed_time = time.time() - start_time
-        print(f"\n🕒 Total time taken: {elapsed_time:.2f} seconds.")
+        logger.info(f"\n🕒 Total job cycle time: {elapsed_time:.2f} seconds")
+
+if __name__ == "__main__":
+    main()

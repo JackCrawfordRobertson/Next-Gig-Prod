@@ -28,6 +28,30 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
+# Location-based search configurations
+MAX_SEARCH_RADIUS_KM = 50  # Default search radius
+
+LOCATION_FALLBACK_REGIONS = {
+    "london": ["reading", "oxford", "cambridge", "bristol", "basingstoke", "slough", "watford", "staines", "high wycombe", "gillingham"],
+    "manchester": ["liverpool", "leeds", "sheffield", "bolton", "stockport", "salford", "oldham", "bury", "rochdale", "bury"],
+    "birmingham": ["coventry", "wolverhampton", "west bromwich", "solihull", "redditch", "dudley", "tamworth", "walsall", "sutton coldfield", "bromsgrove"],
+    "glasgow": ["edinburgh", "dunfermline", "paisley", "stirling", "clydebank", "livingston", "kilmarnock", "greenock", "arbroath", "airdrie"],
+    "bristol": ["bath", "cardiff", "swindon", "gloucester", "exeter", "newport", "worcester", "chippenham", "stroud", "taunton"],
+    "leeds": ["harrogate", "wakefield", "bradford", "halifax", "huddersfield", "keighley", "brighouse", "shipley", "otley", "ilkley"],
+    "newcastle": ["sunderland", "durham", "morpeth", "gateshead", "south shields", "whitley bay", "alnwick", "hexham", "consett", "blaydon"],
+    "edinburgh": ["dunfermline", "falkirk", "livingston", "glasgow", "stirling", "perth", "inverness", "aberdeen", "haddington", "south queensferry"],
+    "cardiff": ["newport", "swindon", "bristol", "merthyr tydfil", "pontypridd", "aberdare", "caerphilly", "blackwood", "cwmbran", "bargoed"],
+    "southampton": ["portsmouth", "winchester", "fareham", "basingstoke", "andover", "eastleigh", "totton", "romsey", "new milton", "gosport"],
+    "nottingham": ["derby", "leicester", "birmingham", "lincoln", "stoke-on-trent", "grantham", "rushcliffe", "mansfield", "retford", "ashfield"],
+    "leicester": ["derby", "nottingham", "birmingham", "coventry", "lincoln", "grantham", "hinkley", "rugby", "kettering", "corby"],
+    "aberdeen": ["inverness", "perth", "falkirk", "dundee", "montrose", "elgin", "stonehaven", "banchory", "aboyne", "fraserburgh"],
+    "liverpool": ["warrington", "st helens", "birkenhead", "wigan", "chester", "blackpool", "preston", "southport", "bootle", "widnes"],
+    "oxford": ["reading", "swindon", "milton keynes", "cambridge", "london", "basingstoke", "high wycombe", "guildford", "leighton buzzard", "bedford"],
+    "derby": ["nottingham", "birmingham", "leicester", "sheffield", "stoke-on-trent", "macclesfield", "ashbourne", "ilkeston", "ripley", "chesterfield"],
+    # Add more region mappings as needed
+}
+
+
 def get_subscribed_users():
     """Fetches all users who are subscribed or on trial."""
     users_ref = db.collection("users").stream()
