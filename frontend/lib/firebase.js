@@ -70,40 +70,72 @@ export const db = getFirestore(app);
 // Set the persistence type to SESSION instead of LOCAL
 // This helps prevent persistent logins across browser sessions
 if (typeof window !== 'undefined') {
-  setPersistence(auth, browserSessionPersistence).catch(error => {
-    console.error("Error setting auth persistence:", error);
-  });
+  setPersistence(auth, browserSessionPersistence)
+    .then(() => {
+      console.log("Firebase auth persistence set to SESSION");
+    })
+    .catch(error => {
+      console.error("Error setting auth persistence:", error);
+    });
 }
 
 // Enhanced sign out function that ensures both Firebase and cookies are cleared
 export const signOutCompletely = async () => {
   try {
+    // Add a flag to localStorage to indicate intentional signout
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('intentionalSignout', 'true');
+    }
+    
     // Sign out from Firebase
     await firebaseSignOut(auth);
     
     // Clear all storage 
-    localStorage.clear();
-    sessionStorage.clear();
-    
-    // Clear cookies (more thorough approach)
-    document.cookie.split(";").forEach(c => {
-      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-    });
-    
-    // Invalidate any cached data
-    if ('caches' in window) {
-      caches.keys().then(names => {
-        names.forEach(name => {
-          caches.delete(name);
-        });
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('intentionalSignout'); // Remove after successful Firebase signout
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Clear cookies (more thorough approach)
+      document.cookie.split(";").forEach(c => {
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
       });
+      
+      // Specifically target auth cookies
+      ['next-auth.session-token', 'next-auth.csrf-token', 'next-auth.callback-url', '__Secure-next-auth.session-token'].forEach(cookieName => {
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}; secure; samesite=lax`;
+      });
+      
+      // Invalidate any cached data
+      if ('caches' in window) {
+        try {
+          caches.keys().then(names => {
+            names.forEach(name => {
+              caches.delete(name);
+            });
+          });
+        } catch (cacheError) {
+          console.warn("Error clearing caches:", cacheError);
+        }
+      }
     }
     
     return true;
   } catch (error) {
     console.error("Error during complete sign out:", error);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('intentionalSignout');
+    }
     return false;
   }
+};
+
+// Function to check if signout was intentional
+export const wasSignoutIntentional = () => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('intentionalSignout') === 'true';
+  }
+  return false;
 };
 
 // Reset password links configuration
@@ -148,5 +180,28 @@ export const forceProductionMode = () => {
   if (isDevelopment) {
     console.log("Forcing PRODUCTION mode for Firebase services");
     isDevelopment = false;
+  }
+};
+
+// Add a helper to validate auth state
+export const validateAuthState = async () => {
+  try {
+    const currentUser = auth.currentUser;
+    
+    if (!currentUser) {
+      return { valid: false, reason: "No Firebase user" };
+    }
+    
+    // Check if the token is valid/not expired
+    const idToken = await currentUser.getIdToken(true);
+    
+    if (!idToken) {
+      return { valid: false, reason: "Failed to get ID token" };
+    }
+    
+    return { valid: true, user: currentUser };
+  } catch (error) {
+    console.error("Error validating auth state:", error);
+    return { valid: false, reason: error.message, error };
   }
 };
