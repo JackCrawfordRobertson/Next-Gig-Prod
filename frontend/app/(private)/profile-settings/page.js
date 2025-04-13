@@ -1,4 +1,4 @@
-// src/app/privacy/profile-settings/page.js
+// frontend/app/(private)/profile-settings/page.js
 "use client";
 
 import { useState, useEffect } from "react";
@@ -54,13 +54,10 @@ import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { showToast } from "@/lib/toast";
 import { SubscriptionModal } from "@/components/SubscriptionModal";
+import { isDevelopmentMode } from "@/lib/environment";
 
-// Importing the subscription service
-import { getUserSubscriptionStatus, cancelSubscription, storeSubscription } from "@/lib/subscriptionService";
-
-
-
-
+// Import directly from subscriptionService to avoid conflicts
+import * as subscriptionService from "@/lib/subscription";
 
 const profileFormSchema = z.object({
   firstName: z.string().min(2, {
@@ -101,7 +98,7 @@ const ExistingSubscriptionsModal = ({ existingSubscriptions, onClose }) => {
             You already have the following subscription(s):
           </AlertDialogDescription>
         </AlertDialogHeader>
-        
+
         <div className="space-y-2">
           {existingSubscriptions.map((sub, index) => (
             <div key={index} className="border p-2 rounded">
@@ -128,9 +125,10 @@ export default function ProfileSettingsPage() {
   const [selectedProfilePicture, setSelectedProfilePicture] = useState(null);
   const [existingSubscriptions, setExistingSubscriptions] = useState(null);
   const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
-  const searchParams = useSearchParams(); 
-  const tabFromUrl = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState(tabFromUrl || 'general');
+  const searchParams = useSearchParams();
+  const tabFromUrl = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(tabFromUrl || "general");
+  const [error, setError] = useState(null);
 
   // CHANGED: store subscription data + the Firestore doc ID
   const [subscriptionData, setSubscriptionData] = useState(null);
@@ -145,39 +143,83 @@ export default function ProfileSettingsPage() {
 
   const fetchUserData = async () => {
     try {
-      if (status !== "authenticated") return;
-  
-      const userId = session.user.id;
-      
-      // Use our new service to get both user data and subscription data
-      const result = await getUserSubscriptionStatus(userId);
-      
-      if (result.error) {
-        console.error("Error fetching subscription data:", result.error);
-        showToast({
-          title: "Error",
-          description: "Failed to load subscription data. Please try again.",
-          variant: "destructive",
-        });
+      if (status !== "authenticated") {
+        console.log("Auth status not ready:", status);
+        if (status === "unauthenticated") {
+          setIsLoading(false);
+        }
+        return;
       }
-      
-      // Set user data from result
-      if (result.userData) {
-        setUserData(result.userData);
+
+      const userId = session?.user?.id;
+      if (!userId) {
+        console.error("Missing user ID in session:", session);
+        setError("Session information is missing");
+        setIsLoading(false);
+        return;
       }
-      
-      // Set subscription data from result
-      setSubscriptionData(result.subscriptionData);
-      setSubscriptionDocId(result.subscriptionDocId);
-      
-      setIsLoading(false);
+
+      console.log("Fetching user data with ID:", userId);
+
+      // First get basic user data directly
+      try {
+        const userRef = doc(db, "users", userId);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+          const basicUserData = userSnap.data();
+          console.log("Basic user data retrieved");
+          setUserData(basicUserData);
+        } else {
+          console.warn("User document not found");
+          setError("User profile not found");
+        }
+      } catch (userError) {
+        console.error("Error fetching user document:", userError);
+        setError("Failed to load basic profile data");
+      }
+
+      // Get subscription data
+      try {
+        console.log("Fetching subscription status");
+        const result = await subscriptionService.getUserSubscriptionStatus(
+          userId
+        );
+        console.log("Subscription result received");
+
+        // Use userData from result if available
+        if (result.userData) {
+          setUserData((prev) => ({ ...prev, ...result.userData }));
+        }
+
+        // Set subscription data
+        if (result.subscriptionData) {
+          setSubscriptionData(result.subscriptionData);
+        } else if (result.hasSubscription !== undefined) {
+          // Create minimal subscription data object
+          setSubscriptionData({
+            status: result.isOnTrial
+              ? "trial"
+              : result.hasSubscription
+              ? "active"
+              : "inactive",
+            plan: "standard",
+            onTrial: !!result.isOnTrial,
+          });
+        }
+
+        if (result.subscriptionDocId) {
+          setSubscriptionDocId(result.subscriptionDocId);
+        }
+      } catch (subError) {
+        console.error("Error fetching subscription:", subError);
+        // Don't fail the whole page - we can still show user data
+      }
     } catch (error) {
-      console.error("Error fetching user data:", error);
-      showToast({
-        title: "Error",
-        description: "Failed to load profile data. Please try again.",
-        variant: "destructive",
-      });
+      console.error("Error in fetchUserData:", error);
+      setError("Failed to load profile data");
+    } finally {
+      console.log("Setting isLoading to false");
       setIsLoading(false);
     }
   };
@@ -222,6 +264,10 @@ export default function ProfileSettingsPage() {
       });
     }
   }, [userData, isLoading, form]);
+
+  useEffect(() => {
+    fetchUserData();
+  }, [session, status]);
 
   const onSubmit = async (data) => {
     setIsPending(true);
@@ -286,7 +332,7 @@ export default function ProfileSettingsPage() {
         router.push("/login");
         return;
       }
-      
+
       if (!subscriptionData?.subscriptionId) {
         showToast({
           title: "Cancellation Error",
@@ -295,26 +341,26 @@ export default function ProfileSettingsPage() {
         });
         return;
       }
-      
+
       // Show confirmation toast
       showToast({
         title: "Cancelling Subscription...",
         description: "Please wait while we process your request.",
         variant: "info",
       });
-      
+
       // Cancel subscription via the service
       const userId = session.user.id;
-      const result = await cancelSubscription(
-        userId, 
-        subscriptionData.subscriptionId, 
+      const result = await subscriptionService.cancelSubscription(
+        userId,
+        subscriptionData.subscriptionId,
         subscriptionDocId
       );
-      
+
       if (!result.success) {
         throw new Error("Subscription cancellation failed");
       }
-      
+
       // Update UI state
       setSubscriptionData((prev) => ({ ...prev, status: "cancelled" }));
       setUserData((prev) => ({
@@ -322,7 +368,7 @@ export default function ProfileSettingsPage() {
         subscribed: false,
         onTrial: false,
       }));
-      
+
       showToast({
         title: "Subscription Cancelled",
         description: "Your subscription has been successfully cancelled.",
@@ -332,103 +378,107 @@ export default function ProfileSettingsPage() {
       console.error("Error cancelling subscription:", error);
       showToast({
         title: "Cancellation Failed",
-        description: error.message || "Failed to cancel subscription. Please try again.",
+        description:
+          error.message || "Failed to cancel subscription. Please try again.",
         variant: "destructive",
       });
     }
   };
 
-const [currentPlanType, setCurrentPlanType] = useState('standard');
+  const [currentPlanType, setCurrentPlanType] = useState("standard");
 
-const handleResubscribe = () => {
-  if (status !== "authenticated") {
-    router.push("/login");
-    return;
-  }
-  
-  // Simply open the subscription modal
-  setSubscriptionModalOpen(true);
-};
-
-const handleSubscribe = () => {
-  if (status !== "authenticated") {
-    router.push("/login");
-    return;
-  }
-  
-  // Simply open the subscription modal
-  setSubscriptionModalOpen(true);
-};
-
-const handleSubscriptionSuccess = async (subscriptionData) => {
-  try {
-    // Use the improved service function
-    const result = await storeSubscription(
-      session.user.id, 
-      subscriptionData, 
-      userData?.deviceFingerprint || navigator.userAgent,
-      { showToast: true }
-    );
-    
-    // Update local state with the result
-    setSubscriptionData({
-      userId: session.user.id,
-      subscriptionId: subscriptionData.subscriptionID || subscriptionData.subscriptionId,
-      status: result.onTrial ? 'trial' : 'active',
-      plan: 'paypal',
-      price: 2.99,
-      currency: 'GBP',
-      paymentMethod: 'paypal',
-      startDate: new Date().toISOString(),
-      trialEndDate: result.trialEndDate,
-      onTrial: result.onTrial || false,
-      trialEligibility: {
-        duration: result.trialDuration || 0,
-        reason: result.trialEligibilityReason || 'Standard subscription'
-      }
-    });
-    
-    if (result.subscriptionDocId) {
-      setSubscriptionDocId(result.subscriptionDocId);
+  const handleResubscribe = () => {
+    if (status !== "authenticated") {
+      router.push("/login");
+      return;
     }
-    
-    // Update user data in local state
-    setUserData((prev) => ({
-      ...prev,
-      subscribed: true,
-      onTrial: result.onTrial || false,
-      subscriptionPlan: "paypal",
-      subscriptionId: subscriptionData.subscriptionID || subscriptionData.subscriptionId,
-      subscriptionStartDate: new Date().toISOString(),
-      trialEndDate: result.trialEndDate,
-      trialEligibilityReason: result.trialEligibilityReason
-    }));
-  } catch (error) {
-    console.error("Error handling subscription success:", error);
-    showToast({
-      title: "Subscription Error",
-      description: "There was an error activating your subscription. Please try again.",
-      variant: "destructive",
-    });
-  }
-};
+
+    // Simply open the subscription modal
+    setSubscriptionModalOpen(true);
+  };
+
+  const handleSubscribe = () => {
+    if (status !== "authenticated") {
+      router.push("/login");
+      return;
+    }
+
+    // Simply open the subscription modal
+    setSubscriptionModalOpen(true);
+  };
+
+  const handleSubscriptionSuccess = async (subscriptionData) => {
+    try {
+      // Use the improved service function
+      const result = await subscriptionService.storeSubscription(
+        session.user.id,
+        subscriptionData,
+        userData?.deviceFingerprint || navigator.userAgent,
+        { showToast: true }
+      );
+
+      // Update local state with the result
+      setSubscriptionData({
+        userId: session.user.id,
+        subscriptionId:
+          subscriptionData.subscriptionID || subscriptionData.subscriptionId,
+        status: result.onTrial ? "trial" : "active",
+        plan: "paypal",
+        price: 2.99,
+        currency: "GBP",
+        paymentMethod: "paypal",
+        startDate: new Date().toISOString(),
+        trialEndDate: result.trialEndDate,
+        onTrial: result.onTrial || false,
+        trialEligibility: {
+          duration: result.trialDuration || 0,
+          reason: result.trialEligibilityReason || "Standard subscription",
+        },
+      });
+
+      if (result.subscriptionDocId) {
+        setSubscriptionDocId(result.subscriptionDocId);
+      }
+
+      // Update user data in local state
+      setUserData((prev) => ({
+        ...prev,
+        subscribed: true,
+        onTrial: result.onTrial || false,
+        subscriptionPlan: "paypal",
+        subscriptionId:
+          subscriptionData.subscriptionID || subscriptionData.subscriptionId,
+        subscriptionStartDate: new Date().toISOString(),
+        trialEndDate: result.trialEndDate,
+        trialEligibilityReason: result.trialEligibilityReason,
+      }));
+    } catch (error) {
+      console.error("Error handling subscription success:", error);
+      showToast({
+        title: "Subscription Error",
+        description:
+          "There was an error activating your subscription. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   useEffect(() => {
     // Check URL parameters for subscription status
     const queryParams = new URLSearchParams(window.location.search);
-    const subscriptionStatus = queryParams.get('subscription');
-    
-    if (subscriptionStatus === 'success') {
+    const subscriptionStatus = queryParams.get("subscription");
+
+    if (subscriptionStatus === "success") {
       showToast({
         title: "Subscription Activated!",
         description: "Your subscription has been successfully activated.",
         variant: "success",
       });
-      
+
       // Remove the query parameter
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
-      
+
       // Refresh the subscription data
       fetchUserData();
     }
@@ -440,8 +490,11 @@ const handleSubscriptionSuccess = async (subscriptionData) => {
   };
 
   useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab && ['general', 'address', 'subscription', 'privacy'].includes(tab)) {
+    const tab = searchParams.get("tab");
+    if (
+      tab &&
+      ["general", "address", "subscription", "privacy"].includes(tab)
+    ) {
       setActiveTab(tab);
     }
   }, [searchParams]);
@@ -457,6 +510,24 @@ const handleSubscriptionSuccess = async (subscriptionData) => {
     );
   }
 
+  // Create safe versions of our data to prevent null reference errors
+  const safeUserData = userData || {};
+  const safeSubscriptionData = subscriptionData || {};
+  const subscriptionStatus =
+    safeSubscriptionData.status ||
+    (safeUserData.subscribed
+      ? "active"
+      : safeUserData.onTrial
+      ? "trial"
+      : "inactive");
+
+  // Use safe status for display logic
+  const isSubscribed =
+    subscriptionStatus === "active" ||
+    subscriptionStatus === "trial" ||
+    safeUserData.subscribed ||
+    safeUserData.onTrial;
+
   return (
     <div className="h-screen w-full p-4 sm:p-4 md:p-8 overflow-hidden">
       <div className="space-y-6 flex-1 flex flex-col">
@@ -469,7 +540,26 @@ const handleSubscriptionSuccess = async (subscriptionData) => {
           </div>
         </Card>
 
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full h-full flex flex-col">
+        {error && (
+          <Card className="bg-red-50 border-red-200">
+            <CardContent className="p-4">
+              <p className="text-red-600">{error}</p>
+              <Button
+                variant="outline"
+                onClick={fetchUserData}
+                className="mt-2"
+              >
+                Try Again
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        <Tabs
+          value={activeTab}
+          onValueChange={handleTabChange}
+          className="w-full h-full flex flex-col"
+        >
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="address">Address</TabsTrigger>
@@ -813,338 +903,383 @@ const handleSubscriptionSuccess = async (subscriptionData) => {
           </TabsContent>
 
           <TabsContent value="subscription" className="space-y-4 mt-4">
-  <Card>
-    <CardHeader>
-      <CardTitle>Subscription Management</CardTitle>
-      <CardDescription>
-        Manage your subscription plan and billing information
-      </CardDescription>
-    </CardHeader>
-    // In the SubscriptionManagement Card, replace the content with this more robust UI
-<CardContent className="space-y-4">
-  {isLoading ? (
-    <div className="border rounded-lg p-6 text-center">
-      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto"></div>
-      <p className="mt-4 text-muted-foreground">Loading subscription information...</p>
-    </div>
-  ) : error ? (
-    <div className="border rounded-lg p-6 text-center bg-red-50">
-      <h3 className="font-semibold mb-2 text-red-600">Error Loading Subscription</h3>
-      <p className="text-muted-foreground mb-4">{error}</p>
-      <Button onClick={() => fetchUserData()}>Try Again</Button>
-    </div>
-  ) : subscriptionData && subscriptionData.status === 'cancelled' ? (
-    <div className="border rounded-lg p-8 text-center">
-      <h3 className="font-semibold mb-4">Subscription Cancelled</h3>
-      <p className="text-muted-foreground mb-6">
-        Your subscription has been cancelled. Reactivate to continue enjoying our services.
-      </p>
-      <Button onClick={() => handleResubscribe()}>Resubscribe Now</Button>
-    </div>
-  ) : subscriptionData ? (
-    <>
-      <div className="border rounded-lg p-4 bg-white">
-        <div className="flex justify-between items-center mb-2">
-          <h3 className="font-semibold">Current Plan</h3>
-          <span
-            className={`text-sm rounded-full px-3 py-1 ${
-              subscriptionData.status === "trial"
-                ? "bg-yellow-100 text-yellow-800"
-                : "bg-green-100 text-green-800"
-            }`}
-          >
-            {subscriptionData.status === "trial"
-              ? "Trial"
-              : "Active"}
-          </span>
-        </div>
-        <p className="text-2xl font-bold capitalize">
-          {subscriptionData.plan} Plan
-        </p>
-        <p className="text-muted-foreground">
-          {subscriptionData.currency === "GBP" ? "£" : ""}
-          {subscriptionData.price} per month
-        </p>
+            <Card>
+              <CardHeader>
+                <CardTitle>Subscription Management</CardTitle>
+                <CardDescription>
+                  Manage your subscription plan and billing information
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isLoading ? (
+                  <div className="border rounded-lg p-6 text-center">
+                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto"></div>
+                    <p className="mt-4 text-muted-foreground">
+                      Loading subscription information...
+                    </p>
+                  </div>
+                ) : error ? (
+                  <div className="border rounded-lg p-6 text-center bg-red-50">
+                    <h3 className="font-semibold mb-2 text-red-600">
+                      Error Loading Subscription
+                    </h3>
+                    <p className="text-muted-foreground mb-4">{error}</p>
+                    <Button onClick={() => fetchUserData()}>Try Again</Button>
+                  </div>
+                ) : subscriptionData &&
+                  subscriptionData.status === "cancelled" ? (
+                  <div className="border rounded-lg p-8 text-center">
+                    <h3 className="font-semibold mb-4">
+                      Subscription Cancelled
+                    </h3>
+                    <p className="text-muted-foreground mb-6">
+                      Your subscription has been cancelled. Reactivate to
+                      continue enjoying our services.
+                    </p>
+                    <Button onClick={() => handleResubscribe()}>
+                      Resubscribe Now
+                    </Button>
+                  </div>
+                ) : subscriptionData ? (
+                  <>
+                    <div className="border rounded-lg p-4 bg-white">
+                      <div className="flex justify-between items-center mb-2">
+                        <h3 className="font-semibold">Current Plan</h3>
+                        <span
+                          className={`text-sm rounded-full px-3 py-1 ${
+                            subscriptionData.status === "trial"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-green-100 text-green-800"
+                          }`}
+                        >
+                          {subscriptionData.status === "trial"
+                            ? "Trial"
+                            : "Active"}
+                        </span>
+                      </div>
+                      <p className="text-2xl font-bold capitalize">
+                        {subscriptionData.plan} Plan
+                      </p>
+                      <p className="text-muted-foreground">
+                        {subscriptionData.currency === "GBP" ? "£" : ""}
+                        {subscriptionData.price} per month
+                      </p>
 
-        {subscriptionData.status === "trial" && subscriptionData.trialEndDate && (
-          <div className="mt-4">
-            <div className="flex justify-between mb-2">
-              <span>Trial Progress</span>
-              {(() => {
-                try {
-                  const trialEndDate = new Date(subscriptionData.trialEndDate);
-                  const now = new Date();
-                  const daysLeft = Math.max(0, Math.ceil(
-                    (trialEndDate - now) / (1000 * 60 * 60 * 24)
-                  ));
-                  return <span>{daysLeft} days left</span>;
-                } catch (e) {
-                  return <span>Trial active</span>;
-                }
-              })()}
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-              {(() => {
-                try {
-                  const startDate = new Date(subscriptionData.startDate);
-                  const endDate = new Date(subscriptionData.trialEndDate);
-                  const now = new Date();
-                  const totalDuration = endDate - startDate;
-                  const elapsed = now - startDate;
-                  const percentage = Math.min(100, Math.max(0, 
-                    Math.round((elapsed / totalDuration) * 100)
-                  ));
-                  return (
-                    <div
-                      className="bg-blue-600 h-2.5 rounded-full"
-                      style={{ width: `${percentage}%` }}
-                    ></div>
-                  );
-                } catch (e) {
-                  return <div className="bg-blue-600 h-2.5 rounded-full w-0"></div>;
-                }
-              })()}
-            </div>
-            
-            {/* Add trial eligibility details */}
-            {subscriptionData.trialEligibility && (
-              <div className="mt-2 text-xs text-muted-foreground">
-                <p>
-                  {subscriptionData.trialEligibility.reason || 
-                   (subscriptionData.trialEligibility.duration < 7 ? 
-                     "Partial trial based on previous usage" : 
-                     "Full trial period")}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
+                      {subscriptionData.status === "trial" &&
+                        subscriptionData.trialEndDate && (
+                          <div className="mt-4">
+                            <div className="flex justify-between mb-2">
+                              <span>Trial Progress</span>
+                              {(() => {
+                                try {
+                                  const trialEndDate = new Date(
+                                    subscriptionData.trialEndDate
+                                  );
+                                  const now = new Date();
+                                  const daysLeft = Math.max(
+                                    0,
+                                    Math.ceil(
+                                      (trialEndDate - now) /
+                                        (1000 * 60 * 60 * 24)
+                                    )
+                                  );
+                                  return <span>{daysLeft} days left</span>;
+                                } catch (e) {
+                                  return <span>Trial active</span>;
+                                }
+                              })()}
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2.5">
+                              {(() => {
+                                try {
+                                  const startDate = new Date(
+                                    subscriptionData.startDate
+                                  );
+                                  const endDate = new Date(
+                                    subscriptionData.trialEndDate
+                                  );
+                                  const now = new Date();
+                                  const totalDuration = endDate - startDate;
+                                  const elapsed = now - startDate;
+                                  const percentage = Math.min(
+                                    100,
+                                    Math.max(
+                                      0,
+                                      Math.round(
+                                        (elapsed / totalDuration) * 100
+                                      )
+                                    )
+                                  );
+                                  return (
+                                    <div
+                                      className="bg-blue-600 h-2.5 rounded-full"
+                                      style={{ width: `${percentage}%` }}
+                                    ></div>
+                                  );
+                                } catch (e) {
+                                  return (
+                                    <div className="bg-blue-600 h-2.5 rounded-full w-0"></div>
+                                  );
+                                }
+                              })()}
+                            </div>
 
-        <p className="text-muted-foreground text-sm mt-4">
-          Subscription started on{" "}
-          {(() => {
-            try {
-              return new Date(subscriptionData.startDate)
-                .toLocaleDateString("en-GB");
-            } catch (e) {
-              return "N/A";
-            }
-          })()}
-        </p>
-        <p className="text-muted-foreground text-sm">
-          {subscriptionData.status === "trial" && subscriptionData.trialEndDate
-            ? `Trial ends on ${new Date(
-                subscriptionData.trialEndDate
-              ).toLocaleDateString("en-GB")}`
-            : `Next billing date: ${(() => {
-                try {
-                  const nextBillingDate = new Date(subscriptionData.startDate);
-                  nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
-                  return nextBillingDate.toLocaleDateString("en-GB");
-                } catch (e) {
-                  return "N/A";
-                }
-              })()}`}
-        </p>
+                            {/* Add trial eligibility details */}
+                            {subscriptionData.trialEligibility && (
+                              <div className="mt-2 text-xs text-muted-foreground">
+                                <p>
+                                  {subscriptionData.trialEligibility.reason ||
+                                    (subscriptionData.trialEligibility
+                                      .duration < 7
+                                      ? "Partial trial based on previous usage"
+                                      : "Full trial period")}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                      <p className="text-muted-foreground text-sm mt-4">
+                        Subscription started on{" "}
+                        {(() => {
+                          try {
+                            return new Date(
+                              subscriptionData.startDate
+                            ).toLocaleDateString("en-GB");
+                          } catch (e) {
+                            return "N/A";
+                          }
+                        })()}
+                      </p>
+                      <p className="text-muted-foreground text-sm">
+                        {subscriptionData.status === "trial" &&
+                        subscriptionData.trialEndDate
+                          ? `Trial ends on ${new Date(
+                              subscriptionData.trialEndDate
+                            ).toLocaleDateString("en-GB")}`
+                          : `Next billing date: ${(() => {
+                              try {
+                                const nextBillingDate = new Date(
+                                  subscriptionData.startDate
+                                );
+                                nextBillingDate.setMonth(
+                                  nextBillingDate.getMonth() + 1
+                                );
+                                return nextBillingDate.toLocaleDateString(
+                                  "en-GB"
+                                );
+                              } catch (e) {
+                                return "N/A";
+                              }
+                            })()}`}
+                      </p>
+                    </div>
+
+                    <div className="border rounded-lg p-4 bg-white">
+                      <h3 className="font-semibold mb-2">Payment Method</h3>
+                      <div className="flex items-center gap-2">
+                        <div className="bg-gray-100 rounded p-1">
+                          {subscriptionData.paymentMethod === "paypal" ? (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="text-blue-600"
+                            >
+                              <path d="M22 8c0 3.5-2 4.5-3.5 4.5h-4c-1.5 0-2.5-1-2.5-2.5s1-2.5 2.5-2.5H19" />
+                              <path d="M22 2v3" />
+                              <path d="M17 15h-5.5c-1.5 0-2.5-1-2.5-2.5 0-1.5 1-2.5 2.5-2.5H17" />
+                              <path d="M22 9v6" />
+                            </svg>
+                          ) : (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <rect width="20" height="14" x="2" y="5" rx="2" />
+                              <line x1="2" x2="22" y1="10" y2="10" />
+                            </svg>
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium capitalize">
+                            {subscriptionData.paymentMethod || "PayPal"}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {subscriptionData.subscriptionId
+                              ? `ID: ${subscriptionData.subscriptionId.substring(
+                                  0,
+                                  8
+                                )}...`
+                              : "Subscription ID not available"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="border rounded-lg p-8 text-center">
+                    <h3 className="font-semibold mb-4">
+                      No Active Subscription
+                    </h3>
+                    <p className="text-muted-foreground mb-6">
+                      You don't currently have an active subscription.
+                    </p>
+                    <Button onClick={handleSubscribe}>Subscribe Now</Button>
+                  </div>
+                )}
+              </CardContent>
+
+              {subscriptionData && subscriptionData.status !== "cancelled" && (
+                <CardFooter className="flex justify-between">
+                  <Button
+                    variant="destructive"
+                    onClick={handleCancelSubscription}
+                  >
+                    Cancel Subscription
+                  </Button>
+                </CardFooter>
+              )}
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="privacy" className="space-y-4 mt-4 flex-1">
+            <Card className="flex flex-col h-full">
+              <CardHeader>
+                <CardTitle>Privacy Settings</CardTitle>
+                <CardDescription>
+                  Manage your privacy preferences and data settings
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6 flex-1">
+                <Form {...form}>
+                  <form
+                    onSubmit={form.handleSubmit(onSubmit)}
+                    className="space-y-6"
+                  >
+                    <div className="space-y-4">
+                      <Separator />
+
+                      <FormField
+                        control={form.control}
+                        name="notifications"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center justify-between">
+                            <div>
+                              <FormLabel>Email Notifications</FormLabel>
+                              <FormDescription>
+                                Receive email updates about activity
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <Separator />
+
+                      <div>
+                        <h3 className="font-medium mb-2">Data Management</h3>
+                        <div className="space-y-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full justify-start"
+                            onClick={() => {
+                              showToast({
+                                title: "Data Export Requested",
+                                description:
+                                  "Your data export has been queued. You'll receive an email when it's ready.",
+                                variant: "success",
+                              });
+                            }}
+                          >
+                            Request Data Export
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full justify-start text-destructive"
+                              >
+                                Delete Account
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Are you absolutely sure?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will
+                                  permanently delete your account and remove
+                                  your data from our servers.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive text-destructive-foreground"
+                                  onClick={() => {
+                                    showToast({
+                                      title: "Account Deletion Initiated",
+                                      description:
+                                        "Your account deletion process has begun. You'll receive a confirmation email.",
+                                      variant: "error",
+                                    });
+                                  }}
+                                >
+                                  Delete Account
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <Button type="submit" disabled={isPending}>
+                        {isPending ? "Saving..." : "Save Privacy Settings"}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+        <SubscriptionModal
+          isOpen={subscriptionModalOpen}
+          onClose={() => setSubscriptionModalOpen(false)}
+          userId={session?.user?.id}
+          onSuccess={handleSubscriptionSuccess}
+        />
+        {/* Render the ExistingSubscriptionsModal with the needed props */}
+        <ExistingSubscriptionsModal
+          existingSubscriptions={existingSubscriptions}
+          onClose={() => setExistingSubscriptions(null)}
+        />
       </div>
-
-      <div className="border rounded-lg p-4 bg-white">
-        <h3 className="font-semibold mb-2">Payment Method</h3>
-        <div className="flex items-center gap-2">
-          <div className="bg-gray-100 rounded p-1">
-            {subscriptionData.paymentMethod === "paypal" ? (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="text-blue-600"
-              >
-                <path d="M22 8c0 3.5-2 4.5-3.5 4.5h-4c-1.5 0-2.5-1-2.5-2.5s1-2.5 2.5-2.5H19" />
-                <path d="M22 2v3" />
-                <path d="M17 15h-5.5c-1.5 0-2.5-1-2.5-2.5 0-1.5 1-2.5 2.5-2.5H17" />
-                <path d="M22 9v6" />
-              </svg>
-            ) : (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect width="20" height="14" x="2" y="5" rx="2" />
-                <line x1="2" x2="22" y1="10" y2="10" />
-              </svg>
-            )}
-          </div>
-          <div>
-            <p className="font-medium capitalize">
-              {subscriptionData.paymentMethod || "PayPal"}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {subscriptionData.subscriptionId ? 
-                `ID: ${subscriptionData.subscriptionId.substring(0, 8)}...` : 
-                "Subscription ID not available"}
-            </p>
-          </div>
-        </div>
-      </div>
-    </>
-  ) : (
-    <div className="border rounded-lg p-8 text-center">
-      <h3 className="font-semibold mb-4">No Active Subscription</h3>
-      <p className="text-muted-foreground mb-6">
-        You don't currently have an active subscription.
-      </p>
-      <Button onClick={handleSubscribe}>Subscribe Now</Button>
     </div>
-  )}
-</CardContent>
-    
-    {subscriptionData && subscriptionData.status !== 'cancelled' && (
-      <CardFooter className="flex justify-between">
-        <Button variant="destructive" onClick={handleCancelSubscription}>
-          Cancel Subscription
-        </Button>
-      </CardFooter>
-    )}              
-  </Card>
-</TabsContent>
-
-         <TabsContent value="privacy" className="space-y-4 mt-4 flex-1">
-           <Card className="flex flex-col h-full">
-             <CardHeader>
-               <CardTitle>Privacy Settings</CardTitle>
-               <CardDescription>
-                 Manage your privacy preferences and data settings
-               </CardDescription>
-             </CardHeader>
-             <CardContent className="space-y-6 flex-1">
-               <Form {...form}>
-                 <form
-                   onSubmit={form.handleSubmit(onSubmit)}
-                   className="space-y-6"
-                 >
-                   <div className="space-y-4">
-                     <Separator />
-
-                     <FormField
-                       control={form.control}
-                       name="notifications"
-                       render={({ field }) => (
-                         <FormItem className="flex items-center justify-between">
-                           <div>
-                             <FormLabel>Email Notifications</FormLabel>
-                             <FormDescription>
-                               Receive email updates about activity
-                             </FormDescription>
-                           </div>
-                           <FormControl>
-                             <Switch
-                               checked={field.value}
-                               onCheckedChange={field.onChange}
-                             />
-                           </FormControl>
-                         </FormItem>
-                       )}
-                     />
-
-                     <Separator />
-
-                     <div>
-                       <h3 className="font-medium mb-2">Data Management</h3>
-                       <div className="space-y-2">
-                         <Button
-                           variant="outline"
-                           size="sm"
-                           className="w-full justify-start"
-                           onClick={() => {
-                             showToast({
-                               title: "Data Export Requested",
-                               description:
-                                 "Your data export has been queued. You'll receive an email when it's ready.",
-                               variant: "success",
-                             });
-                           }}
-                         >
-                           Request Data Export
-                         </Button>
-                         <AlertDialog>
-                           <AlertDialogTrigger asChild>
-                             <Button
-                               variant="outline"
-                               size="sm"
-                               className="w-full justify-start text-destructive"
-                             >
-                               Delete Account
-                             </Button>
-                           </AlertDialogTrigger>
-                           <AlertDialogContent>
-                             <AlertDialogHeader>
-                               <AlertDialogTitle>
-                                 Are you absolutely sure?
-                               </AlertDialogTitle>
-                               <AlertDialogDescription>
-                                 This action cannot be undone. This will
-                                 permanently delete your account and remove
-                                 your data from our servers.
-                               </AlertDialogDescription>
-                             </AlertDialogHeader>
-                             <AlertDialogFooter>
-                               <AlertDialogCancel>Cancel</AlertDialogCancel>
-                               <AlertDialogAction
-                                 className="bg-destructive text-destructive-foreground"
-                                 onClick={() => {
-                                   showToast({
-                                     title: "Account Deletion Initiated",
-                                     description:
-                                       "Your account deletion process has begun. You'll receive a confirmation email.",
-                                     variant: "error",
-                                   });
-                                 }}
-                               >
-                                 Delete Account
-                               </AlertDialogAction>
-                             </AlertDialogFooter>
-                           </AlertDialogContent>
-                         </AlertDialog>
-                       </div>
-                     </div>
-                   </div>
-
-                   <div className="flex justify-end">
-                     <Button type="submit" disabled={isPending}>
-                       {isPending ? "Saving..." : "Save Privacy Settings"}
-                     </Button>
-                   </div>
-                 </form>
-               </Form>
-             </CardContent>
-           </Card>
-         </TabsContent>
-       </Tabs>
-       <SubscriptionModal 
-  isOpen={subscriptionModalOpen}
-  onClose={() => setSubscriptionModalOpen(false)}
-  userId={session?.user?.id}
-  onSuccess={handleSubscriptionSuccess}
-/>
-       {/* Render the ExistingSubscriptionsModal with the needed props */}
-       <ExistingSubscriptionsModal 
-         existingSubscriptions={existingSubscriptions} 
-         onClose={() => setExistingSubscriptions(null)} 
-       />
-     </div>
-   </div>
- );
+  );
 }
