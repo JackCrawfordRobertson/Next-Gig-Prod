@@ -528,758 +528,786 @@ export default function ProfileSettingsPage() {
     safeUserData.subscribed ||
     safeUserData.onTrial;
 
-  return (
-    <div className="h-screen w-full p-4 sm:p-4 md:p-8 overflow-hidden">
-      <div className="space-y-6 flex-1 flex flex-col">
-        <Card className="p-4">
-          <div>
-            <h1 className="text-3xl font-bold">Profile Settings</h1>
-            <p className="text-muted-foreground">
-              Manage your profile information and subscription settings
-            </p>
+    function TrialProgressBar({ startDate, endDate, trialEligibility }) {
+      // Add state to track current time
+      const [currentTime, setCurrentTime] = useState(new Date());
+      
+      // Set up interval to update the time
+      useEffect(() => {
+        // Update every minute
+        const timer = setInterval(() => {
+          setCurrentTime(new Date());
+        }, 60000);
+        
+        // Clean up the interval on unmount
+        return () => clearInterval(timer);
+      }, []);
+      
+      try {
+        // Validate inputs
+        if (!startDate || !endDate) {
+          throw new Error("Missing required dates");
+        }
+        
+        // Parse dates
+        const startDateTime = new Date(startDate);
+        const endDateTime = new Date(endDate);
+        
+        // Check if dates are valid
+        if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
+          throw new Error("Invalid date format");
+        }
+        
+        // Calculate days left
+        const daysLeft = Math.max(
+          0,
+          Math.ceil((endDateTime - currentTime) / (1000 * 60 * 60 * 24))
+        );
+        
+        // Calculate progress percentage
+        const totalDuration = endDateTime - startDateTime;
+        const elapsed = currentTime - startDateTime;
+        const percentage = Math.min(
+          100,
+          Math.max(0, Math.round((elapsed / totalDuration) * 100))
+        );
+        
+        return (
+          <div className="mt-4">
+            <div className="flex justify-between mb-2">
+              <span>Trial Progress</span>
+              <span>{daysLeft} days left</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div
+                className="bg-primary h-2.5 rounded-full transition-all duration-300"
+                style={{ width: `${percentage}%` }}
+              ></div>
+            </div>
+            
+            {/* Add trial eligibility details */}
+            {trialEligibility && (
+              <div className="mt-2 text-xs text-muted-foreground">
+                <p>
+                  {trialEligibility.reason ||
+                    (trialEligibility.duration < 7
+                      ? "Partial trial based on previous usage"
+                      : "Full trial period")}
+                </p>
+              </div>
+            )}
           </div>
-        </Card>
-
-        {error && (
-          <Card className="bg-red-50 border-red-200">
-            <CardContent className="p-4">
-              <p className="text-red-600">{error}</p>
-              <Button
-                variant="outline"
-                onClick={fetchUserData}
-                className="mt-2"
-              >
-                Try Again
-              </Button>
-            </CardContent>
+        );
+      } catch (e) {
+        console.error("Error in trial progress calculation:", e);
+        return (
+          <div className="mt-4">
+            <div className="flex justify-between mb-2">
+              <span>Trial Progress</span>
+              <span>Trial active</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div className="bg-primary h-2.5 rounded-full w-0"></div>
+            </div>
+          </div>
+        );
+      }
+    }
+    return (
+<div className="min-h-screen w-full p-4 mb-10 sm:mb-0 sm:p-4 md:p-8 overflow-auto">
+<div className="space-y-6 flex-1 flex flex-col pb-16">
+          <Card className="p-4">
+            <div>
+              <h1 className="text-3xl font-bold">Profile Settings</h1>
+              <p className="text-muted-foreground">
+                Manage your profile information and subscription settings
+              </p>
+            </div>
           </Card>
-        )}
-
-        <Tabs
-          value={activeTab}
-          onValueChange={handleTabChange}
-          className="w-full h-full flex flex-col"
-        >
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="address">Address</TabsTrigger>
-            <TabsTrigger value="subscription">Subscription</TabsTrigger>
-            <TabsTrigger value="privacy">Privacy</TabsTrigger>
-          </TabsList>
-          <TabsContent value="general" className="space-y-4 mt-4 flex-1">
-            <Card className="flex flex-col h-full">
-              <CardHeader>
-                <CardTitle>Profile Information</CardTitle>
-                <CardDescription>
-                  Update your personal information and profile picture
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex-grow">
-                <div className="flex flex-col md:flex-row gap-6 mb-6">
-                  <div className="flex flex-col items-center space-y-2">
-                    <Avatar className="w-24 h-24">
-                      <AvatarImage
-                        src={userData?.profilePicture || ""}
-                        alt={userData?.firstName}
-                      />
-                      <AvatarFallback>
-                        {userData?.firstName?.charAt(0)}
-                        {userData?.lastName?.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </div>
-
-                  <div className="flex-1">
+    
+          {error && (
+            <Card className="bg-red-50 border-red-200">
+              <CardContent className="p-4">
+                <p className="text-red-600">{error}</p>
+                <Button
+                  variant="outline"
+                  onClick={fetchUserData}
+                  className="mt-2"
+                >
+                  Try Again
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+    
+          <Tabs
+            value={activeTab}
+            onValueChange={handleTabChange}
+            className="w-full flex flex-col"
+          >
+          <TabsList className="grid w-full grid-cols-4 overflow-x-auto">
+    <TabsTrigger value="general" className="text-xs sm:text-sm px-1 sm:px-3">General</TabsTrigger>
+    <TabsTrigger value="address" className="text-xs sm:text-sm px-1 sm:px-3">Address</TabsTrigger>
+    <TabsTrigger value="subscription" className="text-xs sm:text-sm px-1 sm:px-3">
+      <span className="hidden sm:inline">Subscription</span>
+      <span className="inline sm:hidden">Subs</span>
+    </TabsTrigger>
+    <TabsTrigger value="privacy" className="text-xs sm:text-sm px-1 sm:px-3">Privacy</TabsTrigger>
+  </TabsList>
+            <div className="mt-4 overflow-auto flex-1">
+              <TabsContent value="general" className="space-y-4">
+                <Card className="flex flex-col">
+                  <CardHeader>
+                    <CardTitle>Profile Information</CardTitle>
+                    <CardDescription>
+                      Update your personal information and profile picture
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="overflow-auto">
+                    <div className="flex flex-col md:flex-row gap-6 mb-6">
+                      <div className="flex flex-col items-center space-y-2">
+                        <Avatar className="w-24 h-24">
+                          <AvatarImage
+                            src={userData?.profilePicture || ""}
+                            alt={userData?.firstName}
+                          />
+                          <AvatarFallback>
+                            {userData?.firstName?.charAt(0)}
+                            {userData?.lastName?.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                      </div>
+    
+                      <div className="flex-1">
+                        <Form {...form}>
+                          <form
+                            onSubmit={form.handleSubmit(onSubmit)}
+                            className="space-y-6"
+                          >
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                              <FormField
+                                control={form.control}
+                                name="firstName"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>First Name</FormLabel>
+                                    <FormControl className="bg-white">
+                                      <Input
+                                        placeholder="Enter your first name"
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+    
+                              <FormField
+                                control={form.control}
+                                name="lastName"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Last Name</FormLabel>
+                                    <FormControl className="bg-white">
+                                      <Input
+                                        placeholder="Enter your last name"
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+    
+                              <FormField
+                                control={form.control}
+                                name="email"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Email</FormLabel>
+                                    <FormControl className="bg-white">
+                                      <Input
+                                        type="email"
+                                        placeholder="name@example.com"
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                          </form>
+                        </Form>
+                      </div>
+                    </div>
+    
+                    <Separator className="my-6" />
+    
+                    <div className="space-y-6">
+                      <div>
+                        <h3 className="text-base sm:text-lg font-medium">
+                          Professional Information
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Update your job information and locations
+                        </p>
+                      </div>
+    
+                      <Form {...form}>
+                        <form
+                          onSubmit={form.handleSubmit(onSubmit)}
+                          className="space-y-6"
+                        >
+                          <FormField
+                            control={form.control}
+                            name="jobTitles"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Job Titles</FormLabel>
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                  {field.value?.map((title, index) => (
+                                    <div
+                                      key={index}
+                                      className="flex items-center bg-secondary text-secondary-foreground rounded-full px-3 py-1 text-sm"
+                                    >
+                                      {title}
+                                      <button
+                                        type="button"
+                                        className="ml-2"
+                                        onClick={() => {
+                                          const newJobTitles = [...field.value];
+                                          newJobTitles.splice(index, 1);
+                                          field.onChange(newJobTitles);
+                                        }}
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                                <div className="flex flex-col sm:flex-row gap-2">
+                                  <Input
+                                    placeholder="Add a job title"
+                                    className="bg-white flex-1"
+                                    id="newJobTitle"
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        const value = e.target.value.trim();
+                                        if (value && !field.value.includes(value)) {
+                                          field.onChange([...field.value, value]);
+                                          e.target.value = "";
+                                        }
+                                      }
+                                    }}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="sm:w-auto w-full"
+                                    onClick={() => {
+                                      const input =
+                                        document.getElementById("newJobTitle");
+                                      const value = input.value.trim();
+                                      if (value && !field.value.includes(value)) {
+                                        field.onChange([...field.value, value]);
+                                        input.value = "";
+                                      }
+                                    }}
+                                  >
+                                    Add
+                                  </Button>
+                                </div>
+                                <FormDescription>
+                                  Press Enter or click Add to add a job title
+                                </FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+    
+                          <FormField
+                            control={form.control}
+                            name="jobLocations"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Job Locations</FormLabel>
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                  {field.value?.map((location, index) => (
+                                    <div
+                                      key={index}
+                                      className="flex items-center bg-secondary text-secondary-foreground rounded-full px-3 py-1 text-sm"
+                                    >
+                                      {location}
+                                      <button
+                                        type="button"
+                                        className="ml-2"
+                                        onClick={() => {
+                                          const newJobLocations = [...field.value];
+                                          newJobLocations.splice(index, 1);
+                                          field.onChange(newJobLocations);
+                                        }}
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                                <div className="flex flex-col sm:flex-row gap-2">
+                                  <Input
+                                    className="bg-white flex-1"
+                                    placeholder="Add a job location"
+                                    id="newJobLocation"
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        const value = e.target.value.trim();
+                                        if (value && !field.value.includes(value)) {
+                                          field.onChange([...field.value, value]);
+                                          e.target.value = "";
+                                        }
+                                      }
+                                    }}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="sm:w-auto w-full"
+                                    onClick={() => {
+                                      const input =
+                                        document.getElementById("newJobLocation");
+                                      const value = input.value.trim();
+                                      if (value && !field.value.includes(value)) {
+                                        field.onChange([...field.value, value]);
+                                        input.value = "";
+                                      }
+                                    }}
+                                  >
+                                    Add
+                                  </Button>
+                                </div>
+                                <FormDescription>
+                                  Press Enter or click Add to add a job location
+                                </FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+    
+                          <div className="flex justify-end">
+                            <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
+                              {isPending ? "Saving..." : "Save Changes"}
+                            </Button>
+                          </div>
+                        </form>
+                      </Form>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+    
+              <TabsContent value="address" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Address Information</CardTitle>
+                    <CardDescription>
+                      Update your address and location details
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="overflow-auto">
                     <Form {...form}>
                       <form
                         onSubmit={form.handleSubmit(onSubmit)}
                         className="space-y-6"
                       >
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                          control={form.control}
+                          name="address.firstLine"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Address Line 1</FormLabel>
+                              <FormControl className="bg-white">
+                                <Input placeholder="123 Main Street" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+    
+                        <FormField
+                          control={form.control}
+                          name="address.secondLine"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Address Line 2</FormLabel>
+                              <FormControl className="bg-white">
+                                <Input
+                                  placeholder="Apartment, suite, etc. (optional)"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+    
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                           <FormField
                             control={form.control}
-                            name="firstName"
+                            name="address.city"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>First Name</FormLabel>
+                                <FormLabel>City</FormLabel>
                                 <FormControl className="bg-white">
-                                  <Input
-                                    placeholder="Enter your first name"
-                                    {...field}
-                                  />
+                                  <Input placeholder="London" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
-
+    
                           <FormField
                             control={form.control}
-                            name="lastName"
+                            name="address.postcode"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Last Name</FormLabel>
+                                <FormLabel>Postcode</FormLabel>
                                 <FormControl className="bg-white">
-                                  <Input
-                                    placeholder="Enter your last name"
-                                    {...field}
-                                  />
+                                  <Input placeholder="SW1A 1AA" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
-
-                          <FormField
-                            control={form.control}
-                            name="email"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Email</FormLabel>
-                                <FormControl className="bg-white">
-                                  <Input
-                                    type="email"
-                                    placeholder="name@example.com"
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
+                        </div>
+    
+                        <div className="flex justify-end">
+                          <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
+                            {isPending ? "Saving..." : "Save Changes"}
+                          </Button>
                         </div>
                       </form>
                     </Form>
-                  </div>
-                </div>
-
-                <Separator className="my-6" />
-
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-lg font-medium">
-                      Professional Information
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Update your job information and locations
-                    </p>
-                  </div>
-
-                  <Form {...form}>
-                    <form
-                      onSubmit={form.handleSubmit(onSubmit)}
-                      className="space-y-6"
-                    >
-                      <FormField
-                        control={form.control}
-                        name="jobTitles"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Job Titles</FormLabel>
-                            <div className="flex flex-wrap gap-2 mb-2 ">
-                              {field.value?.map((title, index) => (
-                                <div
-                                  key={index}
-                                  className="flex items-center bg-secondary text-secondary-foreground rounded-full px-3 py-1 text-sm "
-                                >
-                                  {title}
-                                  <button
-                                    type="button"
-                                    className="ml-2"
-                                    onClick={() => {
-                                      const newJobTitles = [...field.value];
-                                      newJobTitles.splice(index, 1);
-                                      field.onChange(newJobTitles);
-                                    }}
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                            <div className="flex gap-2">
-                              <Input
-                                placeholder="Add a job title"
-                                className="bg-white"
-                                id="newJobTitle"
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    const value = e.target.value.trim();
-                                    if (value && !field.value.includes(value)) {
-                                      field.onChange([...field.value, value]);
-                                      e.target.value = "";
-                                    }
-                                  }
-                                }}
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => {
-                                  const input =
-                                    document.getElementById("newJobTitle");
-                                  const value = input.value.trim();
-                                  if (value && !field.value.includes(value)) {
-                                    field.onChange([...field.value, value]);
-                                    input.value = "";
-                                  }
-                                }}
-                              >
-                                Add
-                              </Button>
-                            </div>
-                            <FormDescription>
-                              Press Enter or click Add to add a job title
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="jobLocations"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Job Locations</FormLabel>
-                            <div className="flex flex-wrap gap-2 mb-2">
-                              {field.value?.map((location, index) => (
-                                <div
-                                  key={index}
-                                  className="flex items-center bg-secondary text-secondary-foreground rounded-full px-3 py-1 text-sm"
-                                >
-                                  {location}
-                                  <button
-                                    type="button"
-                                    className="ml-2"
-                                    onClick={() => {
-                                      const newJobLocations = [...field.value];
-                                      newJobLocations.splice(index, 1);
-                                      field.onChange(newJobLocations);
-                                    }}
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                            <div className="flex gap-2">
-                              <Input
-                                className="bg-white"
-                                placeholder="Add a job location"
-                                id="newJobLocation"
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    const value = e.target.value.trim();
-                                    if (value && !field.value.includes(value)) {
-                                      field.onChange([...field.value, value]);
-                                      e.target.value = "";
-                                    }
-                                  }
-                                }}
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => {
-                                  const input =
-                                    document.getElementById("newJobLocation");
-                                  const value = input.value.trim();
-                                  if (value && !field.value.includes(value)) {
-                                    field.onChange([...field.value, value]);
-                                    input.value = "";
-                                  }
-                                }}
-                              >
-                                Add
-                              </Button>
-                            </div>
-                            <FormDescription>
-                              Press Enter or click Add to add a job location
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <div className="flex justify-end">
-                        <Button type="submit" disabled={isPending}>
-                          {isPending ? "Saving..." : "Save Changes"}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+    
+              <TabsContent value="subscription" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Subscription Management</CardTitle>
+                    <CardDescription>
+                      Manage your subscription plan and billing information
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4 overflow-auto">
+                    {isLoading ? (
+                      <div className="border rounded-lg p-4 text-center">
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto"></div>
+                        <p className="mt-4 text-muted-foreground">
+                          Loading subscription information...
+                        </p>
+                      </div>
+                    ) : error ? (
+                      <div className="border rounded-lg p-6 text-center bg-red-50">
+                        <h3 className="font-semibold mb-2 text-red-600">
+                          Error Loading Subscription
+                        </h3>
+                        <p className="text-muted-foreground mb-4">{error}</p>
+                        <Button onClick={() => fetchUserData()}>Try Again</Button>
+                      </div>
+                    ) : subscriptionData &&
+                      subscriptionData.status === "cancelled" ? (
+                      <div className="border rounded-lg p-4 sm:p-8 text-center">
+                        <h3 className="font-semibold mb-2 sm:mb-4">
+                          Subscription Cancelled
+                        </h3>
+                        <p className="text-muted-foreground mb-4 sm:mb-6">
+                          Your subscription has been cancelled. Reactivate to
+                          continue enjoying our services.
+                        </p>
+                        <Button onClick={() => handleResubscribe()}>
+                          Resubscribe Now
                         </Button>
                       </div>
-                    </form>
-                  </Form>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="address" className="space-y-4 mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Address Information</CardTitle>
-                <CardDescription>
-                  Update your address and location details
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Form {...form}>
-                  <form
-                    onSubmit={form.handleSubmit(onSubmit)}
-                    className="space-y-6"
-                  >
-                    <FormField
-                      control={form.control}
-                      name="address.firstLine"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Address Line 1</FormLabel>
-                          <FormControl className="bg-white">
-                            <Input placeholder="123 Main Street" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="address.secondLine"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Address Line 2</FormLabel>
-                          <FormControl className="bg-white">
-                            <Input
-                              placeholder="Apartment, suite, etc. (optional)"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <FormField
-                        control={form.control}
-                        name="address.city"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>City</FormLabel>
-                            <FormControl className="bg-white">
-                              <Input placeholder="London" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="address.postcode"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Postcode</FormLabel>
-                            <FormControl className="bg-white">
-                              <Input placeholder="SW1A 1AA" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="flex justify-end">
-                      <Button type="submit" disabled={isPending}>
-                        {isPending ? "Saving..." : "Save Changes"}
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="subscription" className="space-y-4 mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Subscription Management</CardTitle>
-                <CardDescription>
-                  Manage your subscription plan and billing information
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isLoading ? (
-                  <div className="border rounded-lg p-6 text-center">
-                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto"></div>
-                    <p className="mt-4 text-muted-foreground">
-                      Loading subscription information...
-                    </p>
-                  </div>
-                ) : error ? (
-                  <div className="border rounded-lg p-6 text-center bg-red-50">
-                    <h3 className="font-semibold mb-2 text-red-600">
-                      Error Loading Subscription
-                    </h3>
-                    <p className="text-muted-foreground mb-4">{error}</p>
-                    <Button onClick={() => fetchUserData()}>Try Again</Button>
-                  </div>
-                ) : subscriptionData &&
-                  subscriptionData.status === "cancelled" ? (
-                  <div className="border rounded-lg p-8 text-center">
-                    <h3 className="font-semibold mb-4">
-                      Subscription Cancelled
-                    </h3>
-                    <p className="text-muted-foreground mb-6">
-                      Your subscription has been cancelled. Reactivate to
-                      continue enjoying our services.
-                    </p>
-                    <Button onClick={() => handleResubscribe()}>
-                      Resubscribe Now
-                    </Button>
-                  </div>
-                ) : subscriptionData ? (
-                  <>
-                    <div className="border rounded-lg p-4 bg-white">
-                      <div className="flex justify-between items-center mb-2">
-                        <h3 className="font-semibold">Current Plan</h3>
-                        <span
-                          className={`text-sm rounded-full px-3 py-1 ${
-                            subscriptionData.status === "trial"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-green-100 text-green-800"
-                          }`}
-                        >
-                          {subscriptionData.status === "trial"
-                            ? "Trial"
-                            : "Active"}
-                        </span>
-                      </div>
-                      <p className="text-2xl font-bold capitalize">
-                        {subscriptionData.plan} Plan
-                      </p>
-                      <p className="text-muted-foreground">
-                        {subscriptionData.currency === "GBP" ? "£" : ""}
-                        {subscriptionData.price} per month
-                      </p>
-
-                      {subscriptionData.status === "trial" &&
-                        subscriptionData.trialEndDate && (
-                          <div className="mt-4">
-                            <div className="flex justify-between mb-2">
-                              <span>Trial Progress</span>
-                              {(() => {
-                                try {
-                                  const trialEndDate = new Date(
-                                    subscriptionData.trialEndDate
-                                  );
-                                  const now = new Date();
-                                  const daysLeft = Math.max(
-                                    0,
-                                    Math.ceil(
-                                      (trialEndDate - now) /
-                                        (1000 * 60 * 60 * 24)
-                                    )
-                                  );
-                                  return <span>{daysLeft} days left</span>;
-                                } catch (e) {
-                                  return <span>Trial active</span>;
-                                }
-                              })()}
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2.5">
-                              {(() => {
-                                try {
-                                  const startDate = new Date(
-                                    subscriptionData.startDate
-                                  );
-                                  const endDate = new Date(
-                                    subscriptionData.trialEndDate
-                                  );
-                                  const now = new Date();
-                                  const totalDuration = endDate - startDate;
-                                  const elapsed = now - startDate;
-                                  const percentage = Math.min(
-                                    100,
-                                    Math.max(
-                                      0,
-                                      Math.round(
-                                        (elapsed / totalDuration) * 100
-                                      )
-                                    )
-                                  );
-                                  return (
-                                    <div
-                                      className="bg-blue-600 h-2.5 rounded-full"
-                                      style={{ width: `${percentage}%` }}
-                                    ></div>
-                                  );
-                                } catch (e) {
-                                  return (
-                                    <div className="bg-blue-600 h-2.5 rounded-full w-0"></div>
-                                  );
-                                }
-                              })()}
-                            </div>
-
-                            {/* Add trial eligibility details */}
-                            {subscriptionData.trialEligibility && (
-                              <div className="mt-2 text-xs text-muted-foreground">
-                                <p>
-                                  {subscriptionData.trialEligibility.reason ||
-                                    (subscriptionData.trialEligibility
-                                      .duration < 7
-                                      ? "Partial trial based on previous usage"
-                                      : "Full trial period")}
-                                </p>
-                              </div>
-                            )}
+                    ) : subscriptionData ? (
+                      <>
+                        <div className="border rounded-lg p-4 bg-white">
+                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2">
+                            <h3 className="font-semibold mb-1 sm:mb-0">Current Plan</h3>
+                            <span
+                              className={`text-sm rounded-full px-3 py-1 w-fit ${
+                                subscriptionData.status === "trial"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-green-100 text-green-800"
+                              }`}
+                            >
+                              {subscriptionData.status === "trial"
+                                ? "Trial"
+                                : "Active"}
+                            </span>
                           </div>
-                        )}
-
-                      <p className="text-muted-foreground text-sm mt-4">
-                        Subscription started on{" "}
-                        {(() => {
-                          try {
-                            return new Date(
-                              subscriptionData.startDate
-                            ).toLocaleDateString("en-GB");
-                          } catch (e) {
-                            return "N/A";
-                          }
-                        })()}
-                      </p>
-                      <p className="text-muted-foreground text-sm">
-                        {subscriptionData.status === "trial" &&
-                        subscriptionData.trialEndDate
-                          ? `Trial ends on ${new Date(
-                              subscriptionData.trialEndDate
-                            ).toLocaleDateString("en-GB")}`
-                          : `Next billing date: ${(() => {
+                          <p className="text-2xl font-bold capitalize">
+                            {subscriptionData.plan} Plan
+                          </p>
+                          <p className="text-muted-foreground">
+                            {subscriptionData.currency === "GBP" ? "£" : ""}
+                            {subscriptionData.price} per month
+                          </p>
+    
+                          {subscriptionData.status === "trial" &&
+                            subscriptionData.trialEndDate && (
+                              <TrialProgressBar 
+                                startDate={subscriptionData.startDate} 
+                                endDate={subscriptionData.trialEndDate}
+                                trialEligibility={subscriptionData.trialEligibility}
+                              />
+                            )}
+    
+                          <p className="text-muted-foreground text-sm mt-4">
+                            Subscription started on{" "}
+                            {(() => {
                               try {
-                                const nextBillingDate = new Date(
+                                return new Date(
                                   subscriptionData.startDate
-                                );
-                                nextBillingDate.setMonth(
-                                  nextBillingDate.getMonth() + 1
-                                );
-                                return nextBillingDate.toLocaleDateString(
-                                  "en-GB"
-                                );
+                                ).toLocaleDateString("en-GB");
                               } catch (e) {
                                 return "N/A";
                               }
-                            })()}`}
-                      </p>
-                    </div>
-
-                    <div className="border rounded-lg p-4 bg-white">
-                      <h3 className="font-semibold mb-2">Payment Method</h3>
-                      <div className="flex items-center gap-2">
-                        <div className="bg-gray-100 rounded p-1">
-                          {subscriptionData.paymentMethod === "paypal" ? (
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="24"
-                              height="24"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="text-blue-600"
-                            >
-                              <path d="M22 8c0 3.5-2 4.5-3.5 4.5h-4c-1.5 0-2.5-1-2.5-2.5s1-2.5 2.5-2.5H19" />
-                              <path d="M22 2v3" />
-                              <path d="M17 15h-5.5c-1.5 0-2.5-1-2.5-2.5 0-1.5 1-2.5 2.5-2.5H17" />
-                              <path d="M22 9v6" />
-                            </svg>
-                          ) : (
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="24"
-                              height="24"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <rect width="20" height="14" x="2" y="5" rx="2" />
-                              <line x1="2" x2="22" y1="10" y2="10" />
-                            </svg>
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-medium capitalize">
-                            {subscriptionData.paymentMethod || "PayPal"}
+                            })()}
                           </p>
-                          <p className="text-sm text-muted-foreground">
-                            {subscriptionData.subscriptionId
-                              ? `ID: ${subscriptionData.subscriptionId.substring(
-                                  0,
-                                  8
-                                )}...`
-                              : "Subscription ID not available"}
+                          <p className="text-muted-foreground text-sm">
+                            {subscriptionData.status === "trial" &&
+                            subscriptionData.trialEndDate
+                              ? `Trial ends on ${new Date(
+                                  subscriptionData.trialEndDate
+                                ).toLocaleDateString("en-GB")}`
+                              : `Next billing date: ${(() => {
+                                  try {
+                                    const nextBillingDate = new Date(
+                                      subscriptionData.startDate
+                                    );
+                                    nextBillingDate.setMonth(
+                                      nextBillingDate.getMonth() + 1
+                                    );
+                                    return nextBillingDate.toLocaleDateString(
+                                      "en-GB"
+                                    );
+                                  } catch (e) {
+                                    return "N/A";
+                                  }
+                                })()}`}
                           </p>
                         </div>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="border rounded-lg p-8 text-center">
-                    <h3 className="font-semibold mb-4">
-                      No Active Subscription
-                    </h3>
-                    <p className="text-muted-foreground mb-6">
-                      You don't currently have an active subscription.
-                    </p>
-                    <Button onClick={handleSubscribe}>Subscribe Now</Button>
-                  </div>
-                )}
-              </CardContent>
-
-              {subscriptionData && subscriptionData.status !== "cancelled" && (
-                <CardFooter className="flex justify-between">
-                  <Button
-                    variant="destructive"
-                    onClick={handleCancelSubscription}
-                  >
-                    Cancel Subscription
-                  </Button>
-                </CardFooter>
-              )}
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="privacy" className="space-y-4 mt-4 flex-1">
-            <Card className="flex flex-col h-full">
-              <CardHeader>
-                <CardTitle>Privacy Settings</CardTitle>
-                <CardDescription>
-                  Manage your privacy preferences and data settings
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6 flex-1">
-                <Form {...form}>
-                  <form
-                    onSubmit={form.handleSubmit(onSubmit)}
-                    className="space-y-6"
-                  >
-                    <div className="space-y-4">
-                      <Separator />
-
-                      <FormField
-                        control={form.control}
-                        name="notifications"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center justify-between">
-                            <div>
-                              <FormLabel>Email Notifications</FormLabel>
-                              <FormDescription>
-                                Receive email updates about activity
-                              </FormDescription>
+    
+                        <div className="border rounded-lg p-4 bg-white">
+                          <h3 className="font-semibold mb-2">Payment Method</h3>
+                          <div className="flex items-center gap-2">
+                            <div className="bg-gray-100 rounded p-1">
+                              {subscriptionData.paymentMethod === "paypal" ? (
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  width="24"
+                                  height="24"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  className="text-blue-600"
+                                >
+                                  <path d="M22 8c0 3.5-2 4.5-3.5 4.5h-4c-1.5 0-2.5-1-2.5-2.5s1-2.5 2.5-2.5H19" />
+                                  <path d="M22 2v3" />
+                                  <path d="M17 15h-5.5c-1.5 0-2.5-1-2.5-2.5 0-1.5 1-2.5 2.5-2.5H17" />
+                                  <path d="M22 9v6" />
+                                </svg>
+                              ) : (
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  width="24"
+                                  height="24"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <rect width="20" height="14" x="2" y="5" rx="2" />
+                                  <line x1="2" x2="22" y1="10" y2="10" />
+                                </svg>
+                              )}
                             </div>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      <Separator />
-
-                      <div>
-                        <h3 className="font-medium mb-2">Data Management</h3>
-                        <div className="space-y-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full justify-start"
-                            onClick={() => {
-                              showToast({
-                                title: "Data Export Requested",
-                                description:
-                                  "Your data export has been queued. You'll receive an email when it's ready.",
-                                variant: "success",
-                              });
-                            }}
-                          >
-                            Request Data Export
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
+                            <div>
+                              <p className="font-medium capitalize">
+                                {subscriptionData.paymentMethod || "PayPal"}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {subscriptionData.subscriptionId
+                                  ? `ID: ${subscriptionData.subscriptionId.substring(
+                                      0,
+                                      8
+                                    )}...`
+                                  : "Subscription ID not available"}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="border rounded-lg p-4 sm:p-8 text-center">
+                        <h3 className="font-semibold mb-2 sm:mb-4">
+                          No Active Subscription
+                        </h3>
+                        <p className="text-muted-foreground mb-4 sm:mb-6">
+                          You don't currently have an active subscription.
+                        </p>
+                        <Button onClick={handleSubscribe}>Subscribe Now</Button>
+                      </div>
+                    )}
+                  </CardContent>
+    
+                  {subscriptionData && subscriptionData.status !== "cancelled" && (
+                    <CardFooter className="flex justify-between">
+                      <Button
+                        variant="destructive"
+                        onClick={handleCancelSubscription}
+                        className="w-full sm:w-auto"
+                      >
+                        Cancel Subscription
+                      </Button>
+                    </CardFooter>
+                  )}
+                </Card>
+              </TabsContent>
+    
+              <TabsContent value="privacy" className="space-y-4">
+                <Card className="flex flex-col">
+                  <CardHeader>
+                    <CardTitle>Privacy Settings</CardTitle>
+                    <CardDescription>
+                      Manage your privacy preferences and data settings
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6 overflow-auto">
+                    <Form {...form}>
+                      <form
+                        onSubmit={form.handleSubmit(onSubmit)}
+                        className="space-y-6"
+                      >
+                        <div className="space-y-4">
+                          <Separator />
+    
+                          <FormField
+                            control={form.control}
+                            name="notifications"
+                            render={({ field }) => (
+                              <FormItem className="flex items-center justify-between">
+                                <div>
+                                  <FormLabel>Email Notifications</FormLabel>
+                                  <FormDescription>
+                                    Receive email updates about activity
+                                  </FormDescription>
+                                </div>
+                                <FormControl>
+                                  <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+    
+                          <Separator />
+    
+                          <div>
+                            <h3 className="font-medium mb-2">Data Management</h3>
+                            <div className="space-y-2">
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="w-full justify-start text-destructive"
+                                className="w-full justify-start"
+                                onClick={() => {
+                                  showToast({
+                                    title: "Data Export Requested",
+                                    description:
+                                      "Your data export has been queued. You'll receive an email when it's ready.",
+                                    variant: "success",
+                                  });
+                                }}
                               >
-                                Delete Account
+                                Request Data Export
                               </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>
-                                  Are you absolutely sure?
-                                </AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action cannot be undone. This will
-                                  permanently delete your account and remove
-                                  your data from our servers.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  className="bg-destructive text-destructive-foreground"
-                                  onClick={() => {
-                                    showToast({
-                                      title: "Account Deletion Initiated",
-                                      description:
-                                        "Your account deletion process has begun. You'll receive a confirmation email.",
-                                      variant: "error",
-                                    });
-                                  }}
-                                >
-                                  Delete Account
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full justify-start text-destructive"
+                                  >
+                                    Delete Account
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                      Are you absolutely sure?
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This action cannot be undone. This will
+                                      permanently delete your account and remove
+                                      your data from our servers.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
+                                    <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      className="bg-destructive text-destructive-foreground w-full sm:w-auto"
+                                      onClick={() => {
+                                        showToast({
+                                          title: "Account Deletion Initiated",
+                                          description:
+                                            "Your account deletion process has begun. You'll receive a confirmation email.",
+                                          variant: "error",
+                                        });
+                                      }}
+                                    >
+                                      Delete Account
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end">
-                      <Button type="submit" disabled={isPending}>
-                        {isPending ? "Saving..." : "Save Privacy Settings"}
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-        <SubscriptionModal
-          isOpen={subscriptionModalOpen}
-          onClose={() => setSubscriptionModalOpen(false)}
-          userId={session?.user?.id}
-          onSuccess={handleSubscriptionSuccess}
-        />
-        {/* Render the ExistingSubscriptionsModal with the needed props */}
-        <ExistingSubscriptionsModal
-          existingSubscriptions={existingSubscriptions}
-          onClose={() => setExistingSubscriptions(null)}
-        />
+    
+                        <div className="flex justify-end">
+                          <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
+                            {isPending ? "Saving..." : "Save Privacy Settings"}
+                          </Button>
+                        </div>
+                      </form>
+                    </Form>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </div>
+          </Tabs>
+          <SubscriptionModal
+            isOpen={subscriptionModalOpen}
+            onClose={() => setSubscriptionModalOpen(false)}
+            userId={session?.user?.id}
+            onSuccess={handleSubscriptionSuccess}
+          />
+          {/* Render the ExistingSubscriptionsModal with the needed props */}
+          <ExistingSubscriptionsModal
+            existingSubscriptions={existingSubscriptions}
+            onClose={() => setExistingSubscriptions(null)}
+          />
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
