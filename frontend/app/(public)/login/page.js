@@ -139,6 +139,40 @@ export default function LoginPage() {
     }
   };
 
+  useEffect(() => {
+    const queryParams = new URLSearchParams(window.location.search);
+    const action = queryParams.get("action");
+    const recoveryEmail = queryParams.get("email");
+    
+    if (action === "recover" && recoveryEmail) {
+      showToast({
+        title: "Session Recovery",
+        description: "Please enter your password to continue",
+        variant: "info",
+      });
+      
+      // Pre-fill the email field
+      setEmail(recoveryEmail);
+      
+      // Clear the query parameters
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+    
+    // Check for other error params
+    if (queryParams.get("error") === "session_expired") {
+      showToast({
+        title: "Session Expired",
+        description: "Your session has expired. Please log in again.",
+        variant: "warning",
+      });
+      
+      // Clear the query parameter
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  }, []);
+
   // ✅ Password reset form view
   if (showResetForm) {
     return (

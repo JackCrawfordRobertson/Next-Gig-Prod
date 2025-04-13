@@ -144,6 +144,10 @@ export const actionCodeSettings = {
   handleCodeInApp: false,
 };
 
+if (typeof window !== 'undefined') {
+  window.sessionStorage.setItem('firebase:debug', true);
+}
+
 // Determine if we should use mocks or real implementations
 // CRITICAL: We NEVER use mocks in production!
 const useMocks = isDevelopment;
