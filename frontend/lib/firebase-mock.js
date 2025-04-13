@@ -10,7 +10,7 @@ export const getDoc = async (docRef) => {
     userId,
     collection: docRef._path.segments[0],
     userData: userData ? 'Found' : 'Not Found',
-    mockUsers // Log the entire mockUsers object
+    availableIds: Object.keys(mockUsers)
   });
 
   return {
@@ -83,32 +83,24 @@ export const addDoc = async (collectionRef, data) => {
 
 export const getDocs = async (queryObj) => {
   if (queryObj.collection === "subscriptions") {
+    // Find the constraint with userId
     const constraint = queryObj.constraints.find(
       (c) => c.field === "userId" && c.op === "=="
     );
     const userId = constraint?.value;
     const user = mockUsers[userId];
 
-    console.log('MOCK getDocs - User:', user);
-    console.log('MOCK getDocs - Subscription Query:', {
+    console.log('MOCK getDocs - User lookup:', {
       userId,
+      found: !!user,
       collection: queryObj.collection,
-      constraints: queryObj.constraints,
-      mockUsers // Log the entire mockUsers object
+      availableIds: Object.keys(mockUsers)
     });
 
     // If no user found or user doesn't have a subscription
     if (!user) {
       return { empty: true, docs: [] };
     }
-
-    // Log specific subscription-related fields
-    console.log('Subscription-related fields:', {
-      subscribed: user.subscribed,
-      hadPreviousSubscription: user.hadPreviousSubscription,
-      onTrial: user.onTrial,
-      subscriptionId: user.subscriptionId
-    });
 
     // Return subscription details directly from user object
     return {
@@ -128,13 +120,38 @@ export const getDocs = async (queryObj) => {
             fingerprint: "**** **** **** 1234",
             subscriptionId: user.subscriptionId,
             hadPreviousSubscription: user.hadPreviousSubscription || false,
-            // Explicitly add these fields to ensure they're passed  
             subscribed: user.subscribed,
             onTrial: user.onTrial
           })
         }
       ] : []
     };
+  }
+
+  // Handle querying for users by email
+  if (queryObj.collection === "users") {
+    const emailConstraint = queryObj.constraints.find(
+      (c) => c.field === "email" && c.op === "=="
+    );
+    
+    if (emailConstraint) {
+      const email = emailConstraint.value;
+      // Find user with matching email
+      const matchingUser = Object.entries(mockUsers).find(
+        ([_, user]) => user.email === email
+      );
+      
+      if (matchingUser) {
+        const [userId, userData] = matchingUser;
+        return {
+          empty: false,
+          docs: [{
+            id: userId,
+            data: () => userData
+          }]
+        };
+      }
+    }
   }
 
   return { empty: true, docs: [] };

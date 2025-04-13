@@ -6,6 +6,8 @@ import { onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
 import { auth, signOutCompletely } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { showToast } from "@/lib/toast";
+import mockUsers from "@/app/mock/users";
+
 
 const AuthContext = createContext({
   firebaseUser: null,
@@ -101,6 +103,30 @@ export function AuthProvider({ children }) {
     
     isAuthSyncing.current = false;
   }, [firebaseUser, session, isLoading]);
+
+  useEffect(() => {
+    // Only run in development mode
+    if (process.env.NODE_ENV !== 'development') return;
+    
+    // If we have a session but no Firebase user, and we're in dev mode
+    if (session?.user?.id && !firebaseUser && !isLoading) {
+      console.log("Dev mode: Ensuring session ID matches mock user ID");
+      
+      // Check if the session ID exists in our mock users
+      if (!mockUsers[session.user.id]) {
+        console.warn("Session user ID doesn't match any mock user ID!");
+        console.warn("Available mock user IDs:", Object.keys(mockUsers));
+        console.warn("Current session ID:", session.user.id);
+        
+        // This is a development helper message
+        showToast({
+          title: "Development Mode Warning",
+          description: "Session ID doesn't match mock user ID. Check console for details.",
+          variant: "destructive"
+        });
+      }
+    }
+  }, [session, firebaseUser, isLoading]);
 
   return (
     <AuthContext.Provider value={{ 

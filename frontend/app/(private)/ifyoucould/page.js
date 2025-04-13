@@ -486,15 +486,20 @@ export default function IfYouCouldPage() {
                       />
                     ))
                   ) : (
-                    <div className="flex items-center justify-center h-40 bg-muted/50 rounded-lg p-4">
-                      <div className="text-center">
-                        <p className="text-muted-foreground mb-2">
+                    <div className="flex items-center justify-center h-auto min-h-40 bg-muted/50 rounded-lg p-6">
+                      <div className="text-center max-w-sm">
+                        <h3 className="font-semibold text-base mb-3">
                           No jobs available yet
-                        </p>
-                        <p className="text-sm text-muted-foreground">
+                        </h3>
+                        <p className="text-sm text-muted-foreground mb-3">
                           As a new account holder, your first jobs will be added
                           within 8 hours of account creation.
                         </p>
+                        <div className="mt-4 pt-3 border-t border-border">
+                          <p className="text-sm text-muted-foreground italic">
+                            If you don't see any jobs within 24 hours, consider widening your job queries and/or location search.
+                          </p>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -869,14 +874,21 @@ function JobColumn({ title, jobs, onJobClick }) {
                 </Card>
               ))
             ) : (
-              <div className="text-center">
-                <p className="text-muted-foreground mb-2">
-                  No jobs available yet
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  As a new account holder, your first jobs will be added within
-                  8 hours of account creation.
-                </p>
+              <div className="flex items-center justify-center h-auto min-h-40 bg-muted/50 rounded-lg p-6">
+                <div className="text-center max-w-sm">
+                  <h3 className="font-semibold text-base mb-3">
+                    No jobs available yet
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    As a new account holder, your first jobs will be added
+                    within 8 hours of account creation.
+                  </p>
+                  <div className="mt-4 pt-3 border-t border-border">
+                    <p className="text-sm text-muted-foreground italic">
+                      If you don't see any jobs within 24 hours, consider widening your job queries and/or location search.
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
           </div>

@@ -15,10 +15,10 @@ export const authOptions = {
       async authorize(credentials) {
         // For development mode with mock data
         if (process.env.NODE_ENV === "development" && 
-            credentials.email === "alice@example.com" && 
-            credentials.password === "password") {
-          return { id: "demo-user-id", email: "alice@example.com" };
-        }
+          credentials.email === "jack@ya-ya.co.uk" && 
+          credentials.password === "password") {
+        return { id: "OS6veyhaPARd9KeCnXU11re06Dq2", email: "jack@ya-ya.co.uk" };
+      }
         
         // Regular production path
         try {

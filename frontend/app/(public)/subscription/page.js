@@ -19,10 +19,10 @@ const PayPalButton = dynamic(() => import("@/components/PayPalButton"), { ssr: f
 // Test user for development mode
 const MOCK_USER = {
     user: {
-        id: "test-user-123",
-        email: "testuser@example.com",
+      id: "OS6veyhaPARd9KeCnXU11re06Dq2", // Match this with the ID in mockUsers
+      email: "jack@ya-ya.co.uk",
     },
-};
+  };
 
 // Dynamically import the page to force client-side rendering
 const SubscriptionPage = dynamic(() => Promise.resolve(SubscriptionComponent), { ssr: false });
