@@ -54,3 +54,5 @@ yarn-error.log*
 
 /backend/*.tsbuildinfo
 /backend/next-env.d.ts
+
+service-account.json

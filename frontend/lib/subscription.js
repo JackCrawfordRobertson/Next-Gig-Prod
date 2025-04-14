@@ -4,6 +4,26 @@ import { db } from "@/lib/firebase";
 import { showToast } from "@/lib/toast";
 
 /**
+ * Check if a user is a tester
+ * @param {string} email - User's email address
+ * @returns {Promise<boolean>} True if user is a tester
+ */
+export async function isUserTester(email) {
+  if (!email) return false;
+  
+  try {
+    const testersRef = collection(db, "testers");
+    const q = query(testersRef, where("email", "==", email.toLowerCase()));
+    const snapshot = await getDocs(q);
+    
+    return !snapshot.empty;
+  } catch (error) {
+    console.error("Error checking tester status:", error);
+    return false;
+  }
+}
+
+/**
  * Comprehensive function to get a user's current subscription status
  */
 export async function getUserSubscriptionStatus(userId) {
@@ -35,6 +55,35 @@ export async function getUserSubscriptionStatus(userId) {
     }
 
     const userData = userSnap.data();
+
+    // Check if user is a tester
+    if (userData.email) {
+      const isTester = await isUserTester(userData.email);
+      
+      if (isTester) {
+        // User is a tester, grant unlimited access
+        console.log(`User ${userData.email} is a tester - granting unlimited access`);
+        
+        // Calculate a date far in the future (e.g., 10 years from now)
+        const farFutureDate = new Date();
+        farFutureDate.setFullYear(farFutureDate.getFullYear() + 10);
+        
+        return {
+          subscribed: true,
+          onTrial: true,
+          hasSubscription: true,
+          isOnTrial: true,
+          trialEndDate: farFutureDate.toISOString(),
+          isTester: true,
+          userData: userData,
+          subscriptionData: {
+            status: "trial",
+            plan: "tester",
+          },
+          subscriptionDocId: "tester-" + userId
+        };
+      }
+    }
 
     // Check if we need to fetch subscription details
     let subscriptionData = null;
@@ -135,6 +184,42 @@ export async function storeSubscription(userId, subscriptionData, deviceFingerpr
     }
     
     const userData = userSnap.data();
+    
+    // Check if user is a tester (don't process payment if they are)
+    if (userData.email) {
+      const isTester = await isUserTester(userData.email);
+      if (isTester) {
+        console.log(`User ${userData.email} is a tester - no need to process payment`);
+        
+        // Calculate a date far in the future
+        const farFutureDate = new Date();
+        farFutureDate.setFullYear(farFutureDate.getFullYear() + 10);
+        
+        // Update user document to mark as tester
+        await updateDoc(userRef, {
+          subscribed: true,
+          onTrial: true,
+          isTester: true,
+          trialEndDate: farFutureDate.toISOString(),
+          subscriptionVerified: true,
+          subscriptionActive: true
+        });
+        
+        if (showToastNotifications) {
+          showToast({
+            title: "Tester Account Activated",
+            description: "You have unlimited access as a tester. Thank you for helping test Next Gig!",
+            variant: "success",
+          });
+        }
+        
+        return {
+          success: true,
+          isTester: true,
+          subscriptionDocId: "tester-" + userId
+        };
+      }
+    }
     
     // Determine trial eligibility and duration
     const { 
@@ -306,6 +391,19 @@ export async function cancelSubscription(userId, subscriptionId, subscriptionDoc
     }
     
     const userData = userSnap.data();
+    
+    // Check if user is a tester
+    if (userData.email && userData.isTester) {
+      const isTester = await isUserTester(userData.email);
+      if (isTester) {
+        console.log(`Tester ${userData.email} cannot cancel subscription - skipping cancellation`);
+        return {
+          success: true,
+          isTester: true,
+          message: "Tester accounts cannot be cancelled"
+        };
+      }
+    }
     
     // Calculate days of trial used
     const trialConsumedDays = calculateTrialConsumedDays(

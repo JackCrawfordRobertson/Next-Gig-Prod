@@ -55,6 +55,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { showToast } from "@/lib/toast";
 import { SubscriptionModal } from "@/components/SubscriptionModal";
 import { isDevelopmentMode } from "@/lib/environment";
+import { TesterIndicator } from '@/components/TesterIndicator';
+
 
 // Import directly from subscriptionService to avoid conflicts
 import * as subscriptionService from "@/lib/subscription";
@@ -628,6 +630,9 @@ export default function ProfileSettingsPage() {
           </div>
         </Card>
 
+        <TesterIndicator />
+
+
         {error && (
           <Card className="bg-red-50 border-red-200">
             <CardContent className="p-4">
@@ -642,6 +647,7 @@ export default function ProfileSettingsPage() {
             </CardContent>
           </Card>
         )}
+
 
         <Tabs
           value={activeTab}

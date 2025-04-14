@@ -12,6 +12,8 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { getFingerprint, checkForFraudPatterns } from "@/lib/fingerprint";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { isUserTester } from "@/lib/subscription";
+
 
 // Import PayPalButton dynamically to prevent SSR hydration issues
 const PayPalButton = dynamic(() => import("@/components/PayPalButton"), { ssr: false });
@@ -73,6 +75,35 @@ function SubscriptionComponent() {
 
         initFingerprint();
     }, [session]);
+
+    useEffect(() => {
+        async function checkTesterStatus() {
+          if (session?.user?.email) {
+            try {
+              const isTester = await isUserTester(session.user.email);
+              
+              if (isTester) {
+                console.log("User is a tester - redirecting to dashboard");
+                // Show a quick toast message
+                showToast({
+                  title: "Tester Account Detected",
+                  description: "You have been granted full access as a tester",
+                  variant: "success",
+                });
+                
+                // Redirect to dashboard
+                router.push("/dashboard");
+              }
+            } catch (error) {
+              console.error("Error checking tester status:", error);
+            }
+          }
+        }
+        
+        if (session?.user?.email) {
+          checkTesterStatus();
+        }
+      }, [session, router]);
 
     // Log session data when it changes
     useEffect(() => {
