@@ -924,12 +924,12 @@ function MobileJobCard({ job, onClick }) {
             <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
             <span className="truncate">{job.location || "Not specified"}</span>
           </div>
-          {job.salary && (
+          {/* {job.salary && (
             <div className="flex items-center text-xs text-muted-foreground">
               <DollarSign className="h-3 w-3 mr-1 flex-shrink-0" />
               <span className="truncate">{job.salary}</span>
             </div>
-          )}
+          )} */}
           {job.date_added && (
             <div className="flex items-center text-xs text-muted-foreground">
               <Clock className="h-3 w-3 mr-1 flex-shrink-0" />{" "}

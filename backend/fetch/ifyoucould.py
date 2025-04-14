@@ -1,5 +1,3 @@
-# fetch/ifyoucould.py
-
 import sys
 import os
 import time
@@ -10,11 +8,12 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import config
 
 BASE_URL = "https://www.ifyoucouldjobs.com/jobs"
-MAX_PAGES = 2
+MAX_PAGES = 5
 
 def parse_job_location(location):
     location = location.lower().strip()
@@ -29,7 +28,7 @@ def parse_job_location(location):
 def fetch_ifyoucould_jobs():
     """
     Scrapes all job listings from If You Could Jobs (across 2 pages) with no filtering.
-    Filtering will now be done in main job cycle.
+    Saves each page snapshot to a local HTML file for debugging.
     """
     print("🔍 Starting If You Could Jobs Scraper...")
 
@@ -48,6 +47,12 @@ def fetch_ifyoucould_jobs():
         print(f"🌍 Navigating to {url}")
         driver.get(url)
         time.sleep(5)
+
+        # # Save page snapshot for debugging
+        # html_snapshot_path = f"ifyoucould_snapshot_page_{page}.html"
+        # with open(html_snapshot_path, "w", encoding="utf-8") as f:
+        #     f.write(driver.page_source)
+        # print(f"📸 Saved HTML snapshot to {html_snapshot_path}")
 
         if page == 1:
             try:
@@ -95,6 +100,19 @@ def fetch_ifyoucould_jobs():
                 print(f"⚠️ Skipping job due to error: {e}")
                 continue
 
+            
+
     driver.quit()
     print(f"✅ Finished scraping. Total jobs collected: {len(jobs)}")
+
+    # # Save all scraped jobs to CSV for debugging
+    # import csv
+    # csv_file = "ifyoucould_scraped_jobs.csv"
+    # with open(csv_file, mode="w", newline="", encoding="utf-8") as file:
+    #     writer = csv.DictWriter(file, fieldnames=["title", "company", "location", "salary", "url", "date_added", "has_applied"])
+    #     writer.writeheader()
+    #     writer.writerows(jobs)
+
+    # print(f"📤 Exported {len(jobs)} jobs to CSV: {csv_file}")
+    
     return jobs
