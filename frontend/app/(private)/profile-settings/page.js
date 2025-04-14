@@ -618,7 +618,7 @@ export default function ProfileSettingsPage() {
 
   return (
     <div className="min-h-screen w-full p-4 mb-10 sm:mb-0 sm:p-4 md:p-8 overflow-auto">
-      <div className="space-y-6 flex-1 flex flex-col pb-16">
+      <div className="space-y-2 flex-1 flex flex-col pb-16">
         <Card className="p-4">
           <div>
             <h1 className="text-3xl font-bold">Profile Settings</h1>
@@ -646,9 +646,9 @@ export default function ProfileSettingsPage() {
         <Tabs
           value={activeTab}
           onValueChange={handleTabChange}
-          className="w-full flex flex-col"
+          className="w-full flex flex-col "
         >
-          <TabsList className="grid w-full grid-cols-4 overflow-x-auto">
+          <TabsList className="grid w-full grid-cols-4 overflow-x-auto ">
             <TabsTrigger
               value="general"
               className="text-xs sm:text-sm px-1 sm:px-3"
@@ -675,7 +675,7 @@ export default function ProfileSettingsPage() {
               Privacy
             </TabsTrigger>
           </TabsList>
-          <div className="mt-4 overflow-auto flex-1">
+          <div className="overflow-auto flex-1">
             <TabsContent value="general" className="space-y-4">
               <Card className="flex flex-col">
                 <CardHeader>
