@@ -246,7 +246,7 @@ async function determineTrialEligibility(userId, userData) {
     if (lastCancelDate) {
       const lastCancellationDate = new Date(lastCancelDate);
       const now = new Date();
-      const daysSinceCancellation = Math.ceil(
+      const daysSinceCancellation = Math.floor(
         (now - lastCancellationDate) / (1000 * 60 * 60 * 24)
       );
       
@@ -261,11 +261,13 @@ async function determineTrialEligibility(userId, userData) {
           // Partial trial - give remaining days
           const daysConsumed = userData.trialConsumedDays || 
                               lastCancellation?.trialConsumedDays || 0;
-          trialDuration = Math.max(0, 7 - daysConsumed);
+          
+          // FIXED: Use Math.floor instead of Math.max to be consistent with frontend calculation
+          trialDuration = Math.floor(7 - daysConsumed);
           eligibleForTrial = trialDuration > 0;
           trialEligibilityReason = trialDuration > 0 ? 
-            `Partial trial (${trialDuration} days remaining)` : 
-            'No trial days remaining';
+          `Resuming previous trial (${trialDuration} days remaining from your last subscription)` : 
+          'No trial days remaining from your previous subscription';
         }
       } else {
         // More than 30 days since cancellation - full trial
@@ -344,7 +346,7 @@ export async function cancelSubscription(userId, subscriptionId, subscriptionDoc
   }
 }
 
-// Helper functions
+// FIXED: Updated calculation method to use Math.floor for consistent calculations
 export function calculateTrialConsumedDays(startDateStr, endDateStr) {
   if (!startDateStr) return 0;
   
@@ -357,10 +359,26 @@ export function calculateTrialConsumedDays(startDateStr, endDateStr) {
     return 7; // Assuming 7-day trial
   }
   
-  // Otherwise calculate days used
+  // Otherwise calculate days used - use floor instead of ceil
   const diffTime = Math.abs(now - startDate);
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
   return Math.min(diffDays, 7); // Cap at 7 days
+}
+
+// ADDED: New function to consistently calculate remaining days
+export function calculateRemainingTrialDays(endDateStr) {
+  if (!endDateStr) return 0;
+  
+  const endDate = new Date(endDateStr);
+  const now = new Date();
+  
+  // If trial has already ended
+  if (endDate <= now) return 0;
+  
+  const diffTime = Math.abs(endDate - now);
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  
+  return diffDays;
 }
 
 export function hasCompletedTrial(trialEndDateStr) {

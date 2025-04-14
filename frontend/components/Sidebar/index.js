@@ -79,6 +79,17 @@ export default function SidebarLayout({ children }) {
       window.location.href = "/login?signedOut=true";
     }
   };
+  
+  const handleProfileSettingsClick = () => {
+    setDesktopUserMenuOpen(false);
+    router.push('/profile-settings');
+  };
+
+  const handleMobileProfileSettingsClick = () => {
+    setMobileUserMenuOpen(false);
+    router.push('/profile-settings');
+  };
+
 
   // Desktop Sidebar Component
   const DesktopSidebar = () => (
@@ -216,13 +227,13 @@ export default function SidebarLayout({ children }) {
           {/* Desktop User Dropdown */}
           {desktopUserMenuOpen && (
             <div className="absolute bottom-full left-0 right-0 bg-white border shadow-lg rounded-t-md overflow-auto md:overflow-hidden">
-              <Link
-                href="/profile-settings"
-                className="flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-sm border-b"
-              >
-                <Settings className="w-4 h-4" />
-                Profile Settings
-              </Link>
+             <button
+  onClick={handleProfileSettingsClick}
+  className="flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-sm border-b w-full text-left"
+>
+  <Settings className="w-4 h-4" />
+  Profile Settings
+</button>
               <button
                 onClick={handleSignOut}
                 className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-sm text-red-600"

@@ -113,8 +113,8 @@ export async function POST(req) {
             trialDuration = Math.max(0, 7 - daysConsumed);
             eligibleForTrial = trialDuration > 0;
             trialEligibilityReason = trialDuration > 0 ? 
-              `Partial trial (${trialDuration} days remaining)` : 
-              'No trial days remaining';
+          `Resuming previous trial (${trialDuration} days remaining from your last subscription)` : 
+          'No trial days remaining from your previous subscription';
           }
         } else {
           trialEligibilityReason = 'Previous subscription cancelled >30 days ago';
