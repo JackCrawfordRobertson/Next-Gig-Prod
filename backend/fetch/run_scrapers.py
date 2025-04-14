@@ -1,7 +1,7 @@
 # fetch/run_scrapers.py
 
 import json
-from fetch import ifyoucould, unjobs, workable, linkedin
+from fetch import ifyoucould, unjobs, workable, linkedin, ziprecruiter  # ✅ Add ZipRecruiter import
 
 def fetch_jobs(job_location_pairs):
     print(f"\n⏳ Running job scrapers for {len(job_location_pairs)} job title + location combinations...")
@@ -10,15 +10,18 @@ def fetch_jobs(job_location_pairs):
         "linkedin": [],
         "ifyoucould": [],
         "unjobs": [],
+        # "ziprecruiter": [],  # ✅ Add ZipRecruiter key
         # "workable": [],
     }
 
-    # 🔁 Run LinkedIn + UNJobs per search pair
+    # 🔁 Run LinkedIn, UNJobs, ZipRecruiter per search pair
     for job_title, location in job_location_pairs:
         print(f"🔍 Scraping for: '{job_title}' in '{location}'...")
 
         jobs["linkedin"].extend(linkedin.fetch_linkedin_jobs(job_title, location))
         jobs["unjobs"].extend(unjobs.fetch_unjobs_parallel([job_title], [location]))
+        # jobs["ziprecruiter"].extend(ziprecruiter.fetch_ziprecruiter_jobs(job_title, location))  # ✅ Add ZipRecruiter
+
         # jobs["workable"].extend(workable.fetch_workable_jobs([job_title], [location]))
 
     # ✅ Fetch all IfYouCould jobs ONCE

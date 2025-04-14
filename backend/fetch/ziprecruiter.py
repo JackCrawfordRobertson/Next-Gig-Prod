@@ -1,110 +1,103 @@
 import time
-import random
-import requests
-import config  # ✅ Import job keywords & location
+import shutil
+import os
 from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
-# ✅ ZipRecruiter Request Headers (Mimics a browser)
-HEADERS = {
-    "Host": "www.ziprecruiter.com",
-    "accept": "*/*",
-    "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "accept-language": "en-US,en;q=0.9",
-}
-
-# ❌ Excluded job categories (e.g., video-related roles)
 EXCLUDED_KEYWORDS = ["video", "social media"]
 
-# ✅ Fetch all ZipRecruiter jobs (cycles through all job keywords)
-def fetch_all_ziprecruiter_jobs(max_jobs=50):
-    """
-    Fetches ZipRecruiter job listings for all keywords in config.py.
-    """
-    all_jobs = []
-
-    for keyword in config.JOB_KEYWORDS:
-        print(f"\n🔍 Searching for: {keyword.strip()} in {config.LOCATION}")
-
-        jobs = fetch_ziprecruiter_jobs(search_term=keyword.strip(), location=config.LOCATION, max_jobs=max_jobs)
-
-        if jobs:
-            print(f"✅ Found {len(jobs)} jobs for {keyword.strip()}!")
-            all_jobs.extend(jobs)
-        else:
-            print(f"❌ No jobs found for {keyword.strip()}.")
-
-    print(f"\n✅ Scraped {len(all_jobs)} total jobs from ZipRecruiter.")
-    return all_jobs
-
-# ✅ Fetch ZipRecruiter jobs (single keyword search)
 def fetch_ziprecruiter_jobs(search_term, location, max_jobs=50):
     """
-    Fetches job listings from ZipRecruiter for a specific job title.
-    Filters out jobs containing unwanted keywords.
+    Uses headless Chrome to scrape job listings from ZipRecruiter UK.
     """
+    url = f"https://www.ziprecruiter.co.uk/jobs/search?q={search_term.replace(' ', '+')}&l={location.replace(' ', '+')}"
+    print(f"🌍 Launching headless browser for: {url}")
+
+    chrome_options = Options()
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+    chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+
+    chrome_path = shutil.which("chromedriver") or "/usr/bin/chromedriver"
+    if not os.path.exists(chrome_path):
+        raise FileNotFoundError("Chromedriver not found. Please install in CI environment.")
+
+    driver = webdriver.Chrome(options=chrome_options)
+    driver.get(url)
+
+    try:
+        # Wait for the job titles to load
+        WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.CLASS_NAME, "jobList-title"))
+        )
+        time.sleep(2)  # extra buffer for JS to finish
+    except Exception as e:
+        print("⚠️ Page took too long to load or is blocked.")
+        driver.quit()
+        return []
+
+    html = driver.page_source
+    driver.quit()
+
+    return parse_ziprecruiter_html(html, max_jobs)
+
+
+def parse_ziprecruiter_html(html, max_jobs):
+    """
+    Extracts jobs from the UK ZipRecruiter page.
+    """
+    soup = BeautifulSoup(html, "html.parser")
     jobs = []
-    start = 0  # Pagination offset
-    seen_job_ids = set()
+    seen_titles = set()
 
-    # ✅ Correct ZipRecruiter Search URL
-    url = (
-        f"https://www.ziprecruiter.com/candidate/search?"
-        f"search={search_term.replace(' ', '+')}&location={location.replace(' ', '+')}"
-    )
+    job_links = soup.find_all("a", class_="jobList-title zip-backfill-link")
+    for link in job_links:
+        title_tag = link.find("strong")
+        title = title_tag.get_text(strip=True) if title_tag else link.get_text(strip=True)
+        job_url = link["href"]
 
-    print(f"🔗 Fetching URL: {url}")  # ✅ Debugging step
+        if title in seen_titles:
+            continue
+        seen_titles.add(title)
 
-    response = requests.get(url, headers=HEADERS, timeout=10)
-    if response.status_code != 200:
-        print(f"❌ ZipRecruiter request failed with status code: {response.status_code}")
-        return []
+        parent = link.find_parent()
 
-    soup = BeautifulSoup(response.text, "html.parser")
-    job_cards = soup.find_all("article", class_="job_result")
+        meta = parent.find_next("ul", class_="jobList-introMeta")
+        company, location = "N/A", "N/A"
+        if meta:
+            meta_items = meta.find_all("li")
+            if len(meta_items) > 0:
+                company = meta_items[0].get_text(strip=True)
+            if len(meta_items) > 1:
+                location = meta_items[1].get_text(strip=True)
 
-    if not job_cards:
-        print(f"❌ No job listings found for {search_term}.")
-        return []
-
-    for job_card in job_cards:
-        # ✅ Extract Job Title
-        title_tag = job_card.find("a", class_="job_title")
-        title = title_tag.get_text(strip=True) if title_tag else "N/A"
-        job_url = title_tag["href"] if title_tag else "#"
-
-        # ✅ Extract Company Name
-        company_tag = job_card.find("div", class_="company_name")
-        company_name = company_tag.get_text(strip=True) if company_tag else "N/A"
-
-        # ✅ Extract Location
-        location_tag = job_card.find("div", class_="location")
-        job_location = location_tag.get_text(strip=True) if location_tag else "N/A"
-
-        # ✅ Extract Salary (if available)
-        salary_tag = job_card.find("div", class_="salary")
+        salary_tag = parent.find_next("div", class_="jobList-salary")
         salary = salary_tag.get_text(strip=True) if salary_tag else "Not Provided"
 
-        # ✅ Generate a unique job ID
-        job_id = job_url.split("/")[-1]
-        if job_id in seen_job_ids:
-            continue
-        seen_job_ids.add(job_id)
+        date_tag = parent.find_next("div", class_="jobList-date")
+        date_posted = date_tag.get_text(strip=True) if date_tag else "N/A"
 
-        # ✅ FILTER OUT JOBS WITH UNWANTED KEYWORDS
-        if any(word.lower() in title.lower() or word.lower() in company_name.lower() for word in EXCLUDED_KEYWORDS):
-            print(f"⚠️ Skipping job: {title} at {company_name} (Filtered Out)")
-            continue  # 🚨 Skip this job
+        if any(word.lower() in title.lower() or word.lower() in company.lower() for word in EXCLUDED_KEYWORDS):
+            continue
 
         jobs.append({
             "title": title,
-            "company": company_name,
-            "location": job_location,
+            "company": company,
+            "location": location,
             "url": job_url,
             "salary": salary,
+            "date_posted": date_posted,
         })
 
-        # ✅ Stop if max_jobs reached
         if len(jobs) >= max_jobs:
             break
 
+    print(f"✅ Parsed {len(jobs)} job(s) from UK layout.")
     return jobs

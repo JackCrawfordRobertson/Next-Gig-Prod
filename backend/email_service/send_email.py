@@ -35,6 +35,18 @@ def get_unsent_jobs():
     print(f"📋 Found {len(jobs)} unsent jobs")
     return jobs
 
+def get_unnotified_jobs_for_user(user_id):
+    matches_ref = db.collection("user_job_matches") \
+        .where("user_id", "==", user_id) \
+        .where("notified", "==", False)
+    return [
+        {
+            "id": match.id,
+            **match.to_dict()
+        }
+        for match in matches_ref.stream()
+    ]
+
 def mark_jobs_as_sent(jobs):
     for job in jobs:
         try:
@@ -346,13 +358,9 @@ Unsubscribe: https://next-gig.co.uk/unsubscribe
     except Exception as e:
         print(f"❌ Unexpected error sending email to {recipient_email}: {e}")
         return False
+    
 
 def send_job_emails():
-    jobs = get_unsent_jobs()
-    if not jobs:
-        print("❌ No new jobs found. Skipping email.")
-        return False
-
     users = get_subscribed_users()
     if not users:
         print("❌ No subscribed users found. Skipping email.")
@@ -365,25 +373,19 @@ def send_job_emails():
 
     for user in users:
         total_users_processed += 1
-        user_jobs = []
-        titles = [t.lower() for t in user.get("jobTitles", [])]
-        locations = [l.lower() for l in user.get("jobLocations", [])]
-
-        for job in jobs:
-            if any(t in job.get("title", "").lower() for t in titles) and \
-               any(l in job.get("location", "").lower() for l in locations):
-                user_jobs.append(job)
+        user_jobs = get_unnotified_jobs_for_user(user["id"])
 
         if not user_jobs:
-            print(f"⚠️ No matching jobs for {user['email']}. Skipping.")
+            print(f"⚠️ No new matched jobs for {user['email']}. Skipping.")
             continue
 
         users_with_matching_jobs += 1
         jobs_by_platform = defaultdict(lambda: defaultdict(list))
         for job in user_jobs:
-            platform = get_source_platform(job["url"])
-            company = job.get("company", "Unknown Company")
-            jobs_by_platform[platform][company].append(job)
+            job_details = job.get("job_details", {})
+            platform = get_source_platform(job_details.get("url", ""))
+            company = job_details.get("company", "Unknown Company")
+            jobs_by_platform[platform][company].append(job_details)
 
         html_content = generate_html_email(jobs_by_platform, len(user_jobs))
         success = send_email_to_user(user["email"], html_content, len(user_jobs), jobs_by_platform)
@@ -391,14 +393,17 @@ def send_job_emails():
         if success:
             total_emails_sent += 1
             print(f"✅ Sent {len(user_jobs)} job listings to {user['email']}")
+            # Mark these matches as notified
+            for job in user_jobs:
+                match_id = job.get("id")
+                if match_id:
+                    db.collection("user_job_matches").document(match_id).update({"notified": True})
         else:
             print(f"❌ Failed to send email to {user['email']}")
 
-    mark_jobs_as_sent(jobs)
-
     print("\n📊 Email Sending Summary:")
     print(f"Total Users Processed: {total_users_processed}")
-    print(f"Users with Matching Jobs: {users_with_matching_jobs}")
+    print(f"Users with New Matches: {users_with_matching_jobs}")
     print(f"Total Emails Sent: {total_emails_sent}")
 
     return total_emails_sent > 0
