@@ -1,10 +1,8 @@
-// app/layout.jsx
 import "./globals.css";
 import { Inter } from "next/font/google";
 import { AuthProvider } from "@/providers/AuthProvider";
 import SessionProvider from "@/components/SessionProvider";
 import { Toaster } from "@/components/ui/toaster";
-
 
 const inter = Inter({
   subsets: ["latin"],
@@ -12,16 +10,16 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "Next Gig",
-  description: "Next Gig is your personal music booking platform. Discover, post and manage gigs easily.",
-  metadataBase: new URL('https://home.next-gig.co.uk'),
+  title: "Next Gig - Automated Job Alerts",
+  description: "Next Gig delivers relevant job listings straight to your inbox every 8 hours. No more endless scrolling through job boards.",
+  metadataBase: new URL('https://next-gig.co.uk'),
   alternates: {
     canonical: '/',
   },
   openGraph: {
-    title: "Next Gig",
-    description: "Find gigs faster, post your own, and manage bookings all in one place.",
-    url: "https://home.next-gig.co.uk",
+    title: "Next Gig - Automated Job Alerts",
+    description: "Receive tailored job listings via email every 8 hours. Let the jobs find you.",
+    url: "https://next-gig.co.uk",
     siteName: "Next Gig",
     images: [
       {
