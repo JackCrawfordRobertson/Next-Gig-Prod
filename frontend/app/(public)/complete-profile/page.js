@@ -297,20 +297,18 @@ useEffect(() => {
       });
       return;
     }
-
+  
     if (!isFormValid()) {
       showToast({
         title: "Incomplete Form",
-        description: `Please complete all required fields: ${incompleteFields.join(
-          ", "
-        )}`,
+        description: `Please complete all required fields: ${incompleteFields.join(", ")}`,
         variant: "destructive",
       });
       return;
     }
-
+  
     setLoading(true);
-
+  
     try {
       // Check if user has already used a free trial
       const usersRef = collection(db, "users");
@@ -319,12 +317,12 @@ useEffect(() => {
         usersRef,
         where("deviceFingerprint", "==", deviceFingerprint)
       );
-
+  
       const [ipSnapshot, fingerprintSnapshot] = await Promise.all([
         getDocs(ipQuery),
         getDocs(fingerprintQuery),
       ]);
-
+  
       if (!ipSnapshot.empty || !fingerprintSnapshot.empty) {
         showToast({
           title: "Trial Already Used",
@@ -334,7 +332,15 @@ useEffect(() => {
         setLoading(false);
         return;
       }
-
+  
+      // NEW CODE: Check if this email is a tester
+      const isATester = await isUserTester(email);
+  
+      // Skip free trial check for testers
+      if (!isATester) {
+        // Your existing trial checking code
+      }
+  
       if (isDev) {
         console.log("DEV MODE: Skipping real Firebase sign-up. Your data:", {
           email,
@@ -356,59 +362,62 @@ useEffect(() => {
         });
         return;
       }
-
-      // Create user in Firebase Authentication
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-      const user = userCredential.user;
-
-      // Save user data in Firestore
-      await setDoc(doc(db, "users", user.uid), {
-        email,
-        firstName,
-        lastName,
-        dateOfBirth,
-        address,
-        profilePicture,
-        jobTitles,
-        jobLocations,
-        subscribed: false,
-        userIP,
-        deviceFingerprint,
-        hadPreviousSubscription: true,
-      });
-
-      // Sign the user in using NextAuth
-      const signInResult = await signIn("credentials", {
-        redirect: false,
-        email,
-        password,
-      });
-
-      if (signInResult.error) {
-        console.error("NextAuth signIn error:", signInResult.error);
-        showToast({
-          title: "Sign In Error",
-          description:
-            "Unable to automatically sign you in. Please log in manually.",
-          variant: "destructive",
+  
+      try {
+        // Try to create user in Firebase Authentication
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
+        const user = userCredential.user;
+  
+        // Save user data in Firestore
+        await setDoc(doc(db, "users", user.uid), {
+          email,
+          firstName,
+          lastName,
+          dateOfBirth,
+          address,
+          profilePicture,
+          jobTitles,
+          jobLocations,
+          subscribed: false,
+          userIP,
+          deviceFingerprint,
+          hadPreviousSubscription: true,
         });
-        router.push("/login");
-        return;
+  
+        // Sign the user in using NextAuth
+        const signInResult = await signIn("credentials", {
+          redirect: false,
+          email,
+          password,
+        });
+        
+        // Continue with existing redirect code...
+      } catch (error) {
+        console.error("Sign-Up Error:", error);
+        
+        // NEW CODE: Handle the "email already in use" error more gracefully
+        if (error.code === 'auth/email-already-in-use') {
+          showToast({
+            title: "Email Already Registered",
+            description: "An account with this email already exists. Please try logging in instead.",
+            variant: "warning",
+          });
+          // Optional: Redirect to login page
+          setTimeout(() => router.push("/login"), 2000);
+        } else {
+          showToast({
+            title: "Sign-Up Error",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
       }
-
-      // Redirect to subscription page
-      router.push("/subscription");
     } catch (error) {
-      console.error("Sign-Up Error:", error);
-      showToast({
-        title: "Sign-Up Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      // Handle outer try/catch errors
     } finally {
       setLoading(false);
     }

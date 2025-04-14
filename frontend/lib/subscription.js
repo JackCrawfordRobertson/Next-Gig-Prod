@@ -38,9 +38,8 @@ export async function getUserSubscriptionStatus(userId) {
       };
     }
 
-    console.log('Checking subscription for userId:', userId);
+    console.log("Checking subscription for userId:", userId);
 
-    // Get user document
     const userRef = doc(db, "users", userId);
     const userSnap = await getDoc(userRef);
 
@@ -56,45 +55,52 @@ export async function getUserSubscriptionStatus(userId) {
 
     const userData = userSnap.data();
 
-    // Check if user is a tester
     if (userData.email) {
       const isTester = await isUserTester(userData.email);
-      
-      if (isTester) {
-        // User is a tester, grant unlimited access
-        console.log(`User ${userData.email} is a tester - granting unlimited access`);
-        
-        // Calculate a date far in the future (e.g., 10 years from now)
-        const farFutureDate = new Date();
-        farFutureDate.setFullYear(farFutureDate.getFullYear() + 10);
-        
-        return {
-          subscribed: true,
-          onTrial: true,
-          hasSubscription: true,
-          isOnTrial: true,
-          trialEndDate: farFutureDate.toISOString(),
-          isTester: true,
-          userData: userData,
-          subscriptionData: {
-            status: "trial",
-            plan: "tester",
-          },
-          subscriptionDocId: "tester-" + userId
-        };
+
+      if (!isTester) {
+        const usersRef = collection(db, "users");
+        const ipQuery = query(usersRef, where("userIP", "==", userData.userIP));
+        const fingerprintQuery = query(
+          usersRef,
+          where("deviceFingerprint", "==", userData.deviceFingerprint)
+        );
+
+        const [ipSnapshot, fingerprintSnapshot] = await Promise.all([
+          getDocs(ipQuery),
+          getDocs(fingerprintQuery)
+        ]);
+
+        if (!ipSnapshot.empty || !fingerprintSnapshot.empty) {
+          const farFutureDate = new Date();
+          farFutureDate.setFullYear(farFutureDate.getFullYear() + 10);
+
+          return {
+            subscribed: true,
+            onTrial: true,
+            hasSubscription: true,
+            isOnTrial: true,
+            trialEndDate: farFutureDate.toISOString(),
+            isTester: true,
+            userData: userData,
+            subscriptionData: {
+              status: "trial",
+              plan: "tester"
+            },
+            subscriptionDocId: "tester-" + userId
+          };
+        }
       }
     }
 
-    // Check if we need to fetch subscription details
     let subscriptionData = null;
     let subscriptionDocId = null;
-    
+
     if (userData.subscriptionId) {
       try {
-        // Get subscription document
         const subscriptionRef = doc(db, "subscriptions", userData.subscriptionId);
         const subSnap = await getDoc(subscriptionRef);
-        
+
         if (subSnap.exists()) {
           subscriptionData = subSnap.data();
           subscriptionDocId = userData.subscriptionId;
@@ -103,8 +109,7 @@ export async function getUserSubscriptionStatus(userId) {
         console.warn("Error fetching subscription details:", err);
       }
     }
-    
-    // If no subscription found by ID, try query
+
     if (!subscriptionData && (userData.subscribed || userData.onTrial)) {
       try {
         const subQuery = query(
@@ -112,8 +117,9 @@ export async function getUserSubscriptionStatus(userId) {
           where("userId", "==", userId),
           where("status", "in", ["active", "trial"])
         );
-        
+
         const querySnap = await getDocs(subQuery);
+
         if (!querySnap.empty) {
           const docSnap = querySnap.docs[0];
           subscriptionData = docSnap.data();
@@ -124,7 +130,7 @@ export async function getUserSubscriptionStatus(userId) {
       }
     }
 
-    console.log('User Subscription Details:', {
+    console.log("User Subscription Details:", {
       exists: true,
       userData: userData,
       subscriptionData: subscriptionData,
@@ -132,7 +138,6 @@ export async function getUserSubscriptionStatus(userId) {
     });
 
     return {
-      // Return all possible formats for backward compatibility
       subscribed: !!userData.subscribed,
       onTrial: !!userData.onTrial,
       hasSubscription: !!userData.subscribed || !!userData.onTrial,
@@ -143,7 +148,6 @@ export async function getUserSubscriptionStatus(userId) {
       subscriptionData: subscriptionData,
       subscriptionDocId: subscriptionDocId
     };
-
   } catch (error) {
     console.error("Error checking subscription status:", error);
     return {
@@ -155,6 +159,7 @@ export async function getUserSubscriptionStatus(userId) {
     };
   }
 }
+
 
 /**
  * Store a new subscription in Firestore
