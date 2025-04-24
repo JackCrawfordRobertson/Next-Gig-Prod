@@ -91,6 +91,8 @@ export default function CompleteProfile() {
   const [dateOfBirth, setDateOfBirth] = useState("");
 
 
+
+
   useEffect(() => {
     const fetchSecurityData = async () => {
       const ip = await getUserIP();
@@ -310,35 +312,38 @@ useEffect(() => {
     setLoading(true);
   
     try {
-      // Check if user has already used a free trial
-      const usersRef = collection(db, "users");
-      const ipQuery = query(usersRef, where("userIP", "==", userIP));
-      const fingerprintQuery = query(
-        usersRef,
-        where("deviceFingerprint", "==", deviceFingerprint)
-      );
-  
-      const [ipSnapshot, fingerprintSnapshot] = await Promise.all([
-        getDocs(ipQuery),
-        getDocs(fingerprintQuery),
-      ]);
-  
-      if (!ipSnapshot.empty || !fingerprintSnapshot.empty) {
-        showToast({
-          title: "Trial Already Used",
-          description: "You have already used a free trial.",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
-  
-      // NEW CODE: Check if this email is a tester
-      const isATester = await isUserTester(email);
-  
-      // Skip free trial check for testers
+      // First, check if this email is a tester - do this in ALL environments
+      console.log(`Checking if ${email} is a registered tester...`);
+      const isATester = await isUserTester(email.toLowerCase());
+      console.log(`Tester check result for ${email}: ${isATester}`);
+      
+      // Only check for previous trials if NOT a tester
       if (!isATester) {
-        // Your existing trial checking code
+        console.log("Not a tester - checking for previous trial usage");
+        // Check if user has already used a free trial
+        const usersRef = collection(db, "users");
+        const ipQuery = query(usersRef, where("userIP", "==", userIP));
+        const fingerprintQuery = query(
+          usersRef,
+          where("deviceFingerprint", "==", deviceFingerprint)
+        );
+  
+        const [ipSnapshot, fingerprintSnapshot] = await Promise.all([
+          getDocs(ipQuery),
+          getDocs(fingerprintQuery),
+        ]);
+  
+        if (!ipSnapshot.empty || !fingerprintSnapshot.empty) {
+          showToast({
+            title: "Trial Already Used",
+            description: "You have already used a free trial.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+      } else {
+        console.log(`User ${email} is a tester - skipping trial usage check`);
       }
   
       if (isDev) {
@@ -354,6 +359,7 @@ useEffect(() => {
           jobLocations,
           userIP,
           deviceFingerprint,
+          isTester: isATester
         });
         setLoading(false);
         showToast({
@@ -365,12 +371,22 @@ useEffect(() => {
   
       try {
         // Try to create user in Firebase Authentication
+        console.log(`Attempting to create user with email: ${email}`);
         const userCredential = await createUserWithEmailAndPassword(
           auth,
           email,
           password
         );
         const user = userCredential.user;
+        console.log(`User created successfully with ID: ${user.uid}`);
+  
+        // Set special flags for testers
+        const specialPrivileges = isATester ? {
+          isTester: true,
+          // Testers get unlimited access without trials
+          subscriptionVerified: true,
+          subscriptionActive: true,
+        } : {};
   
         // Save user data in Firestore
         await setDoc(doc(db, "users", user.uid), {
@@ -382,11 +398,28 @@ useEffect(() => {
           profilePicture,
           jobTitles,
           jobLocations,
-          subscribed: false,
+          subscribed: isATester, // Testers are auto-subscribed
+          onTrial: isATester, // Testers get perpetual "trial"
           userIP,
           deviceFingerprint,
-          hadPreviousSubscription: true,
+          // FIX: Default to false for new users
+          hadPreviousSubscription: false,
+          // Add creation timestamp
+          createdAt: new Date().toISOString(),
+          // Add any special privileges for testers
+          ...specialPrivileges
         });
+  
+        console.log("User document created in Firestore");
+  
+        // If this is a tester, show a special message
+        if (isATester) {
+          showToast({
+            title: "Tester Account Created",
+            description: "Your tester account has been set up with full access.",
+            variant: "success",
+          });
+        }
   
         // Sign the user in using NextAuth
         const signInResult = await signIn("credentials", {
@@ -395,29 +428,46 @@ useEffect(() => {
           password,
         });
         
-        // Continue with existing redirect code...
+        if (signInResult?.error) {
+          console.error("NextAuth sign-in error:", signInResult.error);
+          throw new Error(signInResult.error);
+        }
+        
+        console.log("User signed in successfully with NextAuth");
+        
+        // Redirect to dashboard
+        router.push("/dashboard");
+        
       } catch (error) {
         console.error("Sign-Up Error:", error);
+        console.error("Error code:", error.code);
+        console.error("Error message:", error.message);
         
-        // NEW CODE: Handle the "email already in use" error more gracefully
+        // Handle the "email already in use" error more gracefully
         if (error.code === 'auth/email-already-in-use') {
           showToast({
             title: "Email Already Registered",
             description: "An account with this email already exists. Please try logging in instead.",
             variant: "warning",
           });
-          // Optional: Redirect to login page
+          // Redirect to login page
           setTimeout(() => router.push("/login"), 2000);
         } else {
           showToast({
             title: "Sign-Up Error",
-            description: error.message,
+            description: error.message || "An unexpected error occurred",
             variant: "destructive",
           });
         }
       }
     } catch (error) {
       // Handle outer try/catch errors
+      console.error("Outer error in sign-up process:", error);
+      showToast({
+        title: "Registration Error",
+        description: "An unexpected error occurred. Please try again later.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }

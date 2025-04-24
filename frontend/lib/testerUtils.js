@@ -11,7 +11,7 @@ export async function isUserTester(email) {
   
   try {
     const testersRef = collection(db, "testers");
-    const q = query(testersRef, where("email", "==", email));
+    const q = query(testersRef, where("email", "==", email.toLowerCase()));
     const snapshot = await getDocs(q);
     
     return !snapshot.empty;

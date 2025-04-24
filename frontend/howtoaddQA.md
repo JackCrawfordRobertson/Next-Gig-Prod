@@ -55,4 +55,8 @@ node scripts/manageTester.js add james.mackenzie1999@gmail.com "Adding james as 
 node scripts/manageTester.js add jack@ya-ya.co.uk "Adding Jack as a QA User"
 
 
+List test users
 
+```bash
+node scripts/manageTester.js list
+```
