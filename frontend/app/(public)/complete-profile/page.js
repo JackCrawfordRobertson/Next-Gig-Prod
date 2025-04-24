@@ -29,6 +29,7 @@ import { Separator } from "@/components/ui/separator";
 import { showToast } from "@/lib/toast";
 import { Progress } from "@/components/ui/progress";
 import { isDevelopmentMode } from "@/lib/environment";
+import { isUserTester } from "@/lib/subscription";
 
 
 
