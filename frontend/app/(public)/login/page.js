@@ -104,28 +104,36 @@ export default function LoginPage() {
       });
       return;
     }
-
+  
     try {
       setIsLoading(true);
+      
+      console.log(`Requesting password reset for: ${resetEmail}`);
+      
       const response = await fetch("/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: resetEmail }),
       });
-
-      if (!response.ok) throw new Error("Failed to send reset email");
-
+  
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
+  
       showToast({
         title: "Success",
         description:
           "If an account exists with this email, you will receive a password reset link shortly.",
         variant: "success",
       });
+      
       setShowResetForm(false);
     } catch (error) {
+      console.error("Reset password error:", error);
+      
       showToast({
         title: "Error",
-        description: "An error occurred. Please try again later",
+        description: "An error occurred. Please try again later.",
         variant: "destructive",
       });
     } finally {
