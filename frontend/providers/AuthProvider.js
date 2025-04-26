@@ -104,6 +104,24 @@ export function AuthProvider({ children }) {
     isAuthSyncing.current = false;
   }, [firebaseUser, session, isLoading]);
 
+  // In your AuthProvider
+useEffect(() => {
+  if (isLoading) return;
+  
+  // If we have a session but wrong user details
+  if (firebaseUser && session && firebaseUser.uid !== session.user.id) {
+    console.error("Session mismatch detected", {
+      firebaseUid: firebaseUser.uid,
+      sessionUserId: session.user.id
+    });
+    
+    // Force a sign out and redirect
+    signOutCompletely().then(() => {
+      window.location.href = "/login?error=session_mismatch";
+    });
+  }
+}, [firebaseUser, session, isLoading]);
+
   useEffect(() => {
     // Only run in development mode
     if (process.env.NODE_ENV !== 'development') return;

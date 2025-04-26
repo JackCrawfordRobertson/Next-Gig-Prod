@@ -17,19 +17,29 @@ export const authOptions = {
         if (process.env.NODE_ENV === "development" && 
           credentials.email === "jack@ya-ya.co.uk" && 
           credentials.password === "password") {
-        return { id: "OS6veyhaPARd9KeCnXU11re06Dq2", email: "jack@ya-ya.co.uk" };
-      }
+          return { id: "OS6veyhaPARd9KeCnXU11re06Dq2", email: "jack@ya-ya.co.uk" };
+        }
         
         // Regular production path
         try {
+          console.log(`Authenticating user: ${credentials.email}`);
           const userCredential = await signInWithEmailAndPassword(
             auth,
             credentials.email,
             credentials.password
           );
-          return { id: userCredential.user.uid, email: userCredential.user.email };
+          
+          // Log successful authentication with user ID for troubleshooting
+          console.log(`Authentication successful for ${credentials.email}, Firebase UID: ${userCredential.user.uid}`);
+          
+          return { 
+            id: userCredential.user.uid, 
+            email: userCredential.user.email,
+            emailVerified: userCredential.user.emailVerified || false,
+            loginTimestamp: Date.now()
+          };
         } catch (error) {
-          console.error("Firebase Auth Error:", error);
+          console.error(`Firebase Auth Error for ${credentials.email}:`, error);
           throw new Error("Invalid credentials.");
         }
       },
@@ -40,11 +50,14 @@ export const authOptions = {
       // Always ensure user object exists in session
       if (!session.user) session.user = {};
       
-      // Add Firebase UID to session
+      // CRITICAL: Add Firebase UID to session from token
       session.user.id = token.sub;
       
       // Store auth timestamp to track session freshness
       session.authTimestamp = token.authTimestamp || Date.now();
+      
+      // Log session creation for debugging
+      console.log(`Creating session for user ID: ${token.sub}, email: ${session.user.email}`);
       
       // Fetch subscription information from Firestore
       try {
@@ -52,6 +65,9 @@ export const authOptions = {
         
         if (userDoc.exists()) {
           const userData = userDoc.data();
+          
+          // Log user data retrieval
+          console.log(`Retrieved user data for ${token.sub}`);
           
           // Add user profile data to the session
           session.user.firstName = userData.firstName || '';
@@ -69,11 +85,9 @@ export const authOptions = {
               // If trial end date has passed, they're no longer on trial
               if (trialEndDate < now) {
                 isOnTrial = false;
-                // We would ideally update the user document here, but for
-                // session callbacks it's better to avoid writes
               }
             } catch (error) {
-              console.warn("Invalid trial end date format:", userData.trialEndDate);
+              console.warn(`Invalid trial end date format for user ${token.sub}:`, userData.trialEndDate);
               isOnTrial = false;
             }
           }
@@ -105,7 +119,7 @@ export const authOptions = {
               const daysRemaining = Math.max(0, Math.ceil((trialEndDate - now) / msPerDay));
               session.user.trialDaysRemaining = daysRemaining;
             } catch (error) {
-              console.warn("Error calculating trial status:", error);
+              console.warn(`Error calculating trial status for user ${token.sub}:`, error);
               session.user.trialActive = false;
               session.user.trialDaysRemaining = 0;
             }
@@ -119,9 +133,16 @@ export const authOptions = {
           if (userData.hadPreviousSubscription) {
             session.user.hadPreviousSubscription = !!userData.hadPreviousSubscription;
           }
+          
+          // Add isTester flag if present
+          if (userData.isTester) {
+            session.user.isTester = userData.isTester;
+          }
+        } else {
+          console.warn(`No user document found for ID: ${token.sub}`);
         }
       } catch (error) {
-        console.error("Error fetching user subscription data:", error);
+        console.error(`Error fetching user data for ${token.sub}:`, error);
         // Add error flag to session to help client identify problems
         session.dataError = true;
       }
@@ -132,8 +153,11 @@ export const authOptions = {
     async jwt({ token, user }) {
       if (user) {
         // When user signs in, update token with user data and timestamp
+        console.log(`Setting JWT token for user ID: ${user.id}, email: ${user.email}`);
         token.sub = user.id;
+        token.email = user.email;
         token.authTimestamp = Date.now();
+        token.loginTimestamp = user.loginTimestamp || Date.now();
       }
       
       return token;
@@ -146,8 +170,8 @@ export const authOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 14 * 24 * 60 * 60, // 14 days in seconds
-    updateAge: 24 * 60 * 60, // Refresh the JWT once per day
+    maxAge: 24 * 60 * 60, // Reduced from 14 days to 1 day
+    updateAge: 2 * 60 * 60, // Refresh the JWT every 2 hours instead of daily
   },
   cookies: {
     sessionToken: {
@@ -157,7 +181,7 @@ export const authOptions = {
         sameSite: 'lax',
         path: '/',
         secure: process.env.NODE_ENV === "production",
-        maxAge: 14 * 24 * 60 * 60, // 14 days in seconds - match session maxAge
+        maxAge: 24 * 60 * 60, // 1 day in seconds - match session maxAge
         domain: process.env.NODE_ENV === "production" 
           ? 'next-gig.co.uk' 
           : undefined, // Only set domain in production
@@ -180,7 +204,7 @@ export const authOptions = {
         sameSite: 'lax',
         path: '/',
         secure: process.env.NODE_ENV === "production",
-        maxAge: 14 * 24 * 60 * 60, // 14 days in seconds
+        maxAge: 24 * 60 * 60, // 1 day in seconds
       }
     },
   },
