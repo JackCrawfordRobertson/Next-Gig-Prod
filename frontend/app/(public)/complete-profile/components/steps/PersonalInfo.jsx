@@ -4,8 +4,9 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Upload, Calendar } from "lucide-react";
+import { Upload, Calendar, ArrowLeft } from "lucide-react";
 import { useRef } from "react";
+import { useRouter } from "next/navigation";
 
 export default function PersonalInfo({
   firstName,
@@ -18,9 +19,13 @@ export default function PersonalInfo({
   onPhotoChange
 }) {
   const fileInputRef = useRef(null);
+  const router = useRouter();
 
   return (
     <div className="space-y-4" aria-labelledby="personal-info-heading">
+      {/* Back to Login Button */}
+   
+      
       <h2 id="personal-info-heading" className="sr-only">Personal Information</h2>
       
       {/* Profile Picture + Name Row */}
@@ -28,13 +33,17 @@ export default function PersonalInfo({
         {/* Profile Picture */}
         <div className="flex flex-col items-center space-y-2 p-2 rounded-lg">
           <div className="relative">
-            <Avatar className="w-20 h-20 border border-gray-300 shadow-md">
-              <AvatarImage src={profilePicture} alt="Profile" />
+            <Avatar className="w-20 h-20 border border-gray-300 shadow-md overflow-hidden">
+              <AvatarImage 
+                src={profilePicture} 
+                alt="Profile" 
+                className="object-cover" 
+              />
               <AvatarFallback>
                 <img
                   src="/av.svg"
                   alt="Default Avatar"
-                  className="w-full h-full object-fill"
+                  className="w-full h-full object-cover"
                 />
               </AvatarFallback>
             </Avatar>
