@@ -9,14 +9,14 @@ import { isDevelopmentMode } from "@/lib/environment";
 import { isUserTester } from "@/lib/subscription";
 import {
   createUserWithEmailAndPassword,
+  auth,
+  db,
   doc,
   setDoc,
   collection,
   query,
   where,
-  getDocs,
-  auth,
-  db
+  getDocs
 } from "@/lib/firebase";
 import { signIn } from "next-auth/react";
 

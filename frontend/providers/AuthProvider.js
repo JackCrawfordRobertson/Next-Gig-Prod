@@ -37,33 +37,39 @@ export function AuthProvider({ children }) {
     }
   }, [status]);
 
-  // Handle auth state synchronization issues
-  useEffect(() => {
-    // Only run once both systems have reported their state
-    if (isLoading) return;
+// In AuthProvider.js
+useEffect(() => {
+  // Only run once both systems have reported their state
+  if (isLoading) return;
+  
+  // Check for the case where NextAuth session exists but Firebase user doesn't
+  if (session && !firebaseUser) {
+    console.log("Auth state mismatch detected: NextAuth session exists but Firebase user doesn't");
     
-    // Check for the case where NextAuth session exists but Firebase user doesn't
-    if (session && !firebaseUser) {
-      console.log("Auth state mismatch: NextAuth session exists but Firebase user doesn't");
-      
-      // We need to avoid constantly showing this message, so check if we're on the login page
-      const isLoginPage = window.location.pathname.includes('/login');
-      
-      // Only show the message if not on login page
-      if (!isLoginPage) {
-        console.log("Showing session error toast");
-        
+    // We need to avoid constantly showing this message
+    const isLoginPage = window.location.pathname.includes('/login');
+    const isCompletingProfile = window.location.pathname.includes('/complete-profile');
+    
+    // Only try to recover in main app areas, not during login/registration
+    if (!isLoginPage && !isCompletingProfile) {
+      // Try to restore Firebase session from NextAuth if possible
+      if (session.user?.email && session.user?.id) {
+        // Here you would implement a session recovery mechanism
+        // For now, just notify the user
         showToast({
-          title: "Session Error",
-          description: "Your session needs to be refreshed. Please sign in again.",
-          variant: "warning",
+          title: "Session Refreshing",
+          description: "Please wait while we restore your session...",
+          variant: "info",
         });
         
-        // Force a sign out to reset both auth systems
-        signOutCompletely();
+        // For a simple fix, you could redirect to login with recovery info
+        setTimeout(() => {
+          window.location.href = `/login?action=recover&email=${encodeURIComponent(session.user.email)}`;
+        }, 3000);
       }
     }
-  }, [session, firebaseUser, isLoading]);
+  }
+}, [session, firebaseUser, isLoading]);
 
   // Comprehensive sign out function
   const signOutCompletely = async () => {

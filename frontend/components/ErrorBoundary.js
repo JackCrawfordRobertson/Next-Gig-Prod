@@ -1,11 +1,10 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { signOut } from "next-auth/react";
-import { signOutCompletely } from "@/lib/firebase";
+import { signOut as firebaseSignOut } from "@/lib/firebase";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -38,11 +37,38 @@ class ErrorBoundary extends React.Component {
   handleSignOut = async () => {
     this.setState({ isSigningOut: true });
     try {
-      await signOutCompletely();
+      // Sign out from Firebase first
+      try {
+        await firebaseSignOut();
+        console.log("Successfully signed out of Firebase");
+      } catch (firebaseError) {
+        console.warn("Firebase sign out error:", firebaseError);
+        // Continue with NextAuth sign out even if Firebase fails
+      }
+      
+      // Then sign out from NextAuth
+      await signOut({ 
+        redirect: false // Don't redirect automatically
+      });
+      
+      console.log("Successfully signed out of NextAuth");
+      
+      // Clear any stored data
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Clear all cookies
+        document.cookie.split(";").forEach(c => {
+          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        });
+      }
+      
+      // Manual redirect
       window.location.href = "/login?signedOut=true";
     } catch (error) {
       console.error("Error signing out:", error);
-      window.location.href = "/login"; // Fallback
+      window.location.href = "/login"; // Fallback redirect
     }
   };
 
