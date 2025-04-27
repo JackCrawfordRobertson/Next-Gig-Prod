@@ -16,9 +16,9 @@ import {
   where,
   getDocs,
   auth,
-  db,
-  signIn
+  db
 } from "@/lib/firebase";
+import { signIn } from "next-auth/react";
 
 const initialFormState = {
   email: "",
@@ -54,6 +54,7 @@ const initialFormState = {
 export function useProfileForm() {
   const [formState, setFormState] = useState(initialFormState);
   const [loading, setLoading] = useState(false);
+  const [registrationError, setRegistrationError] = useState(null);
   const validation = useFormValidation();
   const router = useRouter();
   const isDev = isDevelopmentMode();
@@ -61,12 +62,17 @@ export function useProfileForm() {
   // Fetch security data on mount
   useEffect(() => {
     const fetchSecurityData = async () => {
-      const ip = await getUserIP();
-      setFormState(state => ({
-        ...state,
-        userIP: ip,
-        deviceFingerprint: getDeviceFingerprint()
-      }));
+      try {
+        const ip = await getUserIP();
+        setFormState(state => ({
+          ...state,
+          userIP: ip,
+          deviceFingerprint: getDeviceFingerprint()
+        }));
+      } catch (error) {
+        console.error("Error fetching security data:", error);
+        // Still continue - this shouldn't block the form
+      }
     };
 
     fetchSecurityData();
@@ -242,172 +248,189 @@ export function useProfileForm() {
     }
   };
 
-  // Form submission
+  // Form submission - Completely rewritten for clarity and reliability
   const handleSignUp = async () => {
-    if (!formState.userIP || !formState.deviceFingerprint) {
-      showToast({
-        title: "Please Wait",
-        description: "Please wait a moment before signing up.",
-        variant: "destructive",
-      });
-      return;
-    }
-  
+    // Clear any previous errors
+    setRegistrationError(null);
+    
+    // Form validation
     if (formState.incompleteFields.length > 0) {
+      const errorMessage = `Please complete all required fields: ${formState.incompleteFields.join(", ")}`;
+      setRegistrationError(errorMessage);
       showToast({
         title: "Incomplete Form",
-        description: `Please complete all required fields: ${formState.incompleteFields.join(", ")}`,
+        description: errorMessage,
         variant: "destructive",
       });
       return;
     }
   
+    // Begin registration process
     setLoading(true);
   
     try {
-      // First, check if this email is a tester - do this in ALL environments
-      console.log(`Checking if ${formState.email} is a registered tester...`);
+      // Check if user is a tester - consistent across all environments
       const isATester = await isUserTester(formState.email.toLowerCase());
-      console.log(`Tester check result for ${formState.email}: ${isATester}`);
+      console.log(`Tester check for ${formState.email}: ${isATester ? "Is a tester" : "Not a tester"}`);
       
-      // Only check for previous trials if NOT a tester
-      if (!isATester) {
-        console.log("Not a tester - checking for previous trial usage");
-        // Check if user has already used a free trial
-        const usersRef = collection(db, "users");
-        const ipQuery = query(usersRef, where("userIP", "==", formState.userIP));
-        const fingerprintQuery = query(
-          usersRef,
-          where("deviceFingerprint", "==", formState.deviceFingerprint)
-        );
-  
-        const [ipSnapshot, fingerprintSnapshot] = await Promise.all([
-          getDocs(ipQuery),
-          getDocs(fingerprintQuery),
-        ]);
-  
-        if (!ipSnapshot.empty || !fingerprintSnapshot.empty) {
-          showToast({
-            title: "Trial Already Used",
-            description: "You have already used a free trial.",
-            variant: "destructive",
-          });
-          setLoading(false);
-          return;
+      // Check for existing accounts - only if not a tester
+      if (!isATester && !isDev) {
+        try {
+          // Check if user has already used a free trial via IP or device fingerprint
+          const usersRef = collection(db, "users");
+          const ipQuery = query(usersRef, where("userIP", "==", formState.userIP));
+          const fingerprintQuery = query(
+            usersRef,
+            where("deviceFingerprint", "==", formState.deviceFingerprint)
+          );
+    
+          const [ipSnapshot, fingerprintSnapshot] = await Promise.all([
+            getDocs(ipQuery),
+            getDocs(fingerprintQuery),
+          ]);
+    
+          if (!ipSnapshot.empty || !fingerprintSnapshot.empty) {
+            const errorMessage = "You have already used a free trial with this device.";
+            setRegistrationError(errorMessage);
+            showToast({
+              title: "Trial Already Used",
+              description: errorMessage,
+              variant: "destructive",
+            });
+            setLoading(false);
+            return;
+          }
+        } catch (error) {
+          console.warn("Error checking for existing accounts:", error);
+          // Continue with registration - don't block on this check
         }
-      } else {
-        console.log(`User ${formState.email} is a tester - skipping trial usage check`);
       }
-  
+      
+      // In development mode, log data and skip actual registration
       if (isDev) {
-        console.log("DEV MODE: Skipping real Firebase sign-up. Your data:", formState);
+        console.log("DEV MODE: Registration data:", formState);
         setLoading(false);
         showToast({
           title: "Dev Mode",
-          description: "Sign up flow skipped. Check console logs.",
+          description: "Account created successfully (simulated).",
+          variant: "success",
         });
+        
+        // In dev mode, still redirect to dashboard
+        setTimeout(() => router.push("/dashboard"), 1000);
         return;
       }
-  
-      try {
-        // Try to create user in Firebase Authentication
-        console.log(`Attempting to create user with email: ${formState.email}`);
-        const userCredential = await createUserWithEmailAndPassword(
-          auth,
-          formState.email,
-          formState.password
-        );
-        const user = userCredential.user;
-        console.log(`User created successfully with ID: ${user.uid}`);
-  
-        // Set special flags for testers
-        const specialPrivileges = isATester ? {
-          isTester: true,
-          // Testers get unlimited access without trials
-          subscriptionVerified: true,
-          subscriptionActive: true,
-        } : {};
-  
-        // Save user data in Firestore
-        await setDoc(doc(db, "users", user.uid), {
-          email: formState.email,
-          firstName: formState.firstName,
-          lastName: formState.lastName,
-          dateOfBirth: formState.dateOfBirth,
-          address: formState.address,
-          profilePicture: formState.profilePicture,
-          jobTitles: formState.jobTitles,
-          jobLocations: formState.jobLocations,
-          subscribed: isATester, // Testers are auto-subscribed
-          onTrial: isATester, // Testers get perpetual "trial"
-          userIP: formState.userIP,
-          deviceFingerprint: formState.deviceFingerprint,
-          // FIX: Default to false for new users
-          hadPreviousSubscription: false,
-          // Add creation timestamp
-          createdAt: new Date().toISOString(),
-          // Add any special privileges for testers
-          ...specialPrivileges
-        });
-  
-        console.log("User document created in Firestore");
-  
-        // If this is a tester, show a special message
-        if (isATester) {
-          showToast({
-            title: "Tester Account Created",
-            description: "Your tester account has been set up with full access.",
-            variant: "success",
-          });
-        }
-  
-        // Sign the user in using NextAuth
-        const signInResult = await signIn("credentials", {
-          redirect: false,
-          email: formState.email,
-          password: formState.password,
-        });
-        
-        if (signInResult?.error) {
-          console.error("NextAuth sign-in error:", signInResult.error);
-          throw new Error(signInResult.error);
-        }
-        
-        console.log("User signed in successfully with NextAuth");
-        
-        // Redirect to dashboard
-        router.push("/dashboard");
-        
-      } catch (error) {
-        console.error("Sign-Up Error:", error);
-        console.error("Error code:", error.code);
-        console.error("Error message:", error.message);
-        
-        // Handle the "email already in use" error more gracefully
-        if (error.code === 'auth/email-already-in-use') {
-          showToast({
-            title: "Email Already Registered",
-            description: "An account with this email already exists. Please try logging in instead.",
-            variant: "warning",
-          });
-          // Redirect to login page
-          setTimeout(() => router.push("/login"), 2000);
-        } else {
-          showToast({
-            title: "Sign-Up Error",
-            description: error.message || "An unexpected error occurred",
-            variant: "destructive",
-          });
-        }
+      
+      // PRODUCTION FLOW - Create the actual user account
+      
+      // 1. Create Firebase Authentication account
+      console.log("Creating Firebase Auth account...");
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formState.email,
+        formState.password
+      );
+      
+      const user = userCredential.user;
+      console.log(`Firebase user created with ID: ${user.uid}`);
+      
+      // 2. Prepare user data with special flags for testers
+      const userData = {
+        email: formState.email,
+        firstName: formState.firstName,
+        lastName: formState.lastName,
+        dateOfBirth: formState.dateOfBirth,
+        address: formState.address,
+        profilePicture: formState.profilePicture,
+        jobTitles: formState.jobTitles,
+        jobLocations: formState.jobLocations,
+        subscribed: isATester,
+        onTrial: isATester,
+        userIP: formState.userIP || "unknown",
+        deviceFingerprint: formState.deviceFingerprint || "unknown",
+        hadPreviousSubscription: false,
+        createdAt: new Date().toISOString(),
+      };
+      
+      // Add special privileges for testers
+      if (isATester) {
+        userData.isTester = true;
+        userData.subscriptionVerified = true;
+        userData.subscriptionActive = true;
       }
-    } catch (error) {
-      // Handle outer try/catch errors
-      console.error("Outer error in sign-up process:", error);
-      showToast({
-        title: "Registration Error",
-        description: "An unexpected error occurred. Please try again later.",
-        variant: "destructive",
+      
+      // 3. Create user document in Firestore
+      console.log("Creating Firestore user document...");
+      await setDoc(doc(db, "users", user.uid), userData);
+      console.log("Firestore document created successfully");
+      
+      // 4. Sign in with NextAuth to establish session
+      console.log("Creating NextAuth session...");
+      const signInResult = await signIn("credentials", {
+        redirect: false,
+        email: formState.email,
+        password: formState.password,
       });
+      
+      // Handle NextAuth sign-in errors
+      if (signInResult?.error) {
+        console.error("NextAuth sign-in error:", signInResult.error);
+        
+        // Even if NextAuth fails, the account was created, so show partial success
+        showToast({
+          title: "Account Created",
+          description: "Your account was created but we couldn't sign you in automatically. Please try logging in.",
+          variant: "warning",
+        });
+        
+        // Redirect to login page
+        setTimeout(() => router.push("/login"), 2000);
+        return;
+      }
+      
+      // 5. Success! Show appropriate message and redirect
+      if (isATester) {
+        showToast({
+          title: "Tester Account Created",
+          description: "Your tester account has been created with full access.",
+          variant: "success",
+        });
+      } else {
+        showToast({
+          title: "Account Created",
+          description: "Your account has been created successfully!",
+          variant: "success",
+        });
+      }
+      
+      // Redirect to dashboard with a slight delay to allow toast to be seen
+      setTimeout(() => router.push("/dashboard"), 1000);
+      
+    } catch (error) {
+      console.error("Registration error:", error);
+      
+      // Handle specific Firebase Auth errors
+      if (error.code === 'auth/email-already-in-use') {
+        const errorMessage = "An account with this email already exists. Please try logging in instead.";
+        setRegistrationError(errorMessage);
+        showToast({
+          title: "Email Already Registered",
+          description: errorMessage,
+          variant: "warning",
+        });
+        
+        // Redirect to login page after a delay
+        setTimeout(() => router.push("/login"), 2000);
+      } else {
+        // Generic error handling
+        const errorMessage = error.message || "An unexpected error occurred during registration.";
+        setRegistrationError(errorMessage);
+        showToast({
+          title: "Registration Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -419,6 +442,7 @@ export function useProfileForm() {
   return {
     ...formState,
     loading,
+    registrationError,
     handleInputChange,
     handlePasswordChange,
     handleConfirmPasswordChange,

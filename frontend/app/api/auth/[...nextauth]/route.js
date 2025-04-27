@@ -1,9 +1,11 @@
+// app/api/auth/[...nextauth]/route.js
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 
+// Simplified version without Firebase adapter for now
 export const authOptions = {
   providers: [
     CredentialsProvider({
@@ -29,7 +31,7 @@ export const authOptions = {
             credentials.password
           );
           
-          // Log successful authentication with user ID for troubleshooting
+          // Log successful authentication with user ID
           console.log(`Authentication successful for ${credentials.email}, Firebase UID: ${userCredential.user.uid}`);
           
           return { 
@@ -59,7 +61,7 @@ export const authOptions = {
       // Log session creation for debugging
       console.log(`Creating session for user ID: ${token.sub}, email: ${session.user.email}`);
       
-      // Fetch subscription information from Firestore
+      // Fetch user information from Firestore directly
       try {
         const userDoc = await getDoc(doc(db, "users", token.sub));
         
@@ -73,38 +75,19 @@ export const authOptions = {
           session.user.firstName = userData.firstName || '';
           session.user.lastName = userData.lastName || '';
           
-          // Add subscription data to the session with better handling
+          // Add subscription data to the session
           session.user.subscribed = !!userData.subscribed;
-          
-          // Handle trial status with date checking
-          let isOnTrial = !!userData.onTrial;
-          if (isOnTrial && userData.trialEndDate) {
-            try {
-              const trialEndDate = new Date(userData.trialEndDate);
-              const now = new Date();
-              // If trial end date has passed, they're no longer on trial
-              if (trialEndDate < now) {
-                isOnTrial = false;
-              }
-            } catch (error) {
-              console.warn(`Invalid trial end date format for user ${token.sub}:`, userData.trialEndDate);
-              isOnTrial = false;
-            }
-          }
-          
-          session.user.onTrial = isOnTrial;
+          session.user.onTrial = !!userData.onTrial;
           session.user.subscriptionPlan = userData.subscriptionPlan;
           session.user.subscriptionId = userData.subscriptionId;
-          
-          // Ensure subscription active status is consistent with subscribed and trial status
           session.user.subscriptionActive = userData.subscriptionActive || 
-                                            userData.subscribed || 
-                                            isOnTrial || 
-                                            false;
+                                          userData.subscribed || 
+                                          userData.onTrial || 
+                                          false;
           
           session.user.profilePicture = userData.profilePicture || '';
           
-          // Add trial information with safety checks
+          // Add trial information
           if (userData.trialEndDate) {
             session.user.trialEndDate = userData.trialEndDate;
             
@@ -152,12 +135,11 @@ export const authOptions = {
     
     async jwt({ token, user }) {
       if (user) {
-        // When user signs in, update token with user data and timestamp
+        // When user signs in, update token with user data
         console.log(`Setting JWT token for user ID: ${user.id}, email: ${user.email}`);
         token.sub = user.id;
         token.email = user.email;
         token.authTimestamp = Date.now();
-        token.loginTimestamp = user.loginTimestamp || Date.now();
       }
       
       return token;
@@ -170,46 +152,10 @@ export const authOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 24 * 60 * 60, // Reduced from 14 days to 1 day
-    updateAge: 2 * 60 * 60, // Refresh the JWT every 2 hours instead of daily
-  },
-  cookies: {
-    sessionToken: {
-      name: `next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 24 * 60 * 60, // 1 day in seconds - match session maxAge
-        domain: process.env.NODE_ENV === "production" 
-          ? 'next-gig.co.uk' 
-          : undefined, // Only set domain in production
-      },
-    },
-    callbackUrl: {
-      name: 'next-auth.callback-url',
-      options: {
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === "production",
-        httpOnly: true,
-        maxAge: 60 * 5, // 5 minutes - short-lived
-      }
-    },
-    csrfToken: {
-      name: 'next-auth.csrf-token',
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 24 * 60 * 60, // 1 day in seconds
-      }
-    },
+    maxAge: 24 * 60 * 60, // 1 day in seconds
+    updateAge: 2 * 60 * 60, // 2 hours
   },
   debug: process.env.NODE_ENV === "development",
-  // Add explicit secret to enhance security
   secret: process.env.NEXTAUTH_SECRET || "your-development-secret",
 };
 

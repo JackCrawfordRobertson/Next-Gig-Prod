@@ -20,7 +20,7 @@ import Script from "next/script";
 import Link from "next/link";
 import Image from "next/image";
 import { isDevelopmentMode } from "@/lib/environment";
-
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -34,16 +34,65 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showResetForm, setShowResetForm] = useState(false);
   const [redirectedFromSignOut, setRedirectedFromSignOut] = useState(false);
+  const [loginError, setLoginError] = useState(null);
 
   useEffect(() => {
+    // Check URL params for redirects and other states
     const queryParams = new URLSearchParams(window.location.search);
+    
+    // Handle signed out state
     if (queryParams.get("signedOut") === "true") {
       setRedirectedFromSignOut(true);
+      // Clean up URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+    
+    // Handle session recovery
+    const action = queryParams.get("action");
+    const recoveryEmail = queryParams.get("email");
+    
+    if (action === "recover" && recoveryEmail) {
+      showToast({
+        title: "Session Recovery",
+        description: "Please enter your password to continue",
+        variant: "info",
+      });
+      
+      // Pre-fill the email field
+      setEmail(recoveryEmail);
+      
+      // Clean up URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+    
+    // Handle error states
+    const error = queryParams.get("error");
+    if (error) {
+      let errorMessage = "An error occurred during login";
+      
+      switch(error) {
+        case "session_expired":
+          errorMessage = "Your session has expired. Please log in again.";
+          break;
+        case "session_mismatch":
+          errorMessage = "Your session was invalid. Please log in again.";
+          break;
+        case "auth_error":
+          errorMessage = "Authentication error. Please try again.";
+          break;
+      }
+      
+      setLoginError(errorMessage);
+      
+      // Clean up URL
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
     }
   }, []);
 
+  // Redirect if already authenticated
   useEffect(() => {
     if (status === "authenticated" && !redirectedFromSignOut) {
       router.push("/dashboard");
@@ -51,30 +100,33 @@ export default function LoginPage() {
   }, [status, router, redirectedFromSignOut]);
 
   const handleLogin = async () => {
+    setLoginError(null);
+    
     if (!email || !password) {
-      showToast({
-        title: "Error",
-        description: "Please enter both email and password",
-        variant: "destructive",
-      });
+      setLoginError("Please enter both email and password");
       return;
     }
 
     try {
       setIsLoading(true);
+      
+      // Ensure we're logged out of Firebase first to avoid stale sessions
       try {
         await auth.signOut();
       } catch (e) {
         console.log("No Firebase user to sign out");
       }
 
+      // Sign in using NextAuth
       const result = await signIn("credentials", {
         email,
         password,
         redirect: false,
       });
 
-      if (result?.error) throw new Error(result.error);
+      if (result?.error) {
+        throw new Error(result.error);
+      }
 
       showToast({
         title: "Success",
@@ -85,11 +137,7 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (error) {
       console.error("Login error:", error);
-      showToast({
-        title: "Error",
-        description: "Login failed. Please check your details and try again.",
-        variant: "destructive",
-      });
+      setLoginError("Login failed. Please check your details and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -97,11 +145,7 @@ export default function LoginPage() {
 
   const handleResetPassword = async () => {
     if (!resetEmail) {
-      showToast({
-        title: "Error",
-        description: "Please enter your email address",
-        variant: "destructive",
-      });
+      setLoginError("Please enter your email address");
       return;
     }
   
@@ -131,11 +175,7 @@ export default function LoginPage() {
     } catch (error) {
       console.error("Reset password error:", error);
       
-      showToast({
-        title: "Error",
-        description: "An error occurred. Please try again later.",
-        variant: "destructive",
-      });
+      setLoginError("An error occurred while requesting password reset. Please try again later.");
     } finally {
       setIsLoading(false);
     }
@@ -143,45 +183,11 @@ export default function LoginPage() {
 
   const handleKeyPress = (e) => {
     if (e.key === "Enter") {
-      handleLogin();
+      showResetForm ? handleResetPassword() : handleLogin();
     }
   };
 
-  useEffect(() => {
-    const queryParams = new URLSearchParams(window.location.search);
-    const action = queryParams.get("action");
-    const recoveryEmail = queryParams.get("email");
-    
-    if (action === "recover" && recoveryEmail) {
-      showToast({
-        title: "Session Recovery",
-        description: "Please enter your password to continue",
-        variant: "info",
-      });
-      
-      // Pre-fill the email field
-      setEmail(recoveryEmail);
-      
-      // Clear the query parameters
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, newUrl);
-    }
-    
-    // Check for other error params
-    if (queryParams.get("error") === "session_expired") {
-      showToast({
-        title: "Session Expired",
-        description: "Your session has expired. Please log in again.",
-        variant: "warning",
-      });
-      
-      // Clear the query parameter
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, newUrl);
-    }
-  }, []);
-
-  // ✅ Password reset form view
+  // Password reset form view
   if (showResetForm) {
     return (
       <>
@@ -210,6 +216,12 @@ export default function LoginPage() {
             </CardHeader>
 
             <CardContent className="space-y-4">
+              {loginError && (
+                <Alert variant="destructive">
+                  <AlertDescription>{loginError}</AlertDescription>
+                </Alert>
+              )}
+              
               <div className="space-y-2">
                 <Label htmlFor="resetEmail">Email</Label>
                 <Input
@@ -218,9 +230,7 @@ export default function LoginPage() {
                   placeholder="you@example.com"
                   value={resetEmail}
                   onChange={(e) => setResetEmail(e.target.value)}
-                  onKeyPress={(e) =>
-                    e.key === "Enter" && handleResetPassword()
-                  }
+                  onKeyPress={handleKeyPress}
                 />
               </div>
             </CardContent>
@@ -248,7 +258,7 @@ export default function LoginPage() {
     );
   }
 
-  // ✅ Main login form view
+  // Main login form view
   return (
     <>
       <Script
@@ -284,6 +294,12 @@ export default function LoginPage() {
           </CardHeader>
 
           <CardContent className="space-y-4">
+            {loginError && (
+              <Alert variant="destructive">
+                <AlertDescription>{loginError}</AlertDescription>
+              </Alert>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input

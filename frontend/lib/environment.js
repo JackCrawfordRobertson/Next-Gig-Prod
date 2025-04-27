@@ -1,18 +1,15 @@
-// lib/environment.js
+// lib/environment.js - Simplified environment detection
 export function isDevelopmentMode() {
-    // Start with Node environment
-    let isDev = process.env.NODE_ENV === "development";
-    
-    // On client-side, check for production domains
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname;
-      if (hostname.includes('next-gig.co.uk') || 
-          hostname.includes('jack-robertson.co.uk') ||
-          !(hostname === 'localhost' || hostname === '127.0.0.1')) {
-        // Force production mode on production domains
-        isDev = false;
-      }
+  // Always check for production domains first
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    // If on a production domain, always use production mode
+    if (hostname.includes('next-gig.co.uk') || 
+        hostname.includes('jack-robertson.co.uk')) {
+      return false;
     }
-    
-    return isDev;
   }
+  
+  // Otherwise, respect the Node environment
+  return process.env.NODE_ENV === "development";
+}

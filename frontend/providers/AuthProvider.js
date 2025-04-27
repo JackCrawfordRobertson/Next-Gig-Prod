@@ -1,161 +1,113 @@
 "use client";
 
-import { useEffect, createContext, useContext, useState, useRef } from "react";
-import { useSession } from "next-auth/react";
-import { onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
-import { auth, signOutCompletely } from "@/lib/firebase";
+import { useEffect, createContext, useContext, useState } from "react";
+import { useSession, signOut as signOutNextAuth } from "next-auth/react";
+import { onAuthStateChanged, signOut as firebaseSignOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { showToast } from "@/lib/toast";
-import mockUsers from "@/app/mock/users";
 
-
+// Create context with default values
 const AuthContext = createContext({
-  firebaseUser: null,
-  nextAuthSession: null,
+  session: null,
   isLoading: true,
-  signOutFromAll: async () => {},
+  signOut: async () => {},
 });
 
 export function AuthProvider({ children }) {
-  const [firebaseUser, setFirebaseUser] = useState(null);
   const { data: session, status } = useSession();
+  const [firebaseUser, setFirebaseUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
-  const isAuthSyncing = useRef(false);
-  const redirectInProgress = useRef(false);
-  const inLoginPage = useRef(false);
-
-  // Track which page we're on to prevent unnecessary redirects
-  useEffect(() => {
-    inLoginPage.current = window.location.pathname.includes('/login');
-  }, []);
 
   // Track Firebase auth state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      console.log("Firebase auth state changed:", user ? "User authenticated" : "No user");
+      console.log("Firebase auth state changed:", user ? "Authenticated" : "Not authenticated");
       setFirebaseUser(user);
-      if (status !== "loading") {
-        setIsLoading(false);
-      }
     });
 
     return () => unsubscribe();
-  }, [status]);
+  }, []);
 
-  // Update loading state when NextAuth finishes
+  // Update loading state when both auth systems have responded
   useEffect(() => {
     if (status !== "loading") {
       setIsLoading(false);
     }
   }, [status]);
 
-  // Comprehensive sign out function
-  const signOutFromAll = async () => {
-    try {
-      await signOutCompletely();
-      
-      // Hard redirect to login page
-      window.location.href = "/login?signedOut=true";
-      return true;
-    } catch (error) {
-      console.error("Error signing out:", error);
-      return false;
-    }
-  };
-
-  // CRITICAL FIX: Handle session recovery instead of immediate redirect
+  // Handle auth state synchronization issues
   useEffect(() => {
-    // Only run this if we're not loading and not already syncing
-    if (isLoading || isAuthSyncing.current || redirectInProgress.current) return;
+    // Only run once both systems have reported their state
+    if (isLoading) return;
     
-    // If we're on the login page, don't try to fix auth
-    if (inLoginPage.current) return;
-    
-    // Don't do anything if both auth states match (both logged in or both logged out)
-    const bothLoggedIn = firebaseUser && session;
-    const bothLoggedOut = !firebaseUser && !session;
-    if (bothLoggedIn || bothLoggedOut) return;
-    
-    // Handle the specific case: NextAuth session exists but Firebase auth doesn't
-    if (!firebaseUser && session?.user?.email) {
-      isAuthSyncing.current = true;
+    // Check for the case where NextAuth session exists but Firebase user doesn't
+    if (session && !firebaseUser) {
+      console.log("Auth state mismatch: NextAuth session exists but Firebase user doesn't");
       
-      // Try to recover the Firebase session using the credentials from NextAuth
-      // This is a more drastic approach but will break the loop
-      console.log("Attempting to recover Firebase session...");
+      // We need to avoid constantly showing this message, so check if we're on the login page
+      const isLoginPage = window.location.pathname.includes('/login');
       
-      // Redirect to login with special parameter to avoid loop
-      if (!redirectInProgress.current) {
-        redirectInProgress.current = true;
+      // Only show the message if not on login page
+      if (!isLoginPage) {
+        console.log("Showing session error toast");
         
-        // Use a very clear message
         showToast({
           title: "Session Error",
           description: "Your session needs to be refreshed. Please sign in again.",
-          variant: "warning"
+          variant: "warning",
         });
         
-        // Navigate to login with special recovery parameter
-        window.location.href = "/login?action=recover&email=" + encodeURIComponent(session.user.email);
-      }
-    }
-    
-    isAuthSyncing.current = false;
-  }, [firebaseUser, session, isLoading]);
-
-  // In your AuthProvider
-useEffect(() => {
-  if (isLoading) return;
-  
-  // If we have a session but wrong user details
-  if (firebaseUser && session && firebaseUser.uid !== session.user.id) {
-    console.error("Session mismatch detected", {
-      firebaseUid: firebaseUser.uid,
-      sessionUserId: session.user.id
-    });
-    
-    // Force a sign out and redirect
-    signOutCompletely().then(() => {
-      window.location.href = "/login?error=session_mismatch";
-    });
-  }
-}, [firebaseUser, session, isLoading]);
-
-  useEffect(() => {
-    // Only run in development mode
-    if (process.env.NODE_ENV !== 'development') return;
-    
-    // If we have a session but no Firebase user, and we're in dev mode
-    if (session?.user?.id && !firebaseUser && !isLoading) {
-      console.log("Dev mode: Ensuring session ID matches mock user ID");
-      
-      // Check if the session ID exists in our mock users
-      if (!mockUsers[session.user.id]) {
-        console.warn("Session user ID doesn't match any mock user ID!");
-        console.warn("Available mock user IDs:", Object.keys(mockUsers));
-        console.warn("Current session ID:", session.user.id);
-        
-        // This is a development helper message
-        showToast({
-          title: "Development Mode Warning",
-          description: "Session ID doesn't match mock user ID. Check console for details.",
-          variant: "destructive"
-        });
+        // Force a sign out to reset both auth systems
+        signOutCompletely();
       }
     }
   }, [session, firebaseUser, isLoading]);
 
+  // Comprehensive sign out function
+  const signOutCompletely = async () => {
+    try {
+      // First sign out from Firebase
+      await firebaseSignOut(auth);
+      
+      // Then sign out from NextAuth
+      await signOutNextAuth({
+        callbackUrl: "/login?signedOut=true",
+      });
+      
+      return true;
+    } catch (error) {
+      console.error("Error signing out:", error);
+      
+      // As a fallback, force redirect to login
+      window.location.href = "/login?signedOut=true";
+      return false;
+    }
+  };
+
+  // Context value to expose to consumers
+  const contextValue = {
+    session,
+    status,
+    isLoading,
+    signOut: signOutCompletely,
+  };
+
   return (
-    <AuthContext.Provider value={{ 
-      firebaseUser, 
-      nextAuthSession: session, 
-      isLoading,
-      signOutFromAll
-    }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-export const useAuth = () => useContext(AuthContext);
+// Custom hook to use the auth context
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  
+  return context;
+};
