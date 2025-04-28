@@ -40,6 +40,8 @@ import {
   PoundSterling,
   Search,
 } from "lucide-react";
+import { isDevelopmentMode } from "@/lib/environment";
+
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -82,14 +84,7 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname;
-      if (hostname.includes('next-gig.co.uk') || 
-          hostname.includes('jack-robertson.co.uk') ||
-          !hostname.includes('localhost')) {
-        setIsDev(false);
-      }
-    }
+    setIsDev(isDevelopmentMode());
   }, []);
 
   // Handle visibility change (user returns from external link)

@@ -322,32 +322,34 @@ export function useProfileForm() {
       
       // Handle authentication session
       let authSuccess = false;
-      
-      if (useNextAuth) {
-        // Try NextAuth in production mode
-        console.log("Creating NextAuth session...");
-        try {
-          const signInResult = await signIn("credentials", {
-            redirect: false,
-            email: formState.email,
-            password: formState.password,
-          });
-          
-          if (signInResult?.error) {
-            console.error("NextAuth sign-in error:", signInResult.error);
-            // Don't consider this a fatal error - we'll handle it
-          } else {
-            authSuccess = true;
-          }
-        } catch (nextAuthError) {
-          console.error("NextAuth error:", nextAuthError);
-          // Non-fatal error
-        }
-      } else {
-        // In development mode, just consider auth successful
-        console.log("Development mode: Skipping NextAuth authentication");
-        authSuccess = true;
-      }
+      const isLocalhost = typeof window !== 'undefined' && 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+if (useNextAuth && !isLocalhost) {
+  // Try NextAuth in production mode (not on localhost)
+  console.log("Creating NextAuth session...");
+  try {
+    const signInResult = await signIn("credentials", {
+      redirect: false,
+      email: formState.email,
+      password: formState.password,
+    });
+    
+    if (signInResult?.error) {
+      console.error("NextAuth sign-in error:", signInResult.error);
+      // Don't consider this a fatal error - we'll handle it
+    } else {
+      authSuccess = true;
+    }
+  } catch (nextAuthError) {
+    console.error("NextAuth error:", nextAuthError);
+    // Non-fatal error
+  }
+} else {
+  // In development mode or on localhost, just consider auth successful
+  console.log("Development mode or localhost: Skipping NextAuth authentication");
+  authSuccess = true;
+}
       
       // Show appropriate success message
       if (isATester) {

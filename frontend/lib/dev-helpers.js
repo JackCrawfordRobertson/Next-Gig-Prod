@@ -1,5 +1,6 @@
 // lib/dev-helpers.js
 import mockUsers from "@/app/mock/users";
+import { isDevelopmentMode } from "./environment";
 
 // Default mock user ID - this should be the main test user ID
 export const DEFAULT_MOCK_USER_ID = "OS6veyhaPARd9KeCnXU11re06Dq2";
@@ -31,14 +32,5 @@ export const getMockSession = () => {
   };
 };
 
-// Helper to check if we're in dev mode
-export const isDevMode = () => {
-  if (typeof window === 'undefined') {
-    return process.env.NODE_ENV === 'development';
-  }
-  
-  // Client-side check
-  const hostname = window.location.hostname;
-  return process.env.NODE_ENV === 'development' && 
-    (hostname === 'localhost' || hostname === '127.0.0.1');
-};
+// Helper to check if we're in dev mode - now uses the centralized function
+export const isDevMode = isDevelopmentMode;

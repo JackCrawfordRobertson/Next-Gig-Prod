@@ -4,10 +4,11 @@ import { doc as firestoreDoc, setDoc as firestoreSetDoc } from "firebase/firesto
 import { getServerSession } from "next-auth";
 import { mockSession } from "@/app/mock/auth";
 import mockUsers from "@/app/mock/users";
+import { isDevelopmentMode } from "@/lib/environment";
 
 export async function POST(req) {
   // Use mock data in development
-  if (process.env.NODE_ENV === "development") {
+  if (isDevelopmentMode()) {
     const userId = mockSession.user.id;
     const { jobTitles, location } = await req.json();
     

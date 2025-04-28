@@ -4,10 +4,12 @@ import { doc as firestoreDoc, getDoc as firestoreGetDoc } from "firebase/firesto
 import { getServerSession } from "next-auth";
 import { mockSession } from "@/app/mock/auth";
 import mockUsers from "@/app/mock/users";
+import { isDevelopmentMode } from "@/lib/environment";
+
 
 export async function GET(req) {
   // Use mock data in development
-  if (process.env.NODE_ENV === "development") {
+  if (isDevelopmentMode()) {
     const userId = mockSession.user.id;
     const userData = mockUsers[userId];
     

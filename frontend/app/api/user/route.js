@@ -5,26 +5,24 @@ import { getServerSession } from "next-auth";
 import mockUsers from "@/app/mock/users";
 import { mockSession } from "@/app/mock/auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { isDevelopmentMode } from "@/lib/environment";
 
 export async function GET(req) {
-  // Improved environment detection
+  // Get the URL hostname for logging purposes
   const url = new URL(req.url);
   const hostname = url.hostname;
-  const isProdDomain = 
-    hostname.includes('next-gig.co.uk') || 
-    hostname.includes('jack-robertson.co.uk');
   
-  // Force production mode on production domains
-  const isDevEnvironment = process.env.NODE_ENV === "development" && !isProdDomain;
+  // Use the centralized environment detection
+  const isDevEnvironment = isDevelopmentMode();
   
   console.log("API User Route - Environment Check:", {
     NODE_ENV: process.env.NODE_ENV,
     hostname: hostname,
-    isProdDomain: isProdDomain,
+    isDevelopmentMode: isDevEnvironment,
     isUsingMockData: isDevEnvironment
   });
   
-  // Use mock data ONLY in true development environments
+  // Use mock data based on the centralized environment detection
   if (isDevEnvironment) {
     console.log("API User Route - Using MOCK data");
     const userId = mockSession.user.id;
@@ -57,7 +55,7 @@ export async function GET(req) {
     );
   }
   
-  // Production code - always use real data on production domains
+  // Production code - always use real data in production mode
   try {
     const session = await getServerSession(authOptions);
     
