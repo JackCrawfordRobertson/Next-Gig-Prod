@@ -1,8 +1,10 @@
+// app/layout.js
 import "./globals.css";
 import { Inter } from "next/font/google";
 import { AuthProvider } from "@/providers/AuthProvider";
 import SessionProvider from "@/components/SessionProvider";
 import { Toaster } from "@/components/ui/toaster";
+import { EnvironmentSwitcher } from "@/components/EnvironmentToggle";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -43,10 +45,11 @@ export default function RootLayout({ children }) {
       <body className="antialiased">
         <SessionProvider>
           <AuthProvider>
-          <div className="fixed right-2 top-5 md:bottom-4 md:top-auto z-50 bg-yellow-300 text-yellow-900 text-xs font-semibold px-3 py-1 rounded-full shadow-md pointer-events-none select-none">
-  <span className="block md:hidden">🚧 BETA</span>
-  <span className="hidden md:block">🚧 Experimental area - BETA</span>
-</div>
+            <div className="fixed right-2 top-5 md:bottom-4 md:top-auto z-50 bg-yellow-300 text-yellow-900 text-xs font-semibold px-3 py-1 rounded-full shadow-md pointer-events-none select-none">
+              <span className="block md:hidden">🚧 BETA</span>
+              <span className="hidden md:block">🚧 Experimental area - BETA</span>
+            </div>
+            <EnvironmentSwitcher />
             {children}
           </AuthProvider>
         </SessionProvider>

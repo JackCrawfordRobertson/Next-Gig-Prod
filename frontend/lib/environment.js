@@ -1,15 +1,23 @@
-// lib/environment.js - Simplified environment detection
+// lib/environment.js
 export function isDevelopmentMode() {
-  // Always check for production domains first
+  // Check for manual environment override via localStorage
   if (typeof window !== 'undefined') {
+    // Get environment override from localStorage
+    const envOverride = localStorage.getItem('env_override');
+    
+    // If there's a valid override, use it
+    if (envOverride === 'production' || envOverride === 'development') {
+      return envOverride === 'development';
+    }
+    
+    // Otherwise use hostname detection for production domains
     const hostname = window.location.hostname;
-    // If on a production domain, always use production mode
     if (hostname.includes('next-gig.co.uk') || 
         hostname.includes('jack-robertson.co.uk')) {
       return false;
     }
   }
   
-  // Otherwise, respect the Node environment
+  // Default to Node environment
   return process.env.NODE_ENV === "development";
 }

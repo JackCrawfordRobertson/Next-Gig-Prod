@@ -7,6 +7,9 @@ import { showToast } from "@/lib/toast";
 import { useRouter } from "next/navigation";
 import { isDevelopmentMode } from "@/lib/environment";
 import { isUserTester } from "@/lib/subscription";
+import { useNextAuthStrategy } from "@/lib/auth-strategy";
+
+
 import {
   createUserWithEmailAndPassword,
   auth,
@@ -269,61 +272,14 @@ export function useProfileForm() {
     setLoading(true);
   
     try {
-      // Check if user is a tester - consistent across all environments
+      // Check if user is a tester
       const isATester = await isUserTester(formState.email.toLowerCase());
       console.log(`Tester check for ${formState.email}: ${isATester ? "Is a tester" : "Not a tester"}`);
       
-      // Check for existing accounts - only if not a tester
-      if (!isATester && !isDev) {
-        try {
-          // Check if user has already used a free trial via IP or device fingerprint
-          const usersRef = collection(db, "users");
-          const ipQuery = query(usersRef, where("userIP", "==", formState.userIP));
-          const fingerprintQuery = query(
-            usersRef,
-            where("deviceFingerprint", "==", formState.deviceFingerprint)
-          );
-    
-          const [ipSnapshot, fingerprintSnapshot] = await Promise.all([
-            getDocs(ipQuery),
-            getDocs(fingerprintQuery),
-          ]);
-    
-          if (!ipSnapshot.empty || !fingerprintSnapshot.empty) {
-            const errorMessage = "You have already used a free trial with this device.";
-            setRegistrationError(errorMessage);
-            showToast({
-              title: "Trial Already Used",
-              description: errorMessage,
-              variant: "destructive",
-            });
-            setLoading(false);
-            return;
-          }
-        } catch (error) {
-          console.warn("Error checking for existing accounts:", error);
-          // Continue with registration - don't block on this check
-        }
-      }
+      // Determine which auth strategy to use
+      const useNextAuth = useNextAuthStrategy();
       
-      // In development mode, log data and skip actual registration
-      if (isDev) {
-        console.log("DEV MODE: Registration data:", formState);
-        setLoading(false);
-        showToast({
-          title: "Dev Mode",
-          description: "Account created successfully (simulated).",
-          variant: "success",
-        });
-        
-        // In dev mode, still redirect to dashboard
-        setTimeout(() => router.push("/dashboard"), 1000);
-        return;
-      }
-      
-      // PRODUCTION FLOW - Create the actual user account
-      
-      // 1. Create Firebase Authentication account
+      // Create Firebase Auth account (always needed)
       console.log("Creating Firebase Auth account...");
       const userCredential = await createUserWithEmailAndPassword(
         auth,
@@ -334,7 +290,7 @@ export function useProfileForm() {
       const user = userCredential.user;
       console.log(`Firebase user created with ID: ${user.uid}`);
       
-      // 2. Prepare user data with special flags for testers
+      // Prepare user data with special flags for testers
       const userData = {
         email: formState.email,
         firstName: formState.firstName,
@@ -344,7 +300,7 @@ export function useProfileForm() {
         profilePicture: formState.profilePicture,
         jobTitles: formState.jobTitles,
         jobLocations: formState.jobLocations,
-        subscribed: isATester,
+        subscribed: isATester, // Only testers are auto-subscribed
         onTrial: isATester,
         userIP: formState.userIP || "unknown",
         deviceFingerprint: formState.deviceFingerprint || "unknown",
@@ -359,52 +315,60 @@ export function useProfileForm() {
         userData.subscriptionActive = true;
       }
       
-      // 3. Create user document in Firestore
+      // Create Firestore document
       console.log("Creating Firestore user document...");
       await setDoc(doc(db, "users", user.uid), userData);
       console.log("Firestore document created successfully");
       
-      // 4. Sign in with NextAuth to establish session
-      console.log("Creating NextAuth session...");
-      const signInResult = await signIn("credentials", {
-        redirect: false,
-        email: formState.email,
-        password: formState.password,
-      });
+      // Handle authentication session
+      let authSuccess = false;
       
-      // Handle NextAuth sign-in errors
-      if (signInResult?.error) {
-        console.error("NextAuth sign-in error:", signInResult.error);
-        
-        // Even if NextAuth fails, the account was created, so show partial success
-        showToast({
-          title: "Account Created",
-          description: "Your account was created but we couldn't sign you in automatically. Please try logging in.",
-          variant: "warning",
-        });
-        
-        // Redirect to login page
-        setTimeout(() => router.push("/login"), 2000);
-        return;
+      if (useNextAuth) {
+        // Try NextAuth in production mode
+        console.log("Creating NextAuth session...");
+        try {
+          const signInResult = await signIn("credentials", {
+            redirect: false,
+            email: formState.email,
+            password: formState.password,
+          });
+          
+          if (signInResult?.error) {
+            console.error("NextAuth sign-in error:", signInResult.error);
+            // Don't consider this a fatal error - we'll handle it
+          } else {
+            authSuccess = true;
+          }
+        } catch (nextAuthError) {
+          console.error("NextAuth error:", nextAuthError);
+          // Non-fatal error
+        }
+      } else {
+        // In development mode, just consider auth successful
+        console.log("Development mode: Skipping NextAuth authentication");
+        authSuccess = true;
       }
       
-      // 5. Success! Show appropriate message and redirect
+      // Show appropriate success message
       if (isATester) {
         showToast({
           title: "Tester Account Created",
           description: "Your tester account has been created with full access.",
           variant: "success",
         });
+        
+        // Redirect testers straight to dashboard
+        setTimeout(() => router.push("/dashboard"), 1000);
       } else {
         showToast({
           title: "Account Created",
-          description: "Your account has been created successfully!",
+          description: "Please set up a subscription to continue.",
           variant: "success",
         });
+        
+        // For regular users, redirect to subscription page
+        setTimeout(() => router.push(`/subscription?userId=${user.uid}&new=true`), 1000);
       }
-      
-      // Redirect to dashboard with a slight delay to allow toast to be seen
-      setTimeout(() => router.push("/dashboard"), 1000);
       
     } catch (error) {
       console.error("Registration error:", error);

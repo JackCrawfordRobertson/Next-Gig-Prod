@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 import { doc, updateDoc, collection, addDoc, query, where, getDocs } from "firebase/firestore";
@@ -13,10 +13,9 @@ import { Button } from "@/components/ui/button";
 import { getFingerprint, checkForFraudPatterns } from "@/lib/fingerprint";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { isUserTester } from "@/lib/subscription";
-
-
-// Import PayPalButton dynamically to prevent SSR hydration issues
-const PayPalButton = dynamic(() => import("@/components/PayPalButton"), { ssr: false });
+import { isDevelopmentMode } from "@/lib/environment";
+import PayPalButton from "@/components/PayPalButton";
+import { showToast } from "@/lib/toast";  // Use your existing toast function
 
 // Test user for development mode
 const MOCK_USER = {
@@ -26,11 +25,9 @@ const MOCK_USER = {
     },
   };
 
-// Dynamically import the page to force client-side rendering
-const SubscriptionPage = dynamic(() => Promise.resolve(SubscriptionComponent), { ssr: false });
-
 function SubscriptionComponent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { data: session, status } =
         process.env.NODE_ENV === "development"
             ? { data: MOCK_USER, status: "authenticated" }
@@ -40,6 +37,48 @@ function SubscriptionComponent() {
     const [fingerprint, setFingerprint] = useState(null);
     const [fraudCheck, setFraudCheck] = useState({ status: "pending", isSuspicious: false });
     const [errorMessage, setErrorMessage] = useState("");
+    const [isNewUser, setIsNewUser] = useState(false);
+    const [userId, setUserId] = useState(null);
+
+    // Check URL parameters on mount
+    useEffect(() => {
+        // Check if this is a new user flow
+        const isNew = searchParams.get("new") === "true";
+        setIsNewUser(isNew);
+        
+        // Get userId from URL or session
+        const urlUserId = searchParams.get("userId");
+        if (urlUserId) {
+            setUserId(urlUserId);
+            console.log("Using userId from URL:", urlUserId);
+        } else if (session?.user?.id) {
+            setUserId(session.user.id);
+            console.log("Using userId from session:", session.user.id);
+        }
+    }, [searchParams, session]);
+    
+    // If we're in development mode and this is a new user, 
+    // we can simulate subscription success
+    useEffect(() => {
+        const isDev = isDevelopmentMode();
+        
+        if (isDev && isNewUser && userId) {
+            console.log("Development mode: Simulating subscription for new user");
+            // Show success message
+            try {
+                showToast({
+                    title: "Dev Mode",
+                    description: "Subscription simulated successfully for new user.",
+                    variant: "success",
+                });
+                
+                // Redirect to dashboard after delay
+                setTimeout(() => router.push("/dashboard"), 2000);
+            } catch (error) {
+                console.error("Error showing toast:", error);
+            }
+        }
+    }, [isNewUser, userId, router]);
 
     // Initialize the component and generate fingerprint
     useEffect(() => {
@@ -54,7 +93,7 @@ function SubscriptionComponent() {
                 console.log("Fingerprint generated:", fp);
                 
                 // If user is authenticated, check for fraud patterns
-                if (session?.user?.id && fp) {
+                if (userId && fp) {
                     const fraudResult = await checkForFraudPatterns(db, fp);
                     setFraudCheck({
                         status: "completed",
@@ -74,7 +113,7 @@ function SubscriptionComponent() {
         };
 
         initFingerprint();
-    }, [session]);
+    }, [userId]);
 
     useEffect(() => {
         async function checkTesterStatus() {
@@ -103,60 +142,78 @@ function SubscriptionComponent() {
         if (session?.user?.email) {
           checkTesterStatus();
         }
-      }, [session, router]);
+    }, [session, router]);
 
     // Log session data when it changes
     useEffect(() => {
         console.log("Session data:", session);
     }, [session]);
 
+    // If no user ID is available, redirect to login
+    useEffect(() => {
+        if ((!userId && status !== "loading") || status === "unauthenticated") {
+            if (!isNewUser) {
+                router.push("/login");
+            }
+        }
+    }, [userId, status, router, isNewUser]);
+
     if (!clientReady || status === "loading") {
         return <div className="flex items-center justify-center h-screen text-lg">Loading...</div>;
     }
 
-    const handlePayPallSubscriptionSuccess = async (subscriptionData) => {
+    const handleSubscriptionSuccess = async (subscriptionData) => {
         try {
-          console.log("Subscription successful:", subscriptionData);
-      
-          // Import the utility function that handles all the logic
-          const { storeSubscription } = await import("@/lib/checkSubscriptionStatus");
-          
-          // Use the shared function to handle all subscription updates
-          await storeSubscription(
-            session.user.id, 
-            subscriptionData, 
-            fingerprint, 
-            { showToast: true }
-          );
-      
-          // Redirect to dashboard
-          router.push("/dashboard");
-        } catch (err) {
-          console.error("Error updating subscription:", err);
-          setErrorMessage(
-            "Subscription update failed. Please try again or contact support."
-          );
+            console.log("Subscription successful, data:", subscriptionData);
+            console.log("Storing subscription for user ID:", userId);
+            
+            // Use existing storeSubscription function
+            const { storeSubscription } = await import("@/lib/checkSubscriptionStatus");
+            
+            const result = await storeSubscription(
+                userId,
+                subscriptionData,
+                fingerprint,
+                { showToast: true }
+            );
+            
+            console.log("Subscription stored successfully:", result);
+            
+            // Redirect to dashboard
+            router.push("/dashboard");
+        } catch (error) {
+            console.error("Subscription error:", error);
+            setErrorMessage(
+                "Subscription update failed. Please try again or contact support."
+            );
+            
+            showToast({
+                title: "Subscription Error",
+                description: "There was a problem setting up your subscription. Please try again.",
+                variant: "destructive",
+            });
         }
-      };
+    };
 
     return (
         <div className="min-h-screen w-full bg-transparent flex flex-col items-center justify-center py-6 px-4">
             <Card className="max-w-2xl w-full shadow-lg border border-gray-200">
                
-                  <CardHeader className="flex flex-col items-center text-center">
-                                   <div className="mb-4">
-                                       <Image 
-                                           src="/nextgig-logo.svg" 
-                                           alt="Company Logo" 
-                                           width={140} 
-                                           height={50} 
-                                           priority
-                                       />
-                                   </div>
-                                   <p className="text-lg font-medium text-gray-700 mt-2">
-                                   Support What Matters
-                                                                      </p>
-                               </CardHeader>
+                <CardHeader className="flex flex-col items-center text-center">
+                    <div className="mb-4">
+                        <Image 
+                            src="/nextgig-logo.svg" 
+                            alt="Company Logo" 
+                            width={140} 
+                            height={50} 
+                            priority
+                            style={{ height: "auto" }}
+                        />
+                    </div>
+                    <p className="text-lg font-medium text-gray-700 mt-2">
+                        Support What Matters
+                    </p>
+                </CardHeader>
 
                 <CardContent className="space-y-6">
                     <p className="text-center text-gray-600 text-lg">
@@ -173,7 +230,7 @@ function SubscriptionComponent() {
                         </Alert>
                     )}
 
-                    {/* Responsive Layout: Two-column on desktop, stacked & centered on mobile */}
+                    {/* Responsive Layout: Two column on desktop, stacked & centered on mobile */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                         
                         {/* Left Column: Text Content (Centered on Mobile) */}
@@ -208,16 +265,28 @@ function SubscriptionComponent() {
                 </CardContent>
 
                 <CardFooter className="flex flex-col items-center space-y-4 w-full">
-                    {session?.user?.id ? (
+                    {userId ? (
                         <div className="w-full">
+                            {/* Add special message for new users */}
+                            {isNewUser && (
+                                <div className="mb-4 text-center">
+                                    <p className="text-green-600 font-medium">
+                                        Your account has been created successfully!
+                                    </p>
+                                    <p className="text-gray-600 text-sm mt-1">
+                                        Complete your subscription to start receiving job alerts.
+                                    </p>
+                                </div>
+                            )}
+                            
                             {fraudCheck.isSuspicious ? (
                                 <Button className="w-full" variant="outline" disabled>
                                     Subscription Unavailable
                                 </Button>
                             ) : (
                                 <PayPalButton 
-                                    userId={session.user.id} 
-                                    onSuccess={handlePayPallSubscriptionSuccess} 
+                                    userId={userId} 
+                                    onSuccess={handleSubscriptionSuccess} 
                                 />
                             )}
                         </div>
@@ -241,5 +310,8 @@ function SubscriptionComponent() {
         </div>
     );
 }
+
+// Dynamically import the page to force client-side rendering
+const SubscriptionPage = dynamic(() => Promise.resolve(SubscriptionComponent), { ssr: false });
 
 export default SubscriptionPage;
