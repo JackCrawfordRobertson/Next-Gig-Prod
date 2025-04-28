@@ -5669,6 +5669,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"bcryptjs@npm:^3.0.2":
+  version: 3.0.2
+  resolution: "bcryptjs@npm:3.0.2"
+  bin:
+    bcrypt: bin/bcrypt
+  checksum: 10c0/a0923cac99f83e913f8f4e4f42df6a27c6593b24d509900331d1280c4050b1544e602a0ac67b43f7bb5c969991c3ed77fd72f19b7dc873be8ee794da3d925c7e
+  languageName: node
+  linkType: hard
+
 "before-after-hook@npm:^3.0.2":
   version: 3.0.2
   resolution: "before-after-hook@npm:3.0.2"
@@ -10075,6 +10084,7 @@ __metadata:
     "@types/react": "npm:^18.2.67"
     "@types/react-dom": "npm:^18.2.22"
     "@types/three": "npm:^0.160.0"
+    bcryptjs: "npm:^3.0.2"
     buffer: "npm:^6.0.3"
     class-variance-authority: "npm:^0.7.1"
     classnames: "npm:^2.5.1"
@@ -10108,6 +10118,7 @@ __metadata:
     tailwindcss-animate: "npm:^1.0.7"
     terser-webpack-plugin: "npm:^5.3.14"
     three: "npm:^0.174.0"
+    uuid: "npm:^11.1.0"
     zod: "npm:^3.24.2"
   languageName: unknown
   linkType: soft
@@ -15812,6 +15823,15 @@ __metadata:
   bin:
     uuid: dist/esm/bin/uuid
   checksum: 10c0/6f59f0c605e02c14515401084ca124b9cb462b4dcac866916a49862bcf831874508a308588c23a7718269226ad11a92da29b39d761ad2b86e736623e3a33b6e7
+  languageName: node
+  linkType: hard
+
+"uuid@npm:^11.1.0":
+  version: 11.1.0
+  resolution: "uuid@npm:11.1.0"
+  bin:
+    uuid: dist/esm/bin/uuid
+  checksum: 10c0/34aa51b9874ae398c2b799c88a127701408cd581ee89ec3baa53509dd8728cbb25826f2a038f9465f8b7be446f0fbf11558862965b18d21c993684297628d4d3
   languageName: node
   linkType: hard
 

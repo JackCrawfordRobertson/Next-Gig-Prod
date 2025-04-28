@@ -1,123 +1,37 @@
+// app/(public)/login/page.js - Update existing file
 "use client";
 
-import { useState, useEffect } from "react";
-import { signIn, useSession } from "next-auth/react";
+import { useState } from "react";
+import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserPlus } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { showToast } from "@/lib/toast";
-import { auth } from "@/lib/firebase";
-import Script from "next/script";
 import Link from "next/link";
 import Image from "next/image";
-import { isDevelopmentMode } from "@/lib/environment";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export default function LoginPage() {
   const router = useRouter();
-  const isDev = isDevelopmentMode();
-
-  const { data: session, status } = useSession();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [resetEmail, setResetEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [showResetForm, setShowResetForm] = useState(false);
-  const [redirectedFromSignOut, setRedirectedFromSignOut] = useState(false);
-  const [loginError, setLoginError] = useState(null);
-
-  useEffect(() => {
-    // Check URL params for redirects and other states
-    const queryParams = new URLSearchParams(window.location.search);
-    
-    // Handle signed out state
-    if (queryParams.get("signedOut") === "true") {
-      setRedirectedFromSignOut(true);
-      // Clean up URL
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, newUrl);
-    }
-    
-    // Handle session recovery
-    const action = queryParams.get("action");
-    const recoveryEmail = queryParams.get("email");
-    
-    if (action === "recover" && recoveryEmail) {
-      showToast({
-        title: "Session Recovery",
-        description: "Please enter your password to continue",
-        variant: "info",
-      });
-      
-      // Pre-fill the email field
-      setEmail(recoveryEmail);
-      
-      // Clean up URL
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, newUrl);
-    }
-    
-    // Handle error states
-    const error = queryParams.get("error");
-    if (error) {
-      let errorMessage = "An error occurred during login";
-      
-      switch(error) {
-        case "session_expired":
-          errorMessage = "Your session has expired. Please log in again.";
-          break;
-        case "session_mismatch":
-          errorMessage = "Your session was invalid. Please log in again.";
-          break;
-        case "auth_error":
-          errorMessage = "Authentication error. Please try again.";
-          break;
-      }
-      
-      setLoginError(errorMessage);
-      
-      // Clean up URL
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, newUrl);
-    }
-  }, []);
-
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (status === "authenticated" && !redirectedFromSignOut) {
-      router.push("/dashboard");
-    }
-  }, [status, router, redirectedFromSignOut]);
+  const [resetEmail, setResetEmail] = useState("");
 
   const handleLogin = async () => {
-    setLoginError(null);
-    
+    setError(null);
+
     if (!email || !password) {
-      setLoginError("Please enter both email and password");
+      setError("Please enter both email and password");
       return;
     }
 
     try {
       setIsLoading(true);
-      
-      // Ensure we're logged out of Firebase first to avoid stale sessions
-      try {
-        await auth.signOut();
-      } catch (e) {
-        console.log("No Firebase user to sign out");
-      }
 
-      // Sign in using NextAuth
       const result = await signIn("credentials", {
         email,
         password,
@@ -137,7 +51,9 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (error) {
       console.error("Login error:", error);
-      setLoginError("Login failed. Please check your details and try again.");
+      setError(
+        "Login failed. Please check your email and password and try again."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -145,37 +61,36 @@ export default function LoginPage() {
 
   const handleResetPassword = async () => {
     if (!resetEmail) {
-      setLoginError("Please enter your email address");
+      setError("Please enter your email address");
       return;
     }
-  
+
     try {
       setIsLoading(true);
-      
-      console.log(`Requesting password reset for: ${resetEmail}`);
-      
-      const response = await fetch("/api/auth/reset-password", {
+
+      const response = await fetch("/api/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: resetEmail }),
       });
-  
+
       if (!response.ok) {
         throw new Error(`Server error: ${response.status}`);
       }
-  
+
       showToast({
-        title: "Success",
+        title: "Password Reset Link Sent",
         description:
-          "If an account exists with this email, you will receive a password reset link shortly.",
+          "Check your email for instructions to reset your password.",
         variant: "success",
       });
-      
+
       setShowResetForm(false);
     } catch (error) {
       console.error("Reset password error:", error);
-      
-      setLoginError("An error occurred while requesting password reset. Please try again later.");
+      setError(
+        "An error occurred while requesting password reset. Please try again later."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -187,198 +102,139 @@ export default function LoginPage() {
     }
   };
 
-  // Password reset form view
   if (showResetForm) {
     return (
-      <>
-        <Script
-          id="login-structured-data"
-          type="application/ld+json"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "WebPage",
-              name: "Login",
-              url: "https://next-gig.co.uk/login",
-              description:
-                "Access your Next Gig account to manage job alerts, preferences, and subscriptions.",
-            }),
-          }}
-        />
-        <div className="flex min-h-screen items-center justify-center bg-transparent p-6">
-          <Card className="w-full max-w-md shadow-lg">
-            <CardHeader>
-              <CardTitle>Reset Password</CardTitle>
-              <p className="text-gray-500 text-sm">
-                Enter your email to receive a password reset link
-              </p>
-            </CardHeader>
-
-            <CardContent className="space-y-4">
-              {loginError && (
-                <Alert variant="destructive">
-                  <AlertDescription>{loginError}</AlertDescription>
-                </Alert>
-              )}
-              
-              <div className="space-y-2">
-                <Label htmlFor="resetEmail">Email</Label>
-                <Input
-                  id="resetEmail"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                />
-              </div>
-            </CardContent>
-
-            <CardFooter className="flex flex-col gap-2 w-full">
-              <Button
-                onClick={handleResetPassword}
-                className="w-full"
-                disabled={isLoading}
-              >
-                {isLoading ? "Sending..." : "Send Reset Link"}
-              </Button>
-
-              <Button
-                variant="ghost"
-                onClick={() => setShowResetForm(false)}
-                className="w-full"
-              >
-                Back to Login
-              </Button>
-            </CardFooter>
-          </Card>
-        </div>
-      </>
-    );
-  }
-
-  // Main login form view
-  return (
-    <>
-      <Script
-        id="login-structured-data"
-        type="application/ld+json"
-        strategy="afterInteractive"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "WebPage",
-            name: "Login",
-            url: "https://next-gig.co.uk/login",
-            description:
-              "Access your Next Gig account to manage job alerts, preferences, and subscriptions.",
-          }),
-        }}
-      />
       <div className="flex min-h-screen items-center justify-center bg-transparent p-6">
-        <Card className="w-full max-w-md shadow-lg">
-          <CardHeader className="flex flex-col items-center text-center">
-            <div className="mb-4">
-              <Image
-                src="/nextgig-logo.svg"
-                alt="Company Logo"
-                width={140}
-                height={50}
-                priority
-              />
-            </div>
-            <p className="text-lg font-medium text-gray-700 mt-2">
-              Dream gigs delivered. Not searched for.
+        <div className="w-full max-w-md shadow-lg bg-white rounded-lg p-6">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold">Reset Password</h2>
+            <p className="text-gray-500 text-sm">
+              Enter your email to receive a password reset link
             </p>
-          </CardHeader>
+          </div>
 
-          <CardContent className="space-y-4">
-            {loginError && (
-              <Alert variant="destructive">
-                <AlertDescription>{loginError}</AlertDescription>
-              </Alert>
-            )}
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="resetEmail">Email</Label>
               <Input
-                id="email"
+                id="resetEmail"
                 type="email"
                 placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
                 onKeyPress={handleKeyPress}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyPress={handleKeyPress}
-              />
-            </div>
-
-            {redirectedFromSignOut && (
-              <div className="bg-blue-50 p-3 rounded-md text-blue-700 text-sm">
-                You have been signed out successfully. Please log in again to
-                continue.
-              </div>
-            )}
-          </CardContent>
-
-          <CardFooter className="flex flex-col gap-2 w-full">
             <Button
-              onClick={handleLogin}
+              onClick={handleResetPassword}
               className="w-full"
               disabled={isLoading}
             >
-              {isLoading ? "Signing in..." : "Sign In"}
+              {isLoading ? "Sending..." : "Send Reset Link"}
             </Button>
-
-            <div className="relative flex items-center w-full">
-              <div className="flex-grow border-t border-gray-300"></div>
-              <span className="px-2 text-gray-500 text-sm">OR</span>
-              <div className="flex-grow border-t border-gray-300"></div>
-            </div>
 
             <Button
-              onClick={() => router.push("/complete-profile")}
-              variant="secondary"
-              className="w-full flex items-center justify-center gap-2"
-              disabled={isLoading}
+              variant="ghost"
+              onClick={() => setShowResetForm(false)}
+              className="w-full"
             >
-              <UserPlus size={18} /> Create Account
+              Back to Login
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-transparent p-6">
+<div className="w-full max-w-md shadow-lg bg-white/70 backdrop-blur-md rounded-lg p-6 border border-white/20">
+<div className="text-center mb-6">
+          <div className="flex justify-center">
+            <Image
+              src="/nextgig-logo.svg"
+              alt="Next Gig Logo"
+              width={140}
+              height={50}
+              priority
+            />
+          </div>
+          <p className="text-gray-700 mt-2">
+            Dream gigs delivered. Not searched for.
+          </p>
+        </div>
+
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyPress={handleKeyPress}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyPress={handleKeyPress}
+            />
+          </div>
+
+          <Button onClick={handleLogin} className="w-full" disabled={isLoading}>
+            {isLoading ? "Signing in..." : "Sign In"}
+          </Button>
+
+          <div className="flex justify-between items-center">
+            <Button
+              variant="link"
+              className="p-0 text-sm"
+              onClick={() => setShowResetForm(true)}
+            >
+              Forgot password?
             </Button>
 
-            <div className="text-left">
-              <Button
-                variant="link"
-                className="p-0 mt-1 h-auto text-sm"
-                onClick={() => setShowResetForm(true)}
-              >
-                Forgot password?
-              </Button>
-            </div>
-
-            <div className="text-center mt-1 text-xs text-gray-500">
-              By logging in, you agree to our{" "}
-              <Link href="/terms" className="text-primary hover:underline">
-                Terms & Conditions
-              </Link>{" "}
-              and{" "}
-              <Link href="/privacy" className="text-primary hover:underline">
+            <Button
+              variant="link"
+              className="p-0 text-sm"
+              onClick={() => router.push("/complete-profile")}
+            >
+              Create Account
+            </Button>
+          </div>
+          <div className="text-center mt-6 text-xs text-gray-500">
+            <div className="flex justify-center space-x-4">
+              <Link href="/privacy" className="hover:underline">
                 Privacy Policy
               </Link>
+              <Link href="/terms" className="hover:underline">
+                Terms of Service
+              </Link>
             </div>
-          </CardFooter>
-        </Card>
+          </div>
+        </div>
       </div>
-    </>
+    </div>
   );
 }

@@ -1,23 +1,13 @@
-// scripts/manageTester.js
+// scripts/manageTester.js - Update existing file
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 const path = require('path');
 const fs = require('fs');
 
-// Check if service account file exists
-const serviceAccountPath = path.resolve(__dirname, '../service-account.json');
-if (!fs.existsSync(serviceAccountPath)) {
-  console.error('Error: service-account.json file not found!');
-  console.error('Please download your Firebase service account key and save it as service-account.json in the project root');
-  process.exit(1);
-}
-
 // Initialize Firebase Admin
+const serviceAccountPath = path.resolve(__dirname, '../service-account.json');
 const serviceAccount = require(serviceAccountPath);
-initializeApp({
-  credential: cert(serviceAccount)
-});
-
+initializeApp({ credential: cert(serviceAccount) });
 const db = getFirestore();
 
 async function addTester(email, notes = "") {
@@ -42,6 +32,21 @@ async function addTester(email, notes = "") {
       addedOn: new Date().toISOString(),
       notes: notes
     });
+    
+    // Update user if exists
+    const usersRef = db.collection('users');
+    const userSnapshot = await usersRef.where('email', '==', email.toLowerCase()).get();
+    
+    if (!userSnapshot.empty) {
+      const userId = userSnapshot.docs[0].id;
+      await usersRef.doc(userId).update({
+        isTester: true,
+        testerSince: new Date().toISOString(),
+        onTrial: true,
+        subscribed: true
+      });
+      console.log(`Updated existing user ${email} as tester`);
+    }
     
     console.log(`✅ Added new tester: ${email}`);
   } catch (error) {
