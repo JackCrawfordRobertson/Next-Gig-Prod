@@ -59,6 +59,8 @@ export default function DashboardPage() {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const searchInputRef = useRef(null);
   const [activeTab, setActiveTab] = useState("recent");
+  const [loadError, setLoadError] = useState(null);
+
 
   // Check for subscription success flag
   useEffect(() => {
@@ -223,26 +225,37 @@ export default function DashboardPage() {
           setJobs(allJobs);
         } else {
           // In production, use the new utility functions
-          console.log("Fetching jobs with new collection structure");
-          const userEmail = session?.user?.email;
-  
-          if (userEmail) {
-            const { getUserByEmail, getUserJobs } = await import("@/lib/jobDataUtils");
-            const user = await getUserByEmail(userEmail);
+          try {
+            console.log("Fetching jobs with new collection structure");
+            const userEmail = session?.user?.email;
             
-            if (!user) {
-              console.log("No user document found with this email");
-              setJobs([]);
-              setLoading(false);
-              return;
+            if (userEmail) {
+              const { getUserByEmail, getUserJobs } = await import("@/lib/jobDataUtils");
+              const user = await getUserByEmail(userEmail);
+              
+              if (!user) {
+                console.log("No user document found with this email");
+                setJobs([]);
+                setLoading(false);
+                return;
+              }
+              
+              setUserData(user);
+              
+              // Handle potential errors from getUserJobs
+              try {
+                const allJobs = await getUserJobs(user.id);
+                console.log(`Total jobs fetched: ${allJobs.length}`);
+                setJobs(allJobs);
+              } catch (jobError) {
+                console.error("Failed to fetch jobs:", jobError);
+                setLoadError("Error loading jobs. Please try refreshing the page.");
+                setJobs([]);
+              }
             }
-            
-            setUserData(user);
-            
-            // Fetch all jobs for this user
-            const allJobs = await getUserJobs(user.id);
-            console.log(`Total jobs fetched: ${allJobs.length}`);
-            setJobs(allJobs);
+          } catch (error) {
+            console.error("Error in production data fetch:", error);
+            setLoadError("Error connecting to database. Please try again later.");
           }
         }
       } catch (error) {
@@ -373,7 +386,8 @@ return (
           </p>
         </div>
         </div>
-      ) : (
+      ) : loadError ? (
+
         <div className="flex flex-col h-full space-y-3 sm:space-y-4">
           {/* Stats Row - Scrollable on mobile, grid on desktop */}
           <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -620,6 +634,10 @@ return (
               </div>
             </AlertDialogContent>
           </AlertDialog>
+        </div>
+      ) : (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-red-500">{loadError}</p>
         </div>
       )}
     </div>

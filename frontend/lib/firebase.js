@@ -18,7 +18,8 @@ import {
   query, 
   where, 
   getDocs,
-  addDoc
+  addDoc,
+  limit
 } from "firebase/firestore";
 
 // Firebase config
@@ -159,5 +160,6 @@ export {
   query,
   where,
   getDocs,
-  addDoc
+  addDoc,
+  limit
 };
