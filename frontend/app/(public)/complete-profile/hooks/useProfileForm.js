@@ -81,6 +81,7 @@ export function useProfileForm() {
     fetchSecurityData();
   }, []);
 
+
   // Update form completion whenever form state changes
   useEffect(() => {
     const { percentage, missingFields } = calculateFormCompletion(formState);
@@ -300,7 +301,7 @@ export function useProfileForm() {
         profilePicture: formState.profilePicture,
         jobTitles: formState.jobTitles,
         jobLocations: formState.jobLocations,
-        subscribed: isATester, // Only testers are auto-subscribed
+        subscribed: isATester, 
         onTrial: isATester,
         userIP: formState.userIP || "unknown",
         deviceFingerprint: formState.deviceFingerprint || "unknown",
@@ -323,33 +324,33 @@ export function useProfileForm() {
       // Handle authentication session
       let authSuccess = false;
       const isLocalhost = typeof window !== 'undefined' && 
-  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-if (useNextAuth && !isLocalhost) {
-  // Try NextAuth in production mode (not on localhost)
-  console.log("Creating NextAuth session...");
-  try {
-    const signInResult = await signIn("credentials", {
-      redirect: false,
-      email: formState.email,
-      password: formState.password,
-    });
-    
-    if (signInResult?.error) {
-      console.error("NextAuth sign-in error:", signInResult.error);
-      // Don't consider this a fatal error - we'll handle it
-    } else {
-      authSuccess = true;
-    }
-  } catch (nextAuthError) {
-    console.error("NextAuth error:", nextAuthError);
-    // Non-fatal error
-  }
-} else {
-  // In development mode or on localhost, just consider auth successful
-  console.log("Development mode or localhost: Skipping NextAuth authentication");
-  authSuccess = true;
-}
+      if (useNextAuth && !isLocalhost) {
+        // Try NextAuth in production mode (not on localhost)
+        console.log("Creating NextAuth session...");
+        try {
+          const signInResult = await signIn("credentials", {
+            redirect: false,
+            email: formState.email,
+            password: formState.password,
+          });
+          
+          if (signInResult?.error) {
+            console.error("NextAuth sign-in error:", signInResult.error);
+            // Don't consider this a fatal error - we'll handle it
+          } else {
+            authSuccess = true;
+          }
+        } catch (nextAuthError) {
+          console.error("NextAuth error:", nextAuthError);
+          // Non-fatal error
+        }
+      } else {
+        // In development mode or on localhost, just consider auth successful
+        console.log("Development mode or localhost: Skipping NextAuth authentication");
+        authSuccess = true;
+      }
       
       // Show appropriate success message
       if (isATester) {
@@ -368,8 +369,19 @@ if (useNextAuth && !isLocalhost) {
           variant: "success",
         });
         
-        // For regular users, redirect to subscription page
-        setTimeout(() => router.push(`/subscription?userId=${user.id}&new=true`), 1000);
+        // For regular users, redirect to subscription page with the correct ID
+        // Save ID to localStorage as a backup
+        if (typeof window !== 'undefined') {
+          console.log("Redirecting to subscription page with user ID:", user.uid);
+          localStorage.setItem('pendingUserId', user.uid);
+          localStorage.setItem('isNewRegistration', 'true');
+          
+          // Use setTimeout to allow the toast to show before redirecting
+          setTimeout(() => {
+            const url = `/subscription?userId=${user.uid}&new=true`;
+            router.push(url);
+          }, 1000);
+        }
       }
       
     } catch (error) {

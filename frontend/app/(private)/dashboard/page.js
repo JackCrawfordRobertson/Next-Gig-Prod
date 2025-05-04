@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -45,6 +46,7 @@ import { isDevelopmentMode } from "@/lib/environment";
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
+  const router = useRouter();
   const [userData, setUserData] = useState(null);
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -57,6 +59,22 @@ export default function DashboardPage() {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const searchInputRef = useRef(null);
   const [activeTab, setActiveTab] = useState("recent");
+
+  // Check for subscription success flag
+  useEffect(() => {
+    // Check if we're coming from a successful subscription
+    const subscriptionSuccess = typeof window !== "undefined" 
+      ? localStorage.getItem('subscriptionSuccess') 
+      : null;
+    
+    if (status === 'unauthenticated' && !subscriptionSuccess) {
+      // No session and no successful subscription, redirect to login
+      router.push('/login');
+    } else if (subscriptionSuccess) {
+      // Clear the subscription success flag
+      localStorage.removeItem('subscriptionSuccess');
+    }
+  }, [status, router]);
 
   // Get jobs from the last 24 hours
   const getRecentJobs = () => {
@@ -340,20 +358,20 @@ const jobCounts = {
     job.source?.toLowerCase() === "unjobs").length,
 };
 
-  return (
-    <div className="h-screen w-full flex flex-col bg-transparent p-2 sm:p-4 overflow-auto md:overflow-hidden">
-      {loading ? (
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center space-y-3">
-            <div className="inline-flex items-center gap-2">
-              <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-              <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-              <div className="w-3 h-3 bg-primary rounded-full animate-bounce"></div>
-            </div>
-            <p className="text-muted-foreground animate-pulse">
-              Loading your jobs...
-            </p>
+return (
+  <div className="h-screen w-full flex flex-col bg-transparent p-2 sm:p-4 overflow-auto md:overflow-hidden">
+    {loading ? (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center space-y-3">
+          <div className="inline-flex items-center gap-2">
+            <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+            <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+            <div className="w-3 h-3 bg-primary rounded-full animate-bounce"></div>
           </div>
+          <p className="text-muted-foreground animate-pulse">
+            Loading your jobs...
+          </p>
+        </div>
         </div>
       ) : (
         <div className="flex flex-col h-full space-y-3 sm:space-y-4">

@@ -409,7 +409,7 @@ export default function ProfileSettingsPage() {
     setSubscriptionModalOpen(true);
   };
 
-  const handleSubscriptionSuccess = async (subscriptionData) => {
+  const handleProfileSubscriptionSuccess = async (subscriptionData) => {
     try {
       // Use the improved service function
       const result = await subscriptionService.storeSubscription(
@@ -1383,11 +1383,11 @@ export default function ProfileSettingsPage() {
           </div>
         </Tabs>
         <SubscriptionModal
-          isOpen={subscriptionModalOpen}
-          onClose={() => setSubscriptionModalOpen(false)}
-          userId={session?.user?.id}
-          onSuccess={handleSubscriptionSuccess}
-        />
+  isOpen={subscriptionModalOpen}
+  onClose={() => setSubscriptionModalOpen(false)}
+  userId={session?.user?.id}
+  onSuccess={handleProfileSubscriptionSuccess} 
+/>
         {/* Render the ExistingSubscriptionsModal with the needed props */}
         <ExistingSubscriptionsModal
           existingSubscriptions={existingSubscriptions}
