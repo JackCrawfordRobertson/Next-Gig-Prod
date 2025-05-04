@@ -56,9 +56,35 @@ function SubscriptionComponent() {
             console.log("Using userId from session:", session.user.id);
         }
     }, [searchParams, session]);
+
+    useEffect(() => {
+        // Check for pending user ID in localStorage (for dev mode)
+        const pendingUserId = localStorage.getItem('pendingUserId');
+        if (pendingUserId && !userId) {
+          setUserId(pendingUserId);
+          localStorage.removeItem('pendingUserId'); // Clear after use
+        }
+      }, [userId]);
     
-    // If we're in development mode and this is a new user, 
-    // we can simulate subscription success
+    useEffect(() => {
+        // Only redirect to login if:
+        // 1. We're not in a loading state AND
+        // 2. There's no userId or the user is unauthenticated AND
+        // 3. This is NOT a new user coming from account creation
+        if (
+          status !== "loading" && 
+          ((!userId && status === "unauthenticated") || 
+           (status === "unauthenticated" && !isNewUser))
+        ) {
+          console.log("No authenticated user and not a new registration - redirecting to login");
+          router.push("/login");
+        } else if (isNewUser && userId) {
+          // For new users with a userId, we'll allow them to continue to the subscription page
+          // even if they don't have a full session yet
+          console.log("New user registration flow detected - allowing access to subscription page");
+        }
+      }, [userId, status, router, isNewUser]);
+
     useEffect(() => {
         const isDev = isDevelopmentMode();
         

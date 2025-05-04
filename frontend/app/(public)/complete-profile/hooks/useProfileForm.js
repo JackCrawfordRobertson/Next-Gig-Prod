@@ -369,7 +369,7 @@ if (useNextAuth && !isLocalhost) {
         });
         
         // For regular users, redirect to subscription page
-        setTimeout(() => router.push(`/subscription?userId=${user.uid}&new=true`), 1000);
+        setTimeout(() => router.push(`/subscription?userId=${user.id}&new=true`), 1000);
       }
       
     } catch (error) {
