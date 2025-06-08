@@ -2,9 +2,9 @@
 import "./globals.css";
 import { Inter } from "next/font/google";
 import { AuthProvider } from "@/providers/AuthProvider";
-import SessionProvider from "@/components/SessionProvider";
+import SessionProvider from "@/components/auth/SessionProvider";
 import { Toaster } from "@/components/ui/toaster";
-import { EnvironmentSwitcher } from "@/components/EnvironmentToggle";
+import { EnvironmentSwitcher } from "@/components/shared/EnvironmentToggle";
 
 const inter = Inter({
   subsets: ["latin"],

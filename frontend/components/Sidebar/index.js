@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { showToast } from "@/lib/toast";
+import { showToast } from "@/lib/utils/toast";
 import {
   Sidebar,
   SidebarProvider,
@@ -27,8 +27,25 @@ import {
   Palette,
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { useState } from "react";
-import { signOutCompletely } from "@/lib/firebase";
+import { useState, useEffect } from "react";
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/data/firebase'; // adjust path as needed
+
+// Updated function to fetch user profile using session data
+const getCurrentUserProfile = async (userId) => {
+  try {
+    if (!userId) return null;
+    
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    if (userDoc.exists()) {
+      return userDoc.data();
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    return null;
+  }
+};
 
 export default function SidebarLayout({ children }) {
   const router = useRouter();
@@ -37,6 +54,24 @@ export default function SidebarLayout({ children }) {
   const [playgroundOpen, setPlaygroundOpen] = useState(true);
   const [mobileUserMenuOpen, setMobileUserMenuOpen] = useState(false);
   const [desktopUserMenuOpen, setDesktopUserMenuOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
+
+  // Fetch user profile from Firebase using NextAuth session
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (session?.user?.id) {
+        const profile = await getCurrentUserProfile(session.user.id);
+        setUserProfile(profile);
+      }
+    };
+
+    fetchUserProfile();
+  }, [session]);
+
+  // Get profile data with fallbacks
+  const profilePicUrl = userProfile?.profilePicture || session?.user?.profilePicture || "/av.svg";
+  const firstName = userProfile?.firstName || session?.user?.firstName || "User";
+  const userEmail = userProfile?.email || session?.user?.email || "user@example.com";
 
   // Add this function before your component
   const getTimeBasedGreeting = () => {
@@ -49,24 +84,16 @@ export default function SidebarLayout({ children }) {
 
   const handleSignOut = async () => {
     try {
-      // Use the new comprehensive sign-out function from firebase.js
-      await signOutCompletely();
-
-      // Then sign out from NextAuth with the signedOut parameter
       await signOut({
         redirect: true,
         callbackUrl: "/login?signedOut=true",
       });
 
-      // The code below will likely not execute due to the redirect,
-      // but included as a fallback
       showToast({
         title: "Success",
         description: "Successfully signed out",
         variant: "success",
       });
-
-      router.push("/login?signedOut=true");
     } catch (error) {
       console.error("Sign out error:", error);
       showToast({
@@ -75,8 +102,8 @@ export default function SidebarLayout({ children }) {
         variant: "destructive",
       });
 
-      // Force reload as last resort
-      window.location.href = "/login?signedOut=true";
+      // Force redirect as fallback
+      router.push("/login?signedOut=true");
     }
   };
   
@@ -89,7 +116,6 @@ export default function SidebarLayout({ children }) {
     setMobileUserMenuOpen(false);
     router.push('/profile-settings');
   };
-
 
   // Desktop Sidebar Component
   const DesktopSidebar = () => (
@@ -129,7 +155,7 @@ export default function SidebarLayout({ children }) {
               className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
             >
               <Briefcase className="w-4 h-4 mr-3 text-gray-500" />
-              <span>LinkedIn Jobs</span>
+              <span>linkedin Jobs</span>
               <ChevronRight className="w-5 h-5 text-gray-400 ml-auto" />
             </Link>
           </SidebarMenuItem>
@@ -197,23 +223,19 @@ export default function SidebarLayout({ children }) {
             <div className="flex items-center gap-3">
               <Avatar className="w-9 h-9 rounded-full border">
                 <AvatarImage
-                  src={session?.user?.profilePicture || "/av.svg"}
+                  src={profilePicUrl}
                   alt="User Avatar"
                 />
                 <AvatarFallback className="bg-purple-100 text-purple-800">
-                  {session?.user?.firstName
-                    ? session.user.firstName.charAt(0)
-                    : session?.user?.name
-                    ? session.user.name.charAt(0)
-                    : "U"}
+                  {firstName.charAt(0)}
                 </AvatarFallback>
               </Avatar>
               <div className="text-left">
                 <p className="text-sm font-medium text-gray-700">
-                  {getTimeBasedGreeting()}, {session?.user?.firstName || "User"}
+                  {getTimeBasedGreeting()}, {firstName}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {session?.user?.email || "user@example.com"}
+                  {userEmail}
                 </p>
               </div>
             </div>
@@ -267,7 +289,7 @@ export default function SidebarLayout({ children }) {
         }`}
       >
         <Briefcase className="w-6 h-6" />
-        <span className="text-xs mt-1">LinkedIn</span>
+        <span className="text-xs mt-1">linkedin</span>
       </Link>
       <Link
         href="/ifyoucould"
@@ -298,11 +320,11 @@ export default function SidebarLayout({ children }) {
         >
           <Avatar className="w-10 h-10">
             <AvatarImage
-              src={session?.user?.profilePicture || "/Memoji.png"}
+              src={profilePicUrl}
               alt="User Avatar"
             />
             <AvatarFallback>
-              {session?.user?.name ? session.user.name.charAt(0) : "U"}
+              {firstName.charAt(0)}
             </AvatarFallback>
           </Avatar>
           <span className="text-xs mt-1">Profile</span>
@@ -311,13 +333,13 @@ export default function SidebarLayout({ children }) {
         {/* Mobile User Menu Dropdown */}
         {mobileUserMenuOpen && (
           <div className="absolute bottom-16 right-0 bg-white border shadow-lg rounded-md overflow-auto md:overflow-hidden w-48">
-            <Link
-              href="/profile-settings"
-              className="flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-sm border-b"
+            <button
+              onClick={handleMobileProfileSettingsClick}
+              className="flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-sm border-b w-full text-left"
             >
               <Settings className="w-4 h-4" />
               Profile Settings
-            </Link>
+            </button>
             <button
               onClick={handleSignOut}
               className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-sm text-red-600"

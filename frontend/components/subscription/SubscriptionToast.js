@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { showToast } from "@/lib/toast";
-import { checkSubscriptionStatus } from "@/lib/checkSubscriptionStatus";
+import { showToast } from "@/lib/utils/toast";
+import { checkSubscriptionStatus } from "@/lib/subscriptions/checkSubscriptionStatus";
 
 export function SubscriptionChecker() {
   const { data: session, status } = useSession();

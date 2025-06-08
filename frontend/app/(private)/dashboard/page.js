@@ -1,11 +1,11 @@
+// app/(private)/dashboard/page.js
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
+// UI Components
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -16,8 +16,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,24 +27,29 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+// Icons
 import {
-  Briefcase,
-  Building,
-  Palette,
-  Globe,
+  Search,
   CheckCircle2,
   XCircle,
-  Clock,
-  MapPin,
-  PoundSterling,
-  Search,
 } from "lucide-react";
-import { isDevelopmentMode } from "@/lib/environment";
 
+// Utility functions
+import { isDevelopmentMode } from "@/lib/utils/environment";
+
+// Custom components
+import MiniStat from "@/components/dashboard/MiniStat";
+import JobCard from "@/components/dashboard/JobCard";
 
 export default function DashboardPage() {
+  console.log("Dashboard component rendering started");
+  
+  // Session and router
   const { data: session, status } = useSession();
   const router = useRouter();
+  
+  // State variables
   const [userData, setUserData] = useState(null);
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -61,22 +64,29 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("recent");
   const [loadError, setLoadError] = useState(null);
 
-
   // Check for subscription success flag
   useEffect(() => {
+    console.log("Checking subscription status");
     // Check if we're coming from a successful subscription
     const subscriptionSuccess = typeof window !== "undefined" 
       ? localStorage.getItem('subscriptionSuccess') 
       : null;
     
     if (status === 'unauthenticated' && !subscriptionSuccess) {
+      console.log("Not authenticated, redirecting to login");
       // No session and no successful subscription, redirect to login
       router.push('/login');
     } else if (subscriptionSuccess) {
+      console.log("Subscription success, clearing flag");
       // Clear the subscription success flag
       localStorage.removeItem('subscriptionSuccess');
     }
   }, [status, router]);
+
+  // Set development mode
+  useEffect(() => {
+    setIsDev(isDevelopmentMode());
+  }, []);
 
   // Get jobs from the last 24 hours
   const getRecentJobs = () => {
@@ -102,10 +112,6 @@ export default function DashboardPage() {
         job.location?.toLowerCase().includes(query)
     );
   };
-
-  useEffect(() => {
-    setIsDev(isDevelopmentMode());
-  }, []);
 
   // Handle visibility change (user returns from external link)
   const handleVisibilityChange = () => {
@@ -148,6 +154,7 @@ export default function DashboardPage() {
     }
   };
 
+  // Set up visibility change listener
   useEffect(() => {
     console.log("Setting up visibility change listener");
     // Monitor visibility changes to detect when user returns from a job link
@@ -159,139 +166,54 @@ export default function DashboardPage() {
     };
   }, []);
 
-  useEffect(() => {
-    async function fetchUserData() {
-      try {
-        if (status === "loading") return;
-
-        console.log("Environment detection:", {
-          NODE_ENV: process.env.NODE_ENV,
-          isDev: isDev,
-          hostname: typeof window !== 'undefined' ? window.location.hostname : 'server-side',
-          userEmail: session?.user?.email
-        });
-
-        console.log("User session:", session?.user?.email);
-        console.log("Environment:", process.env.NODE_ENV);
-        console.log("Firebase config:", {
-          projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-          authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-        });
-
-        if (isDev) {
-          // In development, fetch from our mock API
-          const response = await fetch("/api/user");
-          if (!response.ok) throw new Error("Failed to fetch user data");
-          const userData = await response.json();
-          setUserData(userData);
-
-          // Extract and flatten job data
-          const allJobs = [
-            ...(userData.linkedin || []).map((job) => ({
-              ...job,
-              source: "LinkedIn",
-              id: `linkedin-${
-                job.id || Math.random().toString(36).substring(2, 9)
-              }`,
-            })),
-            ...(userData.ifyoucould || []).map((job) => ({
-              ...job,
-              source: "If You Could",
-              id: `ifyoucould-${
-                job.id || Math.random().toString(36).substring(2, 9)
-              }`,
-            })),
-            ...(userData.unjobs || []).map((job) => ({
-              ...job,
-              source: "UN Jobs",
-              id: `unjobs-${
-                job.id || Math.random().toString(36).substring(2, 9)
-              }`,
-            })),
-            ...(userData.workable
-              ? [
-                  {
-                    ...userData.workable,
-                    source: "Workable",
-                    id: `workable-${
-                      userData.workable.id ||
-                      Math.random().toString(36).substring(2, 9)
-                    }`,
-                  },
-                ]
-              : []),
-          ];
-
-          setJobs(allJobs);
-        } else {
-          // In production, use the new utility functions
-          try {
-            console.log("Fetching jobs with new collection structure");
-            const userEmail = session?.user?.email;
-            
-            if (userEmail) {
-              const { getUserByEmail, getUserJobs } = await import("@/lib/jobDataUtils");
-              const user = await getUserByEmail(userEmail);
-              
-              if (!user) {
-                console.log("No user document found with this email");
-                setJobs([]);
-                setLoading(false);
-                return;
-              }
-              
-              setUserData(user);
-              
-              // Handle potential errors from getUserJobs
-              try {
-                const allJobs = await getUserJobs(user.id);
-                console.log(`Total jobs fetched: ${allJobs.length}`);
-                setJobs(allJobs);
-              } catch (jobError) {
-                console.error("Failed to fetch jobs:", jobError);
-                setLoadError("Error loading jobs. Please try refreshing the page.");
-                setJobs([]);
-              }
-            }
-          } catch (error) {
-            console.error("Error in production data fetch:", error);
-            setLoadError("Error connecting to database. Please try again later.");
+  // Fetch user data and jobs
+useEffect(() => {
+  async function fetchUserData() {
+    try {
+      if (status === "loading") return;
+      
+      if (isDev) {
+        // Development mode
+        const response = await fetch("/api/user");
+        if (!response.ok) throw new Error("Failed to fetch user data");
+        const userData = await response.json();
+        setUserData(userData);
+        
+        // Use transformed jobs directly
+        setJobs(userData.transformedJobs || []);
+      } else {
+        // Production mode
+        const userEmail = session?.user?.email;
+        if (userEmail) {
+          const { getUserByEmail, getUserJobs } = await import("@/lib/data/jobDataUtils");
+          const user = await getUserByEmail(userEmail);
+          
+          if (!user) {
+            setJobs([]);
+            setLoading(false);
+            return;
           }
+          
+          setUserData(user);
+          const allJobs = await getUserJobs(user.id);
+          setJobs(allJobs);
         }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setLoading(false);
       }
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setLoadError("Error loading data. Please refresh.");
+    } finally {
+      setLoading(false);
     }
-  
-    fetchUserData();
-  }, [status, isDev, session]);
+  }
 
-  // Additional logging for jobs data
+  fetchUserData();
+}, [status, isDev, session]);
+
+  // Log jobs data for debugging
   useEffect(() => {
     if (jobs.length > 0) {
-      console.log("First job sample:", jobs[0]);
-
-      // Check specific fields existence across all jobs
-      const fieldsCheck = jobs.map((job) => ({
-        id: job.id,
-        hasEmail: !!job.email,
-        hasFirstName: !!job.firstName,
-        hasJobTitles: Array.isArray(job.jobTitles) && job.jobTitles.length > 0,
-        hasJobLocations:
-          Array.isArray(job.jobLocations) && job.jobLocations.length > 0,
-        hasAddress: !!job.address,
-      }));
-
-      console.log("Fields existence check:", fieldsCheck);
-
-      // Log all emails and firstNames to verify accounts
-      console.log("All emails:", jobs.map((job) => job.email).filter(Boolean));
-      console.log(
-        "All firstNames:",
-        jobs.map((job) => job.firstName).filter(Boolean)
-      );
+      console.log("Jobs loaded:", jobs.length);
     } else {
       console.log("No jobs found after setting state");
     }
@@ -331,7 +253,7 @@ export default function DashboardPage() {
   
       // Update Firestore if in production
       if (!isDev && selectedJob.id) {
-        const { updateJobAppliedStatus } = await import("@/lib/updateJobApplied");
+        const { updateJobAppliedStatus } = await import("@/lib/utils/updateJobApplied");
         await updateJobAppliedStatus({
           email: session.user.email,
           jobId: selectedJob.id,
@@ -347,47 +269,51 @@ export default function DashboardPage() {
     }
   };
 
+  // Calculate job counts by source
+  const jobCounts = {
+    linkedin: jobs.filter((job) => 
+      job.source?.toLowerCase() === "linkedin").length,
+    workable: jobs.filter((job) => 
+      job.source?.toLowerCase() === "workable").length,
+    ifyoucould: jobs.filter((job) => 
+      job.source?.toLowerCase() === "ifyoucould").length,
+    unjobs: jobs.filter((job) => 
+      job.source?.toLowerCase() === "unjobs").length,
+  };
+
+  // Get filtered job lists
   const recentJobs = getRecentJobs();
   const filteredJobs = getFilteredJobs();
 
-// First add this diagnostic code to see all unique sources
-useEffect(() => {
-  if (jobs.length > 0) {
-    // Log all unique sources to see what we're working with
-    const uniqueSources = [...new Set(jobs.map(job => job.source))];
-    console.log("Unique job sources:", uniqueSources);
-  }
-}, [jobs]);
+  console.log("Rendering dashboard with state:", { 
+    loading, 
+    loadError, 
+    jobsCount: jobs.length,
+    recentJobsCount: recentJobs.length,
+    filteredJobsCount: filteredJobs.length
+  });
 
-// Then update your job counting logic
-const jobCounts = {
-  linkedin: jobs.filter((job) => 
-    job.source?.toLowerCase() === "linkedin").length,
-  workable: jobs.filter((job) => 
-    job.source?.toLowerCase() === "workable").length,
-  ifyoucould: jobs.filter((job) => 
-    job.source?.toLowerCase() === "ifyoucould").length,
-  unjobs: jobs.filter((job) => 
-    job.source?.toLowerCase() === "unjobs").length,
-};
-
-return (
-  <div className="h-screen w-full flex flex-col bg-transparent p-2 sm:p-4 overflow-auto md:overflow-hidden">
-    {loading ? (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center space-y-3">
-          <div className="inline-flex items-center gap-2">
-            <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-            <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-            <div className="w-3 h-3 bg-primary rounded-full animate-bounce"></div>
+  // Final render
+  return (
+    <div className="h-screen w-full flex flex-col bg-transparent p-2 sm:p-4 overflow-auto md:overflow-hidden">
+      {loading ? (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center space-y-3">
+            <div className="inline-flex items-center gap-2">
+              <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+              <div className="w-3 h-3 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+              <div className="w-3 h-3 bg-primary rounded-full animate-bounce"></div>
+            </div>
+            <p className="text-muted-foreground animate-pulse">
+              Loading your jobs...
+            </p>
           </div>
-          <p className="text-muted-foreground animate-pulse">
-            Loading your jobs...
-          </p>
-        </div>
         </div>
       ) : loadError ? (
-
+        <div className="flex items-center justify-center h-full">
+          <p className="text-red-500">{loadError}</p>
+        </div>
+      ) : (
         <div className="flex flex-col h-full space-y-3 sm:space-y-4">
           {/* Stats Row - Scrollable on mobile, grid on desktop */}
           <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -446,10 +372,8 @@ return (
                                   </Badge>
                                 </div>
                                 <div className="flex items-center text-xs text-muted-foreground">
-                                  <Building className="h-3 w-3 mr-1" />{" "}
                                   {job.company}
                                   <span className="mx-1">•</span>
-                                  <MapPin className="h-3 w-3 mr-1" />{" "}
                                   {job.location}
                                 </div>
                               </div>
@@ -635,157 +559,7 @@ return (
             </AlertDialogContent>
           </AlertDialog>
         </div>
-      ) : (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-red-500">{loadError}</p>
-        </div>
       )}
     </div>
-  );
-}
-
-function MiniStat({ title, count }) {
-  // Choose icon based on title
-  const getIcon = (title) => {
-    switch (title) {
-      case "LinkedIn":
-        return <Briefcase className="w-4 h-4 text-blue-600" />;
-      case "Workable":
-        return <Building className="w-4 h-4 text-purple-600" />;
-      case "If You Could":
-        return <Palette className="w-4 h-4 text-green-600" />;
-      case "UN Jobs":
-        return <Globe className="w-4 h-4 text-orange-600" />;
-      default:
-        return <Briefcase className="w-4 h-4 text-blue-600" />;
-    }
-  };
-
-  // Choose background color based on title
-  const getBgColor = (title) => {
-    switch (title) {
-      case "LinkedIn":
-        return "bg-blue-100";
-      case "Workable":
-        return "bg-purple-100";
-      case "If You Could":
-        return "bg-green-100";
-      case "UN Jobs":
-        return "bg-orange-100";
-      default:
-        return "bg-blue-100";
-    }
-  };
-
-  return (
-    <Card className="bg-white shadow-sm">
-      <CardContent className="p-3 flex flex-col items-center justify-center">
-        <div
-          className={`w-8 h-8 rounded-full ${getBgColor(
-            title
-          )} flex items-center justify-center mb-1`}
-        >
-          {getIcon(title)}
-        </div>
-        <p className="text-2xl font-semibold">{count}</p>
-        <p className="text-xs text-muted-foreground text-center">{title}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
-// Job Card Component
-function JobCard({ job, compact = false, onClick }) {
-  const {
-    title = "Job Title",
-    company = "Company Name",
-    location = "Location",
-    date = new Date().toISOString(),
-    salary = "Competitive",
-    source = "Source",
-    url = "#",
-    description = "Job description goes here...",
-    has_applied = false,
-  } = job;
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-  };
-
-  if (compact) {
-    return (
-      <Card
-        className="hover:shadow-md transition-shadow bg-white cursor-pointer"
-        onClick={onClick}
-      >
-        <CardContent className="p-4">
-          <div className="flex justify-between items-start mb-2">
-            <h3 className="font-medium text-sm line-clamp-1">{title}</h3>
-            <Badge variant="outline" className="text-xs">
-              {source}
-            </Badge>
-          </div>
-          <div className="flex items-center text-xs text-muted-foreground mb-2">
-            <Building className="h-3 w-3 mr-1" /> {company}
-          </div>
-          <div className="flex items-center text-xs text-muted-foreground">
-            <MapPin className="h-3 w-3 mr-1" /> {location}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card
-      className="hover:shadow-md transition-shadow bg-white cursor-pointer"
-      onClick={onClick}
-    >
-      <CardContent className="p-4">
-        <div className="flex justify-between items-start mb-3">
-          <h3 className="font-medium">{title}</h3>
-          <Badge variant="outline">{source}</Badge>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 mb-3">
-          <div className="flex items-center text-sm text-muted-foreground">
-            <Building className="h-4 w-4 mr-1" /> {company}
-          </div>
-          <div className="flex items-center text-sm text-muted-foreground">
-            <MapPin className="h-4 w-4 mr-1" /> {location}
-          </div>
-          <div className="flex items-center text-sm text-muted-foreground">
-            <Clock className="h-4 w-4 mr-1" /> {formatDate(date)}
-          </div>
-        </div>
-
-        <div className="flex justify-between items-center mt-2 pt-2 border-t border-border/40">
-          <div className="flex items-center text-sm">
-            <PoundSterling className="h-4 w-4 mr-1" /> {salary}
-          </div>
-          <div className="flex items-center gap-2">
-            <div
-              className={`flex items-center text-sm ${
-                has_applied ? "text-green-500" : "text-red-500"
-              }`}
-            >
-              {has_applied ? (
-                <span className="flex items-center text-xs">
-                  <CheckCircle2 className="h-3 w-3 mr-1" /> Applied
-                </span>
-              ) : (
-                <span className="flex items-center text-xs">
-                  <XCircle className="h-3 w-3 mr-1" /> Not Applied
-                </span>
-              )}
-            </div>
-            <div className="text-xs text-primary hover:underline ml-4">
-              View details
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   );
 }

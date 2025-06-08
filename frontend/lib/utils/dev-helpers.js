@@ -1,6 +1,6 @@
 // lib/dev-helpers.js
 import mockUsers from "@/app/mock/users";
-import { isDevelopmentMode } from "./environment";
+import { isDevelopmentMode } from "../environment";
 
 // Default mock user ID - this should be the main test user ID
 export const DEFAULT_MOCK_USER_ID = "OS6veyhaPARd9KeCnXU11re06Dq2";

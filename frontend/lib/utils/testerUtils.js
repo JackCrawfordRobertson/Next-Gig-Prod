@@ -1,5 +1,5 @@
 // lib/testerUtils.js
-import { db, collection, query, where, getDocs, addDoc, deleteDoc, doc } from "@/lib/firebase";
+import { db, collection, query, where, getDocs, addDoc, deleteDoc, doc } from "@/lib/data/firebase";
 
 /**
  * Check if a user is a tester

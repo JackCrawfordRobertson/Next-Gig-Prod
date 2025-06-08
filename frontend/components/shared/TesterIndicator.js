@@ -2,7 +2,7 @@
 import React from 'react';
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { isUserTester } from '@/lib/subscription';
+import { isUserTester } from '@/lib/subscriptions/subscription';
 import { Card, CardContent } from '@/components/ui/card';
 
 export function TesterIndicator() {

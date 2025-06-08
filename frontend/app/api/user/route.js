@@ -1,11 +1,11 @@
 // app/api/user/route.js
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/data/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { getServerSession } from "next-auth";
 import mockUsers from "@/app/mock/users";
 import { mockSession } from "@/app/mock/auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { isDevelopmentMode } from "@/lib/environment";
+import { isDevelopmentMode } from "@/lib/utils/environment";
 
 export async function GET(req) {
   // Get the URL hostname for logging purposes
@@ -28,28 +28,88 @@ export async function GET(req) {
     const userId = mockSession.user.id;
     const userData = mockUsers[userId];
     
-    // Transform the data to match new structure
-    const mockUserJobs = [];
+    if (!userData) {
+      console.warn(`No mock user found for ID: ${userId}`);
+      return new Response(
+        JSON.stringify({ error: "Mock user not found" }), 
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
     
-    if (userData.jobs) {
-      // For each job source (linkedin, ifyoucould, etc.)
-      Object.entries(userData.jobs).forEach(([source, jobsList]) => {
-        // For each job in the source
-        jobsList.forEach(job => {
-          mockUserJobs.push({
+    // Transform the data to match new structure
+    const transformedJobs = [];
+    
+    // Define all possible job sources
+    const jobSources = ['linkedin', 'ifyoucould', 'unjobs', 'workable', 'ziprecruiter', 'glassdoor'];
+    
+    // Process each source
+    jobSources.forEach(source => {
+      if (userData[source] && Array.isArray(userData[source])) {
+        userData[source].forEach((job, index) => {
+          transformedJobs.push({
             ...job,
-            source,
-            id: job.id || `${source}-${Math.random().toString(36).substring(2, 9)}`,
+            source: source,
+            job_id: job.id || `${source}-${index}-${Math.random().toString(36).substring(2, 9)}`,
+            id: job.id || `${source}-${index}-${Math.random().toString(36).substring(2, 9)}`,
+            added_at: job.date_added || job.date_posted || new Date().toISOString(),
+            user_id: userId,
+            has_applied: job.has_applied || false,
+            is_saved: job.is_saved || false,
+            notes: job.notes || "",
+            // Ensure all required fields are present
+            title: job.title || "Unknown Title",
+            company: job.company || "Unknown Company",
+            location: job.location || "Unknown Location",
+            url: job.url || "#",
+            salary: job.salary || "Not Provided",
+            description: job.description || "",
+            date_posted: job.date_posted || job.date_added || new Date().toISOString()
           });
         });
+        
+        console.log(`Transformed ${userData[source].length} jobs from ${source}`);
+      }
+    });
+    
+    // Also handle legacy jobs structure if it exists
+    if (userData.jobs && typeof userData.jobs === 'object') {
+      Object.entries(userData.jobs).forEach(([source, jobsList]) => {
+        if (Array.isArray(jobsList)) {
+          jobsList.forEach((job, index) => {
+            transformedJobs.push({
+              ...job,
+              source: source,
+              job_id: job.id || `${source}-legacy-${index}-${Math.random().toString(36).substring(2, 9)}`,
+              id: job.id || `${source}-legacy-${index}-${Math.random().toString(36).substring(2, 9)}`,
+              added_at: job.date_added || job.date_posted || new Date().toISOString(),
+              user_id: userId,
+              has_applied: job.has_applied || false,
+              is_saved: job.is_saved || false,
+              notes: job.notes || "",
+              title: job.title || "Unknown Title",
+              company: job.company || "Unknown Company",
+              location: job.location || "Unknown Location",
+              url: job.url || "#",
+              salary: job.salary || "Not Provided",
+              description: job.description || "",
+              date_posted: job.date_posted || job.date_added || new Date().toISOString()
+            });
+          });
+          
+          console.log(`Transformed ${jobsList.length} jobs from legacy ${source}`);
+        }
       });
     }
     
-    // Instead of returning the userData directly, attach the transformed jobs
+    console.log(`Total transformed jobs: ${transformedJobs.length}`);
+    
+    // Return userData with transformed jobs
     return new Response(
       JSON.stringify({
         ...userData,
-        jobsCollection: mockUserJobs
+        transformedJobs: transformedJobs,
+        // Keep original source arrays for backward compatibility
+        jobsCollection: transformedJobs // Alternative name for consistency
       }), 
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );

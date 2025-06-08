@@ -1,5 +1,5 @@
 // lib/subscriptionService.js
-import * as subscription from '@/lib/subscription';
+import * as subscription from '@/lib/subscriptions/subscription';
 
 export const {
   getUserSubscriptionStatus,

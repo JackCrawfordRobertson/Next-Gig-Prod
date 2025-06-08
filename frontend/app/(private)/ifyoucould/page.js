@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { collection, getDocs } from "@/lib/firebase";
-import { updateJobAppliedStatus } from "@/lib/updateJobApplied";
+import { collection, getDocs } from "@/lib/data/firebase";
+import { updateJobAppliedStatus } from "@/lib/utils/updateJobApplied";
 
 import { useSession } from "next-auth/react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -46,7 +46,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { isDevelopmentMode } from "@/lib/environment";
+import { isDevelopmentMode } from "@/lib/utils/environment";
 
 
 
@@ -125,7 +125,7 @@ export default function IfYouCouldPage() {
           const userEmail = session?.user?.email;
     
           if (userEmail) {
-            const { getUserByEmail, getUserJobs } = await import("@/lib/jobDataUtils");
+            const { getUserByEmail, getUserJobs } = await import("@/lib/data/jobDataUtils");
             const user = await getUserByEmail(userEmail);
             
             if (user) {
@@ -211,7 +211,7 @@ export default function IfYouCouldPage() {
   
       // Update Firestore if in production
       if (!isDev && selectedJob.id) {
-        const { updateJobAppliedStatus } = await import("@/lib/updateJobApplied");
+        const { updateJobAppliedStatus } = await import("@/lib/utils/updateJobApplied");
         await updateJobAppliedStatus({
           email: session.user.email,
           jobId: selectedJob.id,

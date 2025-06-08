@@ -4,9 +4,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import SidebarLayout from "@/components/Sidebar";
 import ArrowsBackgroundWrapper from "@/components/AnimatedBlocks/ArrowsBackgroundCompiler";
-import PrivateRoute from "@/components/PrivateRoute";
-import SessionVerifier from "@/components/SessionVerifier";
-import ErrorBoundary from "@/components/ErrorBoundary";
+import PrivateRoute from "@/components/routing/PrivateRoute";
+import SessionVerifier from "@/components/auth/SessionVerifier";
+import ErrorBoundary from "@/components/shared/ErrorBoundary";
 
 export const metadata = {
     title: "Next Gig",

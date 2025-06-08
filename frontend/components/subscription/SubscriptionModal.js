@@ -1,6 +1,6 @@
 // components/SubscriptionModal.jsx
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import PayPalButton from "@/components/PayPalButton";
+import PayPalButton from "@/components/subscription/PayPalButton";
 
 export function SubscriptionModal({ isOpen, onClose, userId, onSuccess }) {
   return (

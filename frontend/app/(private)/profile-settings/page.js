@@ -16,7 +16,7 @@ import {
   query,
   where,
   getDocs,
-} from "@/lib/firebase";
+} from "@/lib/data/firebase";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,14 +52,14 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { showToast } from "@/lib/toast";
-import { SubscriptionModal } from "@/components/SubscriptionModal";
-import { isDevelopmentMode } from "@/lib/environment";
-import { TesterIndicator } from '@/components/TesterIndicator';
+import { showToast } from "@/lib/utils/toast";
+import { SubscriptionModal } from "@/components/subscription/SubscriptionModal";
+import { isDevelopmentMode } from "@/lib/utils/environment";
+import { TesterIndicator } from '@/components/shared/TesterIndicator';
 
 
 // Import directly from subscriptionService to avoid conflicts
-import * as subscriptionService from "@/lib/subscription";
+import * as subscriptionService from "@/lib/subscriptions/subscription";
 
 const profileFormSchema = z.object({
   firstName: z.string().min(2, {

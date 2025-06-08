@@ -1,5 +1,5 @@
 // lib/auth-strategy.js
-import { isDevelopmentMode } from "./environment";
+import { isDevelopmentMode } from "../utils/environment";
 
 export function useNextAuthStrategy() {
   // Check if we're running on localhost

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { showToast } from "@/lib/toast";
+import { showToast } from "@/lib/utils/toast";
 import Link from "next/link";
 import Image from "next/image";
 

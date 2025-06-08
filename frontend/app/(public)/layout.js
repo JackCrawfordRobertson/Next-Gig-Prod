@@ -2,7 +2,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import ArrowsBackgroundWrapper from "@/components/AnimatedBlocks/ArrowsBackgroundCompiler";
-import ErrorBoundary from "@/components/ErrorBoundary";
+import ErrorBoundary from "@/components/shared/ErrorBoundary";
 import { Toaster } from "@/components/ui/toaster";
 
 // Server-only metadata

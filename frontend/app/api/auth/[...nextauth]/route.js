@@ -16,7 +16,7 @@ export const authOptions = {
         }
         
         try {
-          const { db, collection, query, where, getDocs } = await import("@/lib/firebase");
+          const { db, collection, query, where, getDocs } = await import("@/lib/data/firebase");
           
           const usersRef = collection(db, "users");
           const q = query(usersRef, where("email", "==", credentials.email.toLowerCase()));

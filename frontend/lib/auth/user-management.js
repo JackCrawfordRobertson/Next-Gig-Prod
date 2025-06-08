@@ -1,5 +1,5 @@
 // lib/user-management.js - New file
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/data/firebase";
 import { collection, addDoc, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { hash } from "bcryptjs";
 

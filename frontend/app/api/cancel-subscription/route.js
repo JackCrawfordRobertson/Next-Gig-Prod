@@ -2,8 +2,8 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { db, doc, updateDoc, collection, query, where, getDocs, getDoc } from "@/lib/firebase";
-import { calculateConsumedTrialDays, hasCompletedTrial } from "@/lib/checkSubscriptionStatus";
+import { db, doc, updateDoc, collection, query, where, getDocs, getDoc } from "@/lib/data/firebase";
+import { calculateConsumedTrialDays, hasCompletedTrial } from "@/lib/subscriptions/checkSubscriptionStatus";
 
 const paypal = require("@paypal/checkout-server-sdk");
 

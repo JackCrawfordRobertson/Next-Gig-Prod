@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react";
 import { calculateFormCompletion, getUserIP, getDeviceFingerprint } from "../utils";
 import { useFormValidation } from "./useFormValidation";
-import { showToast } from "@/lib/toast";
+import { showToast } from "@/lib/utils/toast";
 import { useRouter } from "next/navigation";
-import { isDevelopmentMode } from "@/lib/environment";
-import { isUserTester } from "@/lib/subscription";
-import { useNextAuthStrategy } from "@/lib/auth-strategy";
+import { isDevelopmentMode } from "@/lib/utils/environment";
+import { isUserTester } from "@/lib/subscriptions/subscription";
+import { useNextAuthStrategy } from "@/lib/auth/auth-strategy";
 import { hash } from "bcryptjs";
 
 import {
@@ -20,7 +20,7 @@ import {
   query,
   where,
   getDocs
-} from "@/lib/firebase";
+} from "@/lib/data/firebase";
 import { signIn } from "next-auth/react";
 
 const initialFormState = {

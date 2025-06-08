@@ -1,6 +1,6 @@
 // lib/subscription-manager.js
 import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/data/firebase";
 
 export class SubscriptionManager {
   static async createSubscription(userId, subscriptionData) {

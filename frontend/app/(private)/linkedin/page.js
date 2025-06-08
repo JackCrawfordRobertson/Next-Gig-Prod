@@ -1,7 +1,7 @@
 "use client";
 
 import {useEffect, useState, useRef} from "react";
-import {db, collection, getDocs, doc, updateDoc} from "@/lib/firebase";
+import {db, collection, getDocs, doc, updateDoc} from "@/lib/data/firebase";
 import {useSession} from "next-auth/react";
 import {ScrollArea} from "@/components/ui/scroll-area";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
@@ -40,8 +40,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { updateJobAppliedStatus } from "@/lib/updateJobApplied";
-import { isDevelopmentMode } from "@/lib/environment";
+import { updateJobAppliedStatus } from "@/lib/utils/updateJobApplied";
+import { isDevelopmentMode } from "@/lib/utils/environment";
 
 
 
@@ -118,7 +118,7 @@ export default function LinkedInPage() {
           const userEmail = session?.user?.email;
     
           if (userEmail) {
-            const { getUserByEmail, getUserJobs } = await import("@/lib/jobDataUtils");
+            const { getUserByEmail, getUserJobs } = await import("@/lib/data/jobDataUtils");
             const user = await getUserByEmail(userEmail);
             
             if (user) {

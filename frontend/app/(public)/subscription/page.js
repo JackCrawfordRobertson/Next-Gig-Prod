@@ -4,9 +4,9 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { SubscriptionManager } from "@/lib/subscription-manager";
-import PayPalButton from "@/components/PayPalButton";
-import { showToast } from "@/lib/toast";
+import { SubscriptionManager } from "@/lib/subscriptions/subscription-manager";
+import PayPalButton from "@/components/subscription/PayPalButton";
+import { showToast } from "@/lib/utils/toast";
 import {
   Card,
   CardContent,

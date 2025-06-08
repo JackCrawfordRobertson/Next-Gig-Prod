@@ -1,7 +1,7 @@
 // app/api/verify-subscription/route.js
 import { NextResponse } from "next/server";
 import { doc, getDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/data/firebase";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);

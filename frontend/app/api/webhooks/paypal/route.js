@@ -1,6 +1,6 @@
 // app/api/webhooks/paypal/route.js
 import { NextResponse } from "next/server";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/data/firebase";
 import { doc, getDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
 
 export async function POST(request) {

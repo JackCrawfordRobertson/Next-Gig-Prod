@@ -1,7 +1,7 @@
 // lib/subscription.js
 import { doc, getDoc, updateDoc, collection, query, where, getDocs, setDoc, addDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { showToast } from "@/lib/toast";
+import { db } from "@/lib/data/firebase";
+import { showToast } from "@/lib/utils/toast";
 
 /**
  * Check if a user is a tester

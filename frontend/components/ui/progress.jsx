@@ -3,7 +3,7 @@
 import * as React from "react"
 import * as ProgressPrimitive from "@radix-ui/react-progress"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils/utils"
 
 const Progress = React.forwardRef(({ className, value, ...props }, ref) => {
   // Ensure value is exactly 0 if it should be 0

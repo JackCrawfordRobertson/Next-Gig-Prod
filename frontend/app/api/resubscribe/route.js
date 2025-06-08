@@ -12,8 +12,8 @@ import {
   getDocs,
   addDoc,
   getDoc
-} from "@/lib/firebase";
-import { calculateConsumedTrialDays, hasCompletedTrial } from "@/lib/checkSubscriptionStatus";
+} from "@/lib/data/firebase";
+import { calculateConsumedTrialDays, hasCompletedTrial } from "@/lib/subscriptions/checkSubscriptionStatus";
 
 // Direct PayPal SDK import instead of @/lib/paypal
 const paypal = require("@paypal/checkout-server-sdk");

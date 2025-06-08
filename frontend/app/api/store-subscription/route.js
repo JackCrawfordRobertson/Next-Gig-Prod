@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { db, doc, updateDoc, collection, addDoc } from "@/lib/firebase";
+import { db, doc, updateDoc, collection, addDoc } from "@/lib/data/firebase";
 
 export async function POST(req) {
   try {
