@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { isDevelopmentMode } from "@/lib/environment";
 import { isUserTester } from "@/lib/subscription";
 import { useNextAuthStrategy } from "@/lib/auth-strategy";
-
+import { hash } from "bcryptjs";
 
 import {
   createUserWithEmailAndPassword,
@@ -254,10 +254,8 @@ export function useProfileForm() {
 
   // Form submission - Completely rewritten for clarity and reliability
   const handleSignUp = async () => {
-    // Clear any previous errors
     setRegistrationError(null);
     
-    // Form validation
     if (formState.incompleteFields.length > 0) {
       const errorMessage = `Please complete all required fields: ${formState.incompleteFields.join(", ")}`;
       setRegistrationError(errorMessage);
@@ -269,31 +267,33 @@ export function useProfileForm() {
       return;
     }
   
-    // Begin registration process
     setLoading(true);
   
     try {
       // Check if user is a tester
       const isATester = await isUserTester(formState.email.toLowerCase());
-      console.log(`Tester check for ${formState.email}: ${isATester ? "Is a tester" : "Not a tester"}`);
       
-      // Determine which auth strategy to use
-      const useNextAuth = useNextAuthStrategy();
+      // Hash password
+      const hashedPassword = await hash(formState.password, 12);
       
-      // Create Firebase Auth account (always needed)
-      console.log("Creating Firebase Auth account...");
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        formState.email,
-        formState.password
-      );
+      // Create user in Firestore directly
+      const usersRef = collection(db, "users");
       
-      const user = userCredential.user;
-      console.log(`Firebase user created with ID: ${user.uid}`);
+      // Check if email already exists
+      const q = query(usersRef, where("email", "==", formState.email.toLowerCase()));
+      const existingUserSnapshot = await getDocs(q);
       
-      // Prepare user data with special flags for testers
+      if (!existingUserSnapshot.empty) {
+        throw new Error("Email already registered");
+      }
+      
+      // Create new user document
+      const newUserRef = doc(collection(db, "users"));
+      const userId = newUserRef.id;
+      
       const userData = {
-        email: formState.email,
+        email: formState.email.toLowerCase(),
+        password: hashedPassword,
         firstName: formState.firstName,
         lastName: formState.lastName,
         dateOfBirth: formState.dateOfBirth,
@@ -301,58 +301,29 @@ export function useProfileForm() {
         profilePicture: formState.profilePicture,
         jobTitles: formState.jobTitles,
         jobLocations: formState.jobLocations,
-        subscribed: isATester, 
+        subscribed: isATester,
         onTrial: isATester,
+        isTester: isATester,
         userIP: formState.userIP || "unknown",
         deviceFingerprint: formState.deviceFingerprint || "unknown",
-        hadPreviousSubscription: false,
         createdAt: new Date().toISOString(),
+        emailVerified: new Date().toISOString(),
       };
       
-      // Add special privileges for testers
-      if (isATester) {
-        userData.isTester = true;
-        userData.subscriptionVerified = true;
-        userData.subscriptionActive = true;
+      await setDoc(newUserRef, userData);
+      
+      // Sign in with NextAuth
+      const signInResult = await signIn("credentials", {
+        redirect: false,
+        email: formState.email,
+        password: formState.password,
+      });
+      
+      if (signInResult?.error) {
+        throw new Error("Failed to sign in after registration");
       }
       
-      // Create Firestore document
-      console.log("Creating Firestore user document...");
-      await setDoc(doc(db, "users", user.uid), userData);
-      console.log("Firestore document created successfully");
-      
-      // Handle authentication session
-      let authSuccess = false;
-      const isLocalhost = typeof window !== 'undefined' && 
-        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-
-      if (useNextAuth && !isLocalhost) {
-        // Try NextAuth in production mode (not on localhost)
-        console.log("Creating NextAuth session...");
-        try {
-          const signInResult = await signIn("credentials", {
-            redirect: false,
-            email: formState.email,
-            password: formState.password,
-          });
-          
-          if (signInResult?.error) {
-            console.error("NextAuth sign-in error:", signInResult.error);
-            // Don't consider this a fatal error - we'll handle it
-          } else {
-            authSuccess = true;
-          }
-        } catch (nextAuthError) {
-          console.error("NextAuth error:", nextAuthError);
-          // Non-fatal error
-        }
-      } else {
-        // In development mode or on localhost, just consider auth successful
-        console.log("Development mode or localhost: Skipping NextAuth authentication");
-        authSuccess = true;
-      }
-      
-      // Show appropriate success message
+      // Show success message
       if (isATester) {
         showToast({
           title: "Tester Account Created",
@@ -360,8 +331,9 @@ export function useProfileForm() {
           variant: "success",
         });
         
-        // Redirect testers straight to dashboard
-        setTimeout(() => router.push("/dashboard"), 1000);
+        // Wait for session to be established
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        router.push("/dashboard");
       } else {
         showToast({
           title: "Account Created",
@@ -369,51 +341,28 @@ export function useProfileForm() {
           variant: "success",
         });
         
-        // For regular users, redirect to subscription page with the correct ID
-        // Save ID to localStorage as a backup
-        if (typeof window !== 'undefined') {
-          console.log("Redirecting to subscription page with user ID:", user.uid);
-          localStorage.setItem('pendingUserId', user.uid);
-          localStorage.setItem('isNewRegistration', 'true');
-          
-          // Use setTimeout to allow the toast to show before redirecting
-          setTimeout(() => {
-            const url = `/subscription?userId=${user.uid}&new=true`;
-            router.push(url);
-          }, 1000);
-        }
+        // Store user ID for subscription page
+        localStorage.setItem('pendingUserId', userId);
+        
+        // Wait for session to be established
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        router.push(`/subscription?userId=${userId}&new=true`);
       }
       
     } catch (error) {
       console.error("Registration error:", error);
       
-      // Handle specific Firebase Auth errors
-      if (error.code === 'auth/email-already-in-use') {
-        const errorMessage = "An account with this email already exists. Please try logging in instead.";
-        setRegistrationError(errorMessage);
-        showToast({
-          title: "Email Already Registered",
-          description: errorMessage,
-          variant: "warning",
-        });
-        
-        // Redirect to login page after a delay
-        setTimeout(() => router.push("/login"), 2000);
-      } else {
-        // Generic error handling
-        const errorMessage = error.message || "An unexpected error occurred during registration.";
-        setRegistrationError(errorMessage);
-        showToast({
-          title: "Registration Error",
-          description: errorMessage,
-          variant: "destructive",
-        });
-      }
+      const errorMessage = error.message || "An unexpected error occurred during registration.";
+      setRegistrationError(errorMessage);
+      showToast({
+        title: "Registration Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
-
   // Check if form is valid for submission
   const isFormValid = () => formState.incompleteFields.length === 0;
 

@@ -1,19 +1,21 @@
-// providers/AuthProvider.js - Replace existing file
 "use client";
 
-import { SessionProvider } from "next-auth/react";
+import { createContext, useContext } from "react";
+import { useSession } from "next-auth/react";
+
+const AuthContext = createContext({
+  session: null,
+  status: "loading",
+});
 
 export function AuthProvider({ children }) {
-  return <SessionProvider>{children}</SessionProvider>;
+  const { data: session, status } = useSession();
+
+  return (
+    <AuthContext.Provider value={{ session, status }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
-// Simple hook to access session data
-export function useAuth() {
-  const { data: session, status } = useSession();
-  
-  return {
-    user: session?.user,
-    isLoading: status === "loading",
-    isAuthenticated: status === "authenticated"
-  };
-}
+export const useAuth = () => useContext(AuthContext);

@@ -1,23 +1,20 @@
-// app/api/auth/[...nextauth]/route.js - Replace existing file
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { FirestoreAdapter } from "@next-auth/firebase-adapter";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
-import { compare } from "bcryptjs";
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { compare, hash } from "bcryptjs";
 
 export const authOptions = {
-  adapter: FirestoreAdapter(db),
   providers: [
     CredentialsProvider({
-      name: "Email",
+      name: "credentials",
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          return null;
+          throw new Error("Email and password required");
         }
         
         try {
@@ -27,64 +24,87 @@ export const authOptions = {
           const snapshot = await getDocs(q);
           
           if (snapshot.empty) {
-            console.log(`No user found with email: ${credentials.email}`);
-            return null;
+            throw new Error("User not found");
           }
           
           const userDoc = snapshot.docs[0];
-          const user = userDoc.data();
+          const userData = userDoc.data();
           
-          // Verify password
-          const isValid = await compare(credentials.password, user.password);
-          
-          if (!isValid) {
-            console.log("Password validation failed");
-            return null;
+          // Check if password exists (for new NextAuth users)
+          if (!userData.password) {
+            throw new Error("Please reset your password");
           }
           
-          // Return user object for JWT
+          // Verify password
+          const isValid = await compare(credentials.password, userData.password);
+          
+          if (!isValid) {
+            throw new Error("Invalid password");
+          }
+          
+          // Return user object with all necessary data
           return {
             id: userDoc.id,
-            email: user.email,
-            name: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
-            firstName: user.firstName,
-            lastName: user.lastName,
-            profilePicture: user.profilePicture,
-            subscribed: user.subscribed,
-            onTrial: user.onTrial,
-            isTester: user.isTester
+            email: userData.email,
+            name: `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            profilePicture: userData.profilePicture,
+            subscribed: userData.subscribed || false,
+            onTrial: userData.onTrial || false,
+            isTester: userData.isTester || false,
+            subscriptionId: userData.subscriptionId || null,
+            trialEndDate: userData.trialEndDate || null
           };
         } catch (error) {
           console.error("Authorization error:", error);
-          return null;
+          throw new Error(error.message || "Authentication failed");
         }
       }
     })
   ],
   callbacks: {
-    async session({ session, token }) {
-      if (token) {
-        session.user.id = token.id;
-        session.user.firstName = token.firstName;
-        session.user.lastName = token.lastName;
-        session.user.profilePicture = token.profilePicture;
-        session.user.subscribed = token.subscribed;
-        session.user.onTrial = token.onTrial;
-        session.user.isTester = token.isTester;
-      }
-      return session;
-    },
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
+      // Initial sign in
       if (user) {
-        token.id = user.id;
-        token.firstName = user.firstName;
-        token.lastName = user.lastName;
-        token.profilePicture = user.profilePicture;
-        token.subscribed = user.subscribed;
-        token.onTrial = user.onTrial;
-        token.isTester = user.isTester;
+        return {
+          ...token,
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          profilePicture: user.profilePicture,
+          subscribed: user.subscribed,
+          onTrial: user.onTrial,
+          isTester: user.isTester,
+          subscriptionId: user.subscriptionId,
+          trialEndDate: user.trialEndDate
+        };
       }
+      
+      // Update token if user data changes
+      if (trigger === "update" && session) {
+        return { ...token, ...session };
+      }
+      
+      // Return previous token if nothing has changed
       return token;
+    },
+    async session({ session, token }) {
+      // Send properties to the client
+      session.user = {
+        ...session.user,
+        id: token.id,
+        firstName: token.firstName,
+        lastName: token.lastName,
+        profilePicture: token.profilePicture,
+        subscribed: token.subscribed,
+        onTrial: token.onTrial,
+        isTester: token.isTester,
+        subscriptionId: token.subscriptionId,
+        trialEndDate: token.trialEndDate
+      };
+      
+      return session;
     }
   },
   pages: {
@@ -93,7 +113,7 @@ export const authOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 24 * 60 * 60, // 1 day
+    maxAge: 24 * 60 * 60, // 24 hours
   },
   debug: process.env.NODE_ENV === "development",
 };
