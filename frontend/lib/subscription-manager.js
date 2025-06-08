@@ -1,10 +1,22 @@
+// lib/subscription-manager.js
 import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { getSession } from "next-auth/react";
 
 export class SubscriptionManager {
   static async createSubscription(userId, subscriptionData) {
     try {
+      console.log("Creating subscription for userId:", userId);
+      console.log("Subscription data:", subscriptionData);
+      
+      // Validate inputs
+      if (!userId) {
+        throw new Error("User ID is required");
+      }
+      
+      if (!db) {
+        throw new Error("Firebase not initialized");
+      }
+      
       // Validate user exists
       const userRef = doc(db, "users", userId);
       const userSnap = await getDoc(userRef);
@@ -20,6 +32,12 @@ export class SubscriptionManager {
       
       // Create subscription document
       const subscriptionId = subscriptionData.subscriptionId || subscriptionData.subscriptionID;
+      
+      if (!subscriptionId) {
+        throw new Error("Subscription ID is required");
+      }
+      
+      // Create subscription document with the subscription ID as the document ID
       const subscriptionRef = doc(db, "subscriptions", subscriptionId);
       
       const subscriptionDoc = {
@@ -34,28 +52,26 @@ export class SubscriptionManager {
         trialEndDate: trialInfo.eligible ? trialInfo.endDate : null,
         trialDuration: trialInfo.duration,
         createdAt: new Date().toISOString(),
-        paypalOrderId: subscriptionData.orderId,
+        paypalOrderId: subscriptionData.orderId || subscriptionData.orderID,
       };
       
+      console.log("Creating subscription document:", subscriptionDoc);
       await setDoc(subscriptionRef, subscriptionDoc);
       
       // Update user document
-      await updateDoc(userRef, {
+      const userUpdateData = {
         subscribed: true,
         subscriptionId,
         onTrial: trialInfo.eligible,
         trialEndDate: trialInfo.eligible ? trialInfo.endDate : null,
         hadPreviousSubscription: true,
         lastSubscriptionDate: new Date().toISOString(),
-      });
+      };
       
-      // Update NextAuth session
-      await this.updateSession(userId, {
-        subscribed: true,
-        subscriptionId,
-        onTrial: trialInfo.eligible,
-        trialEndDate: trialInfo.eligible ? trialInfo.endDate : null,
-      });
+      console.log("Updating user document:", userUpdateData);
+      await updateDoc(userRef, userUpdateData);
+      
+      console.log("Subscription created successfully");
       
       return {
         success: true,
@@ -69,7 +85,7 @@ export class SubscriptionManager {
   }
   
   static async calculateTrialEligibility(userId, userData) {
-    // Your existing trial calculation logic
+    // Default values
     let eligible = true;
     let duration = 7;
     let reason = "First-time subscriber";
@@ -80,8 +96,12 @@ export class SubscriptionManager {
       const q = query(subscriptionsRef, where('userId', '==', userId));
       const snapshot = await getDocs(q);
       
-      // Logic to determine remaining trial days
-      // ... (your existing logic)
+      if (!snapshot.empty) {
+        // If they had a previous subscription, no trial
+        eligible = false;
+        duration = 0;
+        reason = "Previous subscription detected";
+      }
     }
     
     const endDate = new Date();
@@ -93,13 +113,5 @@ export class SubscriptionManager {
       endDate: endDate.toISOString(),
       reason
     };
-  }
-  
-  static async updateSession(userId, updates) {
-    // This will trigger the session update in NextAuth
-    if (typeof window !== 'undefined') {
-      const { update } = await import("next-auth/react");
-      await update(updates);
-    }
   }
 }
