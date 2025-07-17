@@ -6,10 +6,9 @@ import hashlib
 from datetime import datetime
 import logging
 
-from config import db, MAX_SEARCH_RADIUS_KM
+from config import db
 from fetch.run_scrapers import run_scrapers
 from store.store_jobs import store_jobs
-from utils.location_matcher import find_matching_jobs
 
 # Configure logging
 logging.basicConfig(
@@ -63,41 +62,41 @@ def get_unique_job_location_pairs(users):
     logger.info(f"✅ Identified {len(pairs)} unique job title + location pairs from {len(users)} subscribed users")
     return list(pairs)
 
-def advanced_job_matching(all_jobs, user):
+def simple_job_matching(all_jobs, user):
     """
-    Advanced job matching with location and title intelligence
+    Simple job matching based on title and location text matching
     
     :param all_jobs: Dictionary of jobs from all sources
     :param user: User dictionary
     :return: Matched jobs for the user
     """
-    user_preferences = {
-        'job_titles': user.get('jobTitles', []),
-        'locations': user.get('jobLocations', [])
-    }
+    user_titles = [t.lower() for t in user.get('jobTitles', [])]
+    user_locations = [l.lower() for l in user.get('jobLocations', [])]
     
-    # Collect jobs from all sources
-    combined_jobs = []
-    for source_jobs in all_jobs.values():
-        combined_jobs.extend(source_jobs)
+    matched_jobs = []
     
-    # Find matching jobs with location intelligence
-    try:
-        matched_jobs = find_matching_jobs(
-            combined_jobs, 
-            user_preferences, 
-            max_radius_km=MAX_SEARCH_RADIUS_KM
-        )
-        
-        logger.info(f"User {user.get('email')} - Found {len(matched_jobs)} location-matched jobs")
-        return matched_jobs
-    except Exception as e:
-        logger.error(f"Error in advanced job matching for user {user.get('email')}: {e}")
-        return []
+    for source, source_jobs in all_jobs.items():
+        for job in source_jobs:
+            job_title = job.get('title', '').lower()
+            job_location = job.get('location', '').lower()
+            
+            # Check if title matches
+            title_match = any(title in job_title for title in user_titles)
+            
+            # Check if location matches
+            location_match = any(loc in job_location for loc in user_locations)
+            
+            if title_match and location_match:
+                job_with_source = job.copy()
+                job_with_source['source'] = source
+                matched_jobs.append(job_with_source)
+    
+    logger.info(f"User {user.get('email')} - Found {len(matched_jobs)} matched jobs")
+    return matched_jobs
 
 def categorize_matched_jobs(matched_jobs, all_jobs):
     """
-    Categorize matched jobs by their original source
+    Categorize matched jobs by their original source using URL as unique identifier
     
     :param matched_jobs: List of matched jobs
     :param all_jobs: Original job sources
@@ -105,14 +104,25 @@ def categorize_matched_jobs(matched_jobs, all_jobs):
     """
     categorized_jobs = {}
     
+    # Create a map of job URLs to sources
+    url_to_source = {}
     for source, source_jobs in all_jobs.items():
-        source_matched_jobs = [
-            job for job in source_jobs 
-            if job in matched_jobs
-        ]
-        
-        if source_matched_jobs:
-            categorized_jobs[source] = source_matched_jobs
+        for job in source_jobs:
+            url_to_source[job.get('url')] = source
+    
+    # Categorize matched jobs based on their URLs
+    for job in matched_jobs:
+        job_url = job.get('url')
+        if job_url in url_to_source:
+            source = url_to_source[job_url]
+            if source not in categorized_jobs:
+                categorized_jobs[source] = []
+            
+            # Ensure source is set correctly on the job object
+            job['source'] = source
+            categorized_jobs[source].append(job)
+        else:
+            logger.warning(f"Could not find source for job: {job.get('title')} - {job_url}")
     
     return categorized_jobs
 
@@ -152,8 +162,8 @@ def job_cycle():
             
             logger.info(f"\n🔍 Processing jobs for user: {email}")
             
-            # Advanced location-aware job matching
-            matched_jobs = advanced_job_matching(jobs, user)
+            # Simple job matching
+            matched_jobs = simple_job_matching(jobs, user)
             
             if not matched_jobs:
                 logger.info(f"⚠️ No matching jobs found for {email}")
@@ -162,12 +172,19 @@ def job_cycle():
             # Categorize matched jobs by source
             user_jobs = categorize_matched_jobs(matched_jobs, jobs)
             
+            # Log categorization results
+            logger.info(f"📊 Categorized jobs for {email}:")
+            for source, source_jobs in user_jobs.items():
+                logger.info(f"  - {source}: {len(source_jobs)} jobs")
+            
             # Store matched jobs
             new_count, dup_count = store_jobs(user_id, user_jobs)
             logger.info(f"💾 Updated jobs for {email} ({user_id}): {new_count} new, {dup_count} duplicates skipped")
         
         except Exception as e:
             logger.error(f"Error processing jobs for user {email}: {e}")
+            import traceback
+            traceback.print_exc()
     
     return True
 

@@ -63,6 +63,19 @@ class LocationMatcher:
                     "london": "London, United Kingdom",
                     "manchester": "Manchester, United Kingdom",
                     "birmingham": "Birmingham, United Kingdom",
+                    "glasgow": "Glasgow, United Kingdom",
+                    "bristol": "Bristol, United Kingdom",
+                    "leeds": "Leeds, United Kingdom",
+                    "newcastle": "Newcastle, United Kingdom",
+                    "edinburgh": "Edinburgh, United Kingdom",
+                    "cardiff": "Cardiff, United Kingdom",
+                    "southampton": "Southampton, United Kingdom",
+                    "nottingham": "Nottingham, United Kingdom",
+                    "leicester": "Leicester, United Kingdom",
+                    "aberdeen": "Aberdeen, United Kingdom",
+                    "liverpool": "Liverpool, United Kingdom",
+                    "oxford": "Oxford, United Kingdom",
+                    "derby": "Derby, United Kingdom",
                 }
                 if location.lower() in city_fallbacks:
                     result = self.geolocator.geocode(city_fallbacks[location.lower()])
@@ -118,9 +131,10 @@ class LocationMatcher:
             distance = self.calculate_distance(user_coords, job_coords)
             
             if distance <= max_radius_km:
-                # Add distance information to job
-                job['distance_km'] = round(distance, 2)
-                matched_jobs.append(job)
+                # Create a copy of the job to avoid modifying the original
+                job_copy = job.copy()
+                job_copy['distance_km'] = round(distance, 2)
+                matched_jobs.append(job_copy)
         
         # Sort by distance
         return sorted(matched_jobs, key=lambda x: x['distance_km'])
@@ -152,15 +166,22 @@ def find_matching_jobs(user_jobs, user_preferences, max_radius_km=50):
                     max_radius_km=max_radius_km
                 )
                 
+                # Ensure source information is preserved
+                for job in radius_matches:
+                    if 'source' not in job:
+                        logging.warning(f"Job missing source: {job.get('title')}")
+                
                 final_matched_jobs.extend(radius_matches)
     
-    # Remove duplicates while preserving order
+    # Remove duplicates while preserving order and all job data
     unique_matched_jobs = []
     seen = set()
     for job in final_matched_jobs:
         job_key = job['url']  # Use URL as unique identifier
         if job_key not in seen:
             seen.add(job_key)
-            unique_matched_jobs.append(job)
+            # Create a copy to ensure we don't modify the original
+            job_copy = job.copy()
+            unique_matched_jobs.append(job_copy)
     
     return unique_matched_jobs

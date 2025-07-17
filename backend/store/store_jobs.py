@@ -1,17 +1,18 @@
 import firebase_admin
 from firebase_admin import firestore
 import hashlib
+import time
 
 db = firestore.client()
 
 def generate_job_id(job):
-    """Generate a unique identifier for a job based on its URL and title."""
-    unique_string = f"{job['url']}_{job['title']}"
-    return hashlib.md5(unique_string.encode()).hexdigest()
+    """Generate a unique identifier for a job based on its URL."""
+    # Use only URL for consistency
+    return hashlib.md5(job["url"].encode()).hexdigest()
 
 def store_jobs(user_id, new_jobs):
     """
-    Store jobs with proper email notification tracking
+    Store jobs with proper email notification tracking and source validation
     """
     user_jobs_ref = db.collection("users").document(user_id).collection("jobs")
     
@@ -20,7 +21,11 @@ def store_jobs(user_id, new_jobs):
 
     for source, jobs_list in new_jobs.items():
         for job in jobs_list:
-            job["source"] = source
+            # Validate that job has the correct source
+            if job.get('source') != source:
+                print(f"⚠️ Source mismatch detected! Expected: {source}, Got: {job.get('source')}")
+                job["source"] = source  # Force correct source
+            
             job_id = generate_job_id(job)
             
             print(f"🔍 Processing job: {job_id} - {job['title']} from {source}")
@@ -39,6 +44,7 @@ def store_jobs(user_id, new_jobs):
                 **job,  # All original job fields
                 "job_id": job_id,
                 "user_id": user_id,
+                "source": source,  # Explicitly set source
                 "added_at": firestore.SERVER_TIMESTAMP,
                 "has_applied": False,
                 "is_saved": False,
@@ -48,8 +54,8 @@ def store_jobs(user_id, new_jobs):
             # Store job in user's subcollection
             user_job_ref.set(complete_job_data)
             
-            # Create email notification record with unique ID
-            notification_id = f"{user_id}_{job_id}_{int(firestore.SERVER_TIMESTAMP.timestamp() * 1000000)}"
+            # Create email notification record with timestamp
+            notification_id = f"{user_id}_{job_id}_{int(time.time() * 1000000)}"
             
             try:
                 db.collection("user_job_matches").document(notification_id).set({
@@ -64,7 +70,7 @@ def store_jobs(user_id, new_jobs):
                 print(f"❌ Failed to create email notification: {e}")
 
             total_new += 1
-            print(f"✅ Stored job: {job['title']} at {job.get('company', 'Unknown')}")
+            print(f"✅ Stored job: {job['title']} at {job.get('company', 'Unknown')} (Source: {source})")
 
     print(f"📊 Job storage summary - New: {total_new}, Duplicates: {total_duplicate}")
     return total_new, total_duplicate
