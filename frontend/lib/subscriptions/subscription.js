@@ -53,43 +53,57 @@ export async function getUserSubscriptionStatus(userId) {
       };
     }
 
-    const userData = userSnap.data();
+    let userData = userSnap.data();
 
+    // FIXED: Only check for tester status explicitly
     if (userData.email) {
       const isTester = await isUserTester(userData.email);
 
-      if (!isTester) {
-        const usersRef = collection(db, "users");
-        const ipQuery = query(usersRef, where("userIP", "==", userData.userIP));
-        const fingerprintQuery = query(
-          usersRef,
-          where("deviceFingerprint", "==", userData.deviceFingerprint)
-        );
+      if (isTester) {  // ✅ FIXED: Only run for actual testers
+        const farFutureDate = new Date();
+        farFutureDate.setFullYear(farFutureDate.getFullYear() + 10);
 
-        const [ipSnapshot, fingerprintSnapshot] = await Promise.all([
-          getDocs(ipQuery),
-          getDocs(fingerprintQuery)
-        ]);
+        return {
+          subscribed: true,
+          onTrial: true,
+          hasSubscription: true,
+          isOnTrial: true,
+          trialEndDate: farFutureDate.toISOString(),
+          isTester: true,
+          userData: userData,
+          subscriptionData: {
+            status: "trial",
+            plan: "tester"
+          },
+          subscriptionDocId: "tester-" + userId
+        };
+      }
+    }
 
-        if (!ipSnapshot.empty || !fingerprintSnapshot.empty) {
-          const farFutureDate = new Date();
-          farFutureDate.setFullYear(farFutureDate.getFullYear() + 10);
-
-          return {
-            subscribed: true,
-            onTrial: true,
-            hasSubscription: true,
-            isOnTrial: true,
-            trialEndDate: farFutureDate.toISOString(),
-            isTester: true,
-            userData: userData,
-            subscriptionData: {
-              status: "trial",
-              plan: "tester"
-            },
-            subscriptionDocId: "tester-" + userId
-          };
-        }
+    // NEW: Check and handle trial expiry automatically
+    if (userData.onTrial && userData.trialEndDate) {
+      const now = new Date();
+      const trialEnd = new Date(userData.trialEndDate);
+      
+      if (now > trialEnd) {
+        console.log("Trial has expired, updating user to paid subscription");
+        
+        // Update user document to transition from trial to paid
+        await updateDoc(userRef, {
+          onTrial: false,
+          trialEndDate: null,
+          trialCompleted: true
+        });
+        
+        // Update local userData for return
+        userData = {
+          ...userData,
+          onTrial: false,
+          trialEndDate: null,
+          trialCompleted: true
+        };
+        
+        console.log("User transitioned from trial to paid subscription");
       }
     }
 
@@ -104,6 +118,15 @@ export async function getUserSubscriptionStatus(userId) {
         if (subSnap.exists()) {
           subscriptionData = subSnap.data();
           subscriptionDocId = userData.subscriptionId;
+          
+          // NEW: Also update subscription document if trial expired
+          if (subscriptionData.status === "trial" && userData.trialCompleted) {
+            await updateDoc(subscriptionRef, {
+              status: "active",
+              trialCompletedAt: new Date().toISOString()
+            });
+            subscriptionData = { ...subscriptionData, status: "active" };
+          }
         }
       } catch (err) {
         console.warn("Error fetching subscription details:", err);
@@ -124,6 +147,15 @@ export async function getUserSubscriptionStatus(userId) {
           const docSnap = querySnap.docs[0];
           subscriptionData = docSnap.data();
           subscriptionDocId = docSnap.id;
+          
+          // NEW: Update subscription document status if trial expired
+          if (subscriptionData.status === "trial" && userData.trialCompleted) {
+            await updateDoc(docSnap.ref, {
+              status: "active",
+              trialCompletedAt: new Date().toISOString()
+            });
+            subscriptionData = { ...subscriptionData, status: "active" };
+          }
         }
       } catch (err) {
         console.warn("Error querying subscriptions:", err);
@@ -159,7 +191,6 @@ export async function getUserSubscriptionStatus(userId) {
     };
   }
 }
-
 
 /**
  * Store a new subscription in Firestore
