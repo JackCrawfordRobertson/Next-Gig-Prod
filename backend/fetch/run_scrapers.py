@@ -35,13 +35,14 @@ def fetch_jobs(job_location_pairs):
                 job['source'] = 'unjobs'
         jobs["unjobs"].extend(un_results)
 
-        # Fetch and validate Glassdoor jobs
-        gd_results = glassdoor.fetch_glassdoor_jobs([job_title], [location])
-        for job in gd_results:
-            if job.get('source') != 'glassdoor':
-                print(f"⚠️ Glassdoor job missing correct source: {job.get('title')}")
-                job['source'] = 'glassdoor'
-        jobs["glassdoor"].extend(gd_results)
+        # # Temporarily disabled: Glassdoor is blocking requests and HTML parsing is unreliable
+        # # TODO: Investigate alternative Glassdoor API or scraping method
+        # gd_results = glassdoor.fetch_glassdoor_jobs([job_title], [location])
+        # for job in gd_results:
+        #     if job.get('source') != 'glassdoor':
+        #         print(f"⚠️ Glassdoor job missing correct source: {job.get('title')}")
+        #         job['source'] = 'glassdoor'
+        # jobs["glassdoor"].extend(gd_results)
 
         # # Uncomment to enable ZipRecruiter
         # zip_results = ziprecruiter.fetch_ziprecruiter_jobs(job_title, location)
