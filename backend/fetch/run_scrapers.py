@@ -1,7 +1,7 @@
 # fetch/run_scrapers.py
 
 import json
-from fetch import ifyoucould, unjobs, workable, linkedin, ziprecruiter, glassdoor
+from fetch import ifyoucould, linkedin
 
 def fetch_jobs(job_location_pairs):
     print(f"\n⏳ Running job scrapers for {len(job_location_pairs)} job title + location combinations...")
