@@ -66,9 +66,11 @@ def fetch_jobs(job_location_pairs):
     all_ifyoucould_jobs = ifyoucould.fetch_ifyoucould_jobs()
 
     # 🔍 Filter and ensure source is set
+    # Note: If You Could job titles are company names, not job roles, so we only filter by location
     for job_title, location in job_location_pairs:
         for job in all_ifyoucould_jobs:
-            if job_title.lower() in job["title"].lower() and location.lower() in job["location"].lower():
+            # Only match on location since titles are company names
+            if location.lower() in job["location"].lower():
                 job['source'] = 'ifyoucould'  # Ensure source is set
                 jobs["ifyoucould"].append(job)
 
