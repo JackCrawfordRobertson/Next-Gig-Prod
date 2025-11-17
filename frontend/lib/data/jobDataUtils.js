@@ -38,18 +38,20 @@ export async function getUserJobs(userId, options = {}) {
   
   try {
     console.log(`Fetching jobs for user: ${userId}`);
-    
+
     // Single query - get all job data directly
     const jobsRef = collection(db, "users", userId, "jobs");
-    
-    let jobsQuery = jobsRef;
+
+    // Build query with all constraints
+    const constraints = [];
     if (options.source) {
-      jobsQuery = query(jobsRef, where("source", "==", options.source));
+      constraints.push(where("source", "==", options.source));
     }
     if (options.limit) {
-      jobsQuery = query(jobsQuery, limit(options.limit));
+      constraints.push(limit(options.limit));
     }
-    
+
+    const jobsQuery = constraints.length > 0 ? query(jobsRef, ...constraints) : jobsRef;
     const snapshot = await getDocs(jobsQuery);
     
     if (snapshot.empty) {
