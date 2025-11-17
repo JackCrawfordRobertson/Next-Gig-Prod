@@ -1,7 +1,7 @@
 # fetch/run_scrapers.py
 
 import json
-from fetch import ifyoucould, linkedin
+from fetch import ifyoucould, linkedin, unjobs
 
 def fetch_jobs(job_location_pairs):
     print(f"\n⏳ Running job scrapers for {len(job_location_pairs)} job title + location combinations...")
@@ -26,15 +26,14 @@ def fetch_jobs(job_location_pairs):
                 print(f"⚠️ LinkedIn job missing correct source: {job.get('title')}")
                 job['source'] = 'linkedin'
         jobs["linkedin"].extend(linkedin_results)
-        
-        # # Temporarily disabled: UN Jobs is for international organizations, not UK-based roles
-        # # Most results are from developing countries, not matching London location filters
-        # un_results = unjobs.fetch_unjobs_parallel([job_title], [location])
-        # for job in un_results:
-        #     if job.get('source') != 'unjobs':
-        #         print(f"⚠️ UN job missing correct source: {job.get('title')}")
-        #         job['source'] = 'unjobs'
-        # jobs["unjobs"].extend(un_results)
+
+        # UN Jobs scraper - matches jobs by country
+        un_results = unjobs.fetch_unjobs_parallel([job_title], [location])
+        for job in un_results:
+            if job.get('source') != 'unjobs':
+                print(f"⚠️ UN job missing correct source: {job.get('title')}")
+                job['source'] = 'unjobs'
+        jobs["unjobs"].extend(un_results)
 
         # # Temporarily disabled: Glassdoor is blocking requests and HTML parsing is unreliable
         # # TODO: Investigate alternative Glassdoor API or scraping method

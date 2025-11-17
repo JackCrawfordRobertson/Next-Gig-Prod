@@ -38,9 +38,32 @@ RETRY_ATTEMPTS = 3  # Number of retry attempts
 
 # Location aliases for better matching
 LOCATION_ALIASES = {
-    "uk": ["united kingdom", "britain", "england", "scotland", "wales", "northern ireland"],
-    "london": ["greater london"],
+    "uk": ["united kingdom", "britain", "england", "scotland", "wales", "northern ireland", "england, united kingdom"],
+    "london": ["greater london", "london"],
     "remote": ["work from home", "wfh", "telecommute", "telework", "virtual", "home-based"],
+}
+
+# Country mapping - extracts country name from location string
+COUNTRY_MAP = {
+    "uk": ["united kingdom", "britain", "england", "scotland", "wales", "northern ireland"],
+    "united states": ["usa", "united states", "us"],
+    "canada": ["canada"],
+    "australia": ["australia"],
+    "new zealand": ["new zealand"],
+    "india": ["india"],
+    "south africa": ["south africa"],
+    "france": ["france"],
+    "germany": ["germany"],
+    "netherlands": ["netherlands"],
+    "belgium": ["belgium"],
+    "switzerland": ["switzerland"],
+    "sweden": ["sweden"],
+    "norway": ["norway"],
+    "denmark": ["denmark"],
+    "singapore": ["singapore"],
+    "hong kong": ["hong kong"],
+    "japan": ["japan"],
+    "thailand": ["thailand"],
 }
 
 # User-Agent Rotation - More diverse browser signatures
@@ -106,22 +129,56 @@ class ThreadSafeCache:
             }
 
 # Other utility functions remain the same
+def extract_country_from_location(location_str):
+    """
+    Extract the country name from a location string.
+    E.g., "London" -> "uk", "New York" -> "united states"
+
+    :param location_str: Location string (e.g., "London", "UK", "India")
+    :return: Country name or the original string if not recognized
+    """
+    location_lower = location_str.lower().strip()
+
+    # Check against our country map
+    for country, aliases in COUNTRY_MAP.items():
+        for alias in aliases:
+            if alias in location_lower:
+                return country
+
+    # If no country mapping found, return the location itself
+    return location_lower
+
 def location_matches(job_text, target_locations):
-    """Check if job matches any of the target locations"""
+    """
+    Check if job matches any of the target locations.
+    Matches by extracting the country from both the target location and job location.
+
+    :param job_text: Job location text
+    :param target_locations: List of target locations to match against
+    :return: True if job location matches any target location
+    """
     job_text = job_text.lower()
-    
+
     for location in target_locations:
-        loc_lower = location.lower()
-        
-        # Direct match
-        if loc_lower in job_text:
+        # Extract country from target location
+        target_country = extract_country_from_location(location)
+
+        # Check if target country appears in job text (direct match)
+        if target_country in job_text:
             return True
-        
-        # Check aliases
-        for alias in LOCATION_ALIASES.get(loc_lower, []):
+
+        # Check location aliases
+        for alias in LOCATION_ALIASES.get(target_country, []):
             if alias in job_text:
                 return True
-    
+
+        # Check country map aliases for the target country
+        for country, aliases in COUNTRY_MAP.items():
+            if country == target_country:
+                for alias in aliases:
+                    if alias in job_text:
+                        return True
+
     return False
 
 def extract_location_from_title(title):
