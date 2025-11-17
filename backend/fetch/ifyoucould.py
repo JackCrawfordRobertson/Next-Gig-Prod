@@ -38,7 +38,12 @@ def fetch_ifyoucould_jobs():
     options.add_argument("--disable-dev-shm-usage")
 
     print("🚀 Launching Chrome Browser...")
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    try:
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    except Exception as e:
+        print(f"❌ Chrome browser not available: {e}")
+        print("⏭️  Skipping If You Could scraper. Install Google Chrome to enable this scraper.")
+        return []
 
     jobs = []
 

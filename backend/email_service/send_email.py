@@ -1,14 +1,12 @@
 import os
 import hashlib
-import smtplib
 import firebase_admin
 from firebase_admin import credentials, firestore
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from dotenv import load_dotenv
 from collections import defaultdict
 from datetime import datetime
 import random
+from resend import Emails, Email
 
 # Load environment variables
 load_dotenv()
@@ -308,34 +306,29 @@ def generate_html_email(jobs_by_platform, job_count):
     return html
 
 def send_email_to_user(recipient_email, html_content, job_count, jobs_by_platform):
-    """Send a formatted email to a specific user with improved deliverability."""
+    """Send a formatted email to a specific user using Resend API."""
     subject = f"🚀 {job_count} Fresh Jobs - Next Gig's Latest Discoveries"
-    
-    # Get email configuration from environment variables
-    sender_email = os.getenv("EMAIL_ADDRESS")
-    email_password = os.getenv("EMAIL_PASSWORD")
-    smtp_server = os.getenv("SMTP_SERVER")
-    smtp_port = int(os.getenv("SMTP_PORT", "587"))
-    
+
+    # Get Resend API key from environment
+    resend_api_key = os.getenv("RESEND_API_KEY")
+
+    if not resend_api_key:
+        print(f"❌ RESEND_API_KEY not found in environment variables")
+        return False
+
     # The "From" address that recipients will see
     display_name = "Next Gig Careers"
     display_email = "careers@next-gig.co.uk"
-    
-    # Create a multipart message
-    msg = MIMEMultipart('alternative')
-    msg["From"] = f"{display_name} <{display_email}>"
-    msg["Reply-To"] = display_email
-    msg["To"] = recipient_email
-    msg["Subject"] = subject
-    
+    from_address = f"{display_name} <{display_email}>"
+
     # Create plain text alternative
     plain_text = f"""
 Job Opportunities ({job_count} new listings)
 
 Quick Preview:
-{' '.join([f"- {job['title']} at {job.get('company', 'Unknown Company')}" 
-           for platform in jobs_by_platform.values() 
-           for company_jobs in platform.values() 
+{' '.join([f"- {job['title']} at {job.get('company', 'Unknown Company')}"
+           for platform in jobs_by_platform.values()
+           for company_jobs in platform.values()
            for job in company_jobs])}
 
 Visit https://next-gig.co.uk to view full details and apply.
@@ -345,25 +338,47 @@ Next Gig Team
 
 Unsubscribe: https://next-gig.co.uk/unsubscribe
 """
-    msg.attach(MIMEText(plain_text, 'plain'))
-    msg.attach(MIMEText(html_content, 'html'))
-    msg['List-Unsubscribe'] = '<https://next-gig.co.uk/unsubscribe>'
-    msg['Precedence'] = 'bulk'
-    msg['Message-ID'] = f"<{generate_document_id(recipient_email + str(datetime.now()))}@next-gig.co.uk>"
 
     try:
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.starttls()
-            server.login(sender_email, email_password)
-            server.set_debuglevel(1)
-            server.sendmail(sender_email, recipient_email, msg.as_string())
-        print(f"✅ Email sent successfully to {recipient_email}!")
-        return True
-    except smtplib.SMTPException as smtp_error:
-        print(f"❌ SMTP Error sending email to {recipient_email}: {smtp_error}")
-        return False
+        # Set the API key in environment for Resend client
+        os.environ["RESEND_API_KEY"] = resend_api_key
+
+        # Create Email object using dict to handle 'from' keyword
+        email_dict = {
+            "from": from_address,
+            "to": recipient_email,
+            "subject": subject,
+            "html": html_content,
+            "text": plain_text,
+            "reply_to": display_email,
+            "headers": {
+                "List-Unsubscribe": "<https://next-gig.co.uk/unsubscribe>",
+                "Precedence": "bulk",
+                "Message-ID": f"<{generate_document_id(recipient_email + str(datetime.now()))}@next-gig.co.uk>"
+            }
+        }
+
+        email = Email(**email_dict)
+
+        # Send email using Emails client
+        client = Emails()
+        response = client.send(email)
+
+        # Response is a dict with 'id' key on success
+        if response and isinstance(response, dict) and response.get('id'):
+            print(f"✅ Email sent successfully to {recipient_email}! (ID: {response.get('id')})")
+            return True
+        elif response and hasattr(response, 'id'):
+            print(f"✅ Email sent successfully to {recipient_email}! (ID: {response.id})")
+            return True
+        else:
+            print(f"❌ Failed to send email to {recipient_email}: {response}")
+            return False
+
     except Exception as e:
-        print(f"❌ Unexpected error sending email to {recipient_email}: {e}")
+        print(f"❌ Error sending email to {recipient_email}: {e}")
+        import traceback
+        traceback.print_exc()
         return False
     
 
