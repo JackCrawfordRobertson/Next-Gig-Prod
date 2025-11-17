@@ -93,8 +93,8 @@ export default function ProfileWizard() {
                     index === form.currentStep
                       ? "bg-primary"
                       : index < form.currentStep
-                      ? "bg-gray-400"
-                      : "bg-gray-200"
+                      ? "bg-muted-foreground"
+                      : "bg-muted"
                   }`}
                   onClick={() => form.goToStep(index)}
                   aria-label={`Go to step ${index + 1}: ${step}`}

@@ -1,12 +1,7 @@
 // app/(public)/subscription/page.js
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useSession } from "next-auth/react";
-import { SubscriptionManager } from "@/lib/subscriptions/subscription-manager";
-import PayPalButton from "@/components/subscription/PayPalButton";
-import { showToast } from "@/lib/utils/toast";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -15,121 +10,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Check, Loader2, Zap, Mail, Shield } from "lucide-react";
+import { Check, Zap, Mail, Shield, ArrowRight } from "lucide-react";
 
 export default function SubscriptionPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const { data: session, status, update } = useSession();
-
-  const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState(null);
-  const [isNewUser, setIsNewUser] = useState(false);
-  const [processingPayment, setProcessingPayment] = useState(false);
-
-  useEffect(() => {
-    const urlUserId = searchParams.get("userId");
-    const urlIsNew = searchParams.get("new") === "true";
-
-    if (urlUserId) {
-      setUserId(urlUserId);
-      setIsNewUser(urlIsNew);
-    } else if (session?.user?.id) {
-      setUserId(session.user.id);
-      setIsNewUser(false);
-    } else if (status === "unauthenticated") {
-      router.push("/login");
-    }
-
-    setLoading(false);
-  }, [session, status, searchParams, router]);
-
-  // In your subscription page, update the handleSubscriptionSuccess function:
-const handleSubscriptionSuccess = async (paypalData) => {
-  try {
-    setProcessingPayment(true);
-    
-    console.log("PayPal data received:", paypalData);
-    
-    // Ensure we have the correct subscription ID format
-    const subscriptionId = paypalData.subscriptionID || paypalData.subscriptionId;
-    
-    if (!subscriptionId) {
-      throw new Error("No subscription ID received from PayPal");
-    }
-    
-    const result = await SubscriptionManager.createSubscription(userId, {
-      subscriptionId: subscriptionId,
-      orderId: paypalData.orderID || paypalData.orderId,
-      startTime: paypalData.startTime || new Date().toISOString(),
-    });
-    
-    console.log("Subscription created:", result);
-    
-    // Update the session
-    if (update) {
-      await update({
-        subscribed: true,
-        subscriptionId: result.subscriptionId,
-        onTrial: result.trialInfo.eligible,
-        trialEndDate: result.trialInfo.endDate,
-      });
-    }
-    
-    showToast({
-      title: "Welcome to Next Gig! 🎉",
-      description: result.trialInfo.eligible
-        ? `Your ${result.trialInfo.duration}-day free trial has started.`
-        : "Your subscription is now active.",
-      variant: "success",
-    });
-    
-    localStorage.removeItem("pendingUserId");
-    
-    // Redirect to dashboard
-    setTimeout(() => {
-      router.push("/dashboard");
-    }, 1500);
-    
-  } catch (error) {
-    console.error("Subscription error:", error);
-    showToast({
-      title: "Subscription Error",
-      description: error.message || "Failed to activate subscription. Please try again.",
-      variant: "destructive",
-    });
-  } finally {
-    setProcessingPayment(false);
-  }
-};
-
-  if (loading || status === "loading") {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">
-            Loading subscription options...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!userId) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="mb-4">Please log in to subscribe</p>
-              <Button onClick={() => router.push("/login")}>Go to Login</Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -194,64 +78,57 @@ const handleSubscriptionSuccess = async (paypalData) => {
             </CardContent>
           </Card>
 
-          {/* Pricing Card */}
-          <Card className="shadow-xl border-primary/20 bg-white/90 backdrop-blur-sm">
+          {/* Coming Soon Card */}
+          <Card className="shadow-xl border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
             <CardHeader className="text-center pb-4">
-              <CardTitle className="text-xl md:text-2xl">Start Your Journey</CardTitle>
-              <div className="mt-3 md:mt-4">
-                <span className="text-3xl md:text-4xl font-bold">£2.99</span>
-                <span className="text-muted-foreground text-sm md:text-base">/month</span>
+              <div className="inline-block bg-yellow-100 text-yellow-800 rounded-full px-4 py-1 text-sm font-semibold mb-4 mx-auto">
+                Coming Soon
               </div>
+              <CardTitle className="text-xl md:text-2xl">Premium Subscription</CardTitle>
               <CardDescription className="mt-2 text-sm">
-                Cancel anytime • No hidden fees
+                Enhanced features and unlimited access
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 md:space-y-6">
-              {/* Trial Badge */}
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3 md:p-4 text-center">
-                <p className="text-green-800 font-semibold text-sm md:text-base">
-                  🎁 Start with a 7-day FREE trial
-                </p>
-                <p className="text-green-700 text-xs md:text-sm mt-1">
-                  No payment required during trial
-                </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 md:p-6 text-center">
+                <div className="mb-4">
+                  <p className="text-2xl md:text-4xl font-bold text-gray-900">Free Now!</p>
+                  <p className="text-muted-foreground text-sm mt-2">
+                    Currently enjoying full access at no cost
+                  </p>
+                </div>
               </div>
 
-              {/* PayPal Button */}
-              <div className="relative">
-                {processingPayment && (
-                  <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-lg flex items-center justify-center z-10">
-                    <div className="flex flex-col items-center gap-2">
-                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                      <p className="text-sm text-muted-foreground">
-                        Processing...
-                      </p>
-                    </div>
-                  </div>
-                )}
-                <PayPalButton
-                  userId={userId}
-                  onSuccess={handleSubscriptionSuccess}
-                />
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground text-center">
+                  We're building something special. Premium features coming soon with enhanced job matching and priority support.
+                </p>
+                <Button
+                  onClick={() => router.push("/dashboard")}
+                  className="w-full"
+                >
+                  Go to Dashboard
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
               </div>
 
               {/* Trust Badges */}
               <div className="flex items-center justify-center gap-3 md:gap-4 pt-2">
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Shield className="h-3 w-3" />
-                  Secure Payment
+                  <Check className="h-3 w-3" />
+                  Free Access
                 </div>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Check className="h-3 w-3" />
-                  Instant Access
+                  <Zap className="h-3 w-3" />
+                  Always Updated
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* FAQ or Additional Info - Hidden on mobile for cleaner look */}
-        <div className="hidden md:block mt-8 text-center">
+        {/* Footer Info */}
+        <div className="mt-8 text-center">
           <p className="text-sm text-muted-foreground">
             Questions? Email us at{" "}
             <a

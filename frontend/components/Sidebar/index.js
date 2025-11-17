@@ -14,6 +14,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/providers/ThemeProvider";
+import { useTheme } from "next-themes";
 import {
   ChevronDown,
   ChevronRight,
@@ -25,6 +26,8 @@ import {
   Building,
   LogOut,
   Palette,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
@@ -51,6 +54,7 @@ export default function SidebarLayout({ children }) {
   const router = useRouter();
   const { data: session } = useSession();
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
   const [playgroundOpen, setPlaygroundOpen] = useState(true);
   const [mobileUserMenuOpen, setMobileUserMenuOpen] = useState(false);
   const [desktopUserMenuOpen, setDesktopUserMenuOpen] = useState(false);
@@ -84,26 +88,26 @@ export default function SidebarLayout({ children }) {
 
   const handleSignOut = async () => {
     try {
-      await signOut({
-        redirect: true,
-        callbackUrl: "/login?signedOut=true",
+      // Show success message first
+      showToast({
+        title: "Signing out...",
+        description: "Redirecting you to login page",
+        variant: "default",
       });
 
-      showToast({
-        title: "Success",
-        description: "Successfully signed out",
-        variant: "success",
+      // Sign out and redirect to login page
+      await signOut({
+        redirect: false,
+        callbackUrl: "/login",
       });
+
+      // Force page refresh and redirect to login
+      window.location.href = "/login";
     } catch (error) {
       console.error("Sign out error:", error);
-      showToast({
-        title: "Error",
-        description: "Failed to sign out. Please try again.",
-        variant: "destructive",
-      });
 
-      // Force redirect as fallback
-      router.push("/login?signedOut=true");
+      // Force redirect even if sign out fails
+      window.location.href = "/login";
     }
   };
   
@@ -119,8 +123,8 @@ export default function SidebarLayout({ children }) {
 
   // Desktop Sidebar Component
   const DesktopSidebar = () => (
-    <Sidebar className="h-full w-64 flex flex-col border-r max-md:hidden bg-white">
-      <SidebarContent className="flex flex-col flex-1">
+    <Sidebar className="h-full w-64 flex flex-col border-r max-md:hidden bg-background">
+      <SidebarContent className="flex flex-col flex-1 bg-background">
         {/* Company section */}
         <div className="p-6 flex justify-center items-center">
           <div>
@@ -139,7 +143,7 @@ export default function SidebarLayout({ children }) {
           <div>
             <Link
               href="/dashboard"
-              className="w-full flex items-center justify-between px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
+              className="w-full flex items-center justify-between px-4 py-2 text-foreground hover:bg-accent rounded-md transition-colors"
             >
               <div className="flex items-center">
                 <Home className="w-4 h-4 mr-3 text-gray-500" />
@@ -152,7 +156,7 @@ export default function SidebarLayout({ children }) {
           <SidebarMenuItem>
             <Link
               href="/linkedin"
-              className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
+              className="flex items-center px-4 py-2 text-foreground hover:bg-accent rounded-md transition-colors"
             >
               <Briefcase className="w-4 h-4 mr-3 text-gray-500" />
               <span>linkedin Jobs</span>
@@ -163,7 +167,7 @@ export default function SidebarLayout({ children }) {
           <SidebarMenuItem>
             <Link
               href="/ifyoucould"
-              className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
+              className="flex items-center px-4 py-2 text-foreground hover:bg-accent rounded-md transition-colors"
             >
               <Palette className="w-4 h-4 mr-3 text-gray-500" />
               <span>If You Could</span>
@@ -174,7 +178,7 @@ export default function SidebarLayout({ children }) {
           <SidebarMenuItem>
             <Link
               href="/unjobs"
-              className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
+              className="flex items-center px-4 py-2 text-foreground hover:bg-accent rounded-md transition-colors"
             >
               <Globe className="w-4 h-4 mr-3 text-gray-500" />
               <span>UN Jobs</span>
@@ -218,7 +222,7 @@ export default function SidebarLayout({ children }) {
         <div className="relative">
           <button
             onClick={() => setDesktopUserMenuOpen(!desktopUserMenuOpen)}
-            className="w-full p-4 border-t flex justify-between items-center hover:bg-gray-50"
+            className="w-full p-4 border-t flex justify-between items-center hover:bg-accent transition-colors"
           >
             <div className="flex items-center gap-3">
               <Avatar className="w-9 h-9 rounded-full border">
@@ -248,17 +252,30 @@ export default function SidebarLayout({ children }) {
 
           {/* Desktop User Dropdown */}
           {desktopUserMenuOpen && (
-            <div className="absolute bottom-full left-0 right-0 bg-white border shadow-lg rounded-t-md overflow-auto md:overflow-hidden">
+            <div className="absolute bottom-full left-0 right-0 bg-background border shadow-lg rounded-t-md overflow-auto md:overflow-hidden">
              <button
   onClick={handleProfileSettingsClick}
-  className="flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-sm border-b w-full text-left"
+  className="flex items-center gap-2 px-4 py-3 hover:bg-accent text-sm border-b w-full text-left text-foreground transition-colors"
 >
   <Settings className="w-4 h-4" />
   Profile Settings
 </button>
               <button
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent text-sm border-b text-foreground transition-colors text-left"
+              >
+                <span className="flex items-center gap-2">
+                  {theme === "dark" ? (
+                    <Sun className="w-4 h-4" />
+                  ) : (
+                    <Moon className="w-4 h-4" />
+                  )}
+                  Dark Mode
+                </span>
+              </button>
+              <button
                 onClick={handleSignOut}
-                className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-sm text-red-600"
+                className="w-full flex items-center gap-2 px-4 py-3 hover:bg-red-50 dark:hover:bg-red-950 text-sm text-red-600 transition-colors"
               >
                 <LogOut className="w-4 h-4" />
                 Sign out
@@ -272,11 +289,11 @@ export default function SidebarLayout({ children }) {
 
   // Mobile Bottom Navigation Component with dropdown
   const MobileBottomNav = () => (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t md:hidden z-50 flex justify-around items-center py-2 shadow-lg">
+    <div className="fixed bottom-0 left-0 right-0 bg-background border-t md:hidden z-50 flex justify-around items-center py-2 shadow-lg">
       <Link
         href="/dashboard"
-        className={`flex flex-col items-center ${
-          pathname === "/dashboard" ? "text-primary" : "text-gray-500"
+        className={`flex flex-col items-center transition-colors ${
+          pathname === "/dashboard" ? "text-primary" : "text-muted-foreground"
         }`}
       >
         <Home className="w-6 h-6" />
@@ -284,8 +301,8 @@ export default function SidebarLayout({ children }) {
       </Link>
       <Link
         href="/linkedin"
-        className={`flex flex-col items-center ${
-          pathname === "/linkedin" ? "text-primary" : "text-gray-500"
+        className={`flex flex-col items-center transition-colors ${
+          pathname === "/linkedin" ? "text-primary" : "text-muted-foreground"
         }`}
       >
         <Briefcase className="w-6 h-6" />
@@ -293,8 +310,8 @@ export default function SidebarLayout({ children }) {
       </Link>
       <Link
         href="/ifyoucould"
-        className={`flex flex-col items-center ${
-          pathname === "/ifyoucould" ? "text-primary" : "text-gray-500"
+        className={`flex flex-col items-center transition-colors ${
+          pathname === "/ifyoucould" ? "text-primary" : "text-muted-foreground"
         }`}
       >
         <Palette className="w-6 h-6" />
@@ -302,8 +319,8 @@ export default function SidebarLayout({ children }) {
       </Link>
       <Link
         href="/unjobs"
-        className={`flex flex-col items-center ${
-          pathname === "/unjobs" ? "text-primary" : "text-gray-500"
+        className={`flex flex-col items-center transition-colors ${
+          pathname === "/unjobs" ? "text-primary" : "text-muted-foreground"
         }`}
       >
         <Globe className="w-6 h-6" />
@@ -314,8 +331,8 @@ export default function SidebarLayout({ children }) {
       <div className="relative">
         <button
           onClick={() => setMobileUserMenuOpen(!mobileUserMenuOpen)}
-          className={`flex flex-col items-center ${
-            pathname === "/profile-settings" ? "text-primary" : "text-gray-500"
+          className={`flex flex-col items-center transition-colors ${
+            pathname === "/profile-settings" ? "text-primary" : "text-muted-foreground"
           }`}
         >
           <Avatar className="w-10 h-10">
@@ -332,17 +349,28 @@ export default function SidebarLayout({ children }) {
 
         {/* Mobile User Menu Dropdown */}
         {mobileUserMenuOpen && (
-          <div className="absolute bottom-16 right-0 bg-white border shadow-lg rounded-md overflow-auto md:overflow-hidden w-48">
+          <div className="absolute bottom-16 right-0 bg-background border shadow-lg rounded-md overflow-auto md:overflow-hidden w-48">
             <button
               onClick={handleMobileProfileSettingsClick}
-              className="flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-sm border-b w-full text-left"
+              className="flex items-center gap-2 px-4 py-3 hover:bg-accent text-sm border-b w-full text-left text-foreground transition-colors"
             >
               <Settings className="w-4 h-4" />
               Profile Settings
             </button>
             <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="w-full flex items-center gap-2 px-4 py-3 hover:bg-accent text-sm border-b text-foreground transition-colors text-left"
+            >
+              {theme === "dark" ? (
+                <Sun className="w-4 h-4" />
+              ) : (
+                <Moon className="w-4 h-4" />
+              )}
+              Dark Mode
+            </button>
+            <button
               onClick={handleSignOut}
-              className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-sm text-red-600"
+              className="w-full flex items-center gap-2 px-4 py-3 hover:bg-red-50 dark:hover:bg-red-950 text-sm text-red-600 transition-colors"
             >
               <LogOut className="w-4 h-4" />
               Sign out

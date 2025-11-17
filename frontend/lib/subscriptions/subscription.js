@@ -24,21 +24,24 @@ export async function isUserTester(email) {
 }
 
 /**
- * Comprehensive function to get a user's current subscription status
+ * FREE ACCESS MODE: All users get full access immediately
+ * Subscription logic is disabled but preserved for future use
+ *
+ * This function now returns full access for all authenticated users
  */
 export async function getUserSubscriptionStatus(userId) {
   try {
     if (!userId) {
       console.warn("getUserSubscriptionStatus called without userId");
-      return { 
-        subscribed: false, 
-        hadPreviousSubscription: false, 
-        onTrial: false, 
-        error: "No user ID provided" 
+      return {
+        subscribed: true,  // FREE MODE: Always true
+        hadPreviousSubscription: false,
+        onTrial: false,
+        hasSubscription: true
       };
     }
 
-    console.log("Checking subscription for userId:", userId);
+    console.log("FREE ACCESS MODE - Granting full access to userId:", userId);
 
     const userRef = doc(db, "users", userId);
     const userSnap = await getDoc(userRef);
@@ -46,147 +49,44 @@ export async function getUserSubscriptionStatus(userId) {
     if (!userSnap.exists()) {
       console.warn(`No user found with ID: ${userId}`);
       return {
-        subscribed: false,
+        subscribed: true,  // FREE MODE: Even without user doc, grant access
         hadPreviousSubscription: false,
         onTrial: false,
+        hasSubscription: true,
         error: "User not found"
       };
     }
 
-    let userData = userSnap.data();
+    const userData = userSnap.data();
 
-    // FIXED: Only check for tester status explicitly
-    if (userData.email) {
-      const isTester = await isUserTester(userData.email);
-
-      if (isTester) {  // ✅ FIXED: Only run for actual testers
-        const farFutureDate = new Date();
-        farFutureDate.setFullYear(farFutureDate.getFullYear() + 10);
-
-        return {
-          subscribed: true,
-          onTrial: true,
-          hasSubscription: true,
-          isOnTrial: true,
-          trialEndDate: farFutureDate.toISOString(),
-          isTester: true,
-          userData: userData,
-          subscriptionData: {
-            status: "trial",
-            plan: "tester"
-          },
-          subscriptionDocId: "tester-" + userId
-        };
-      }
-    }
-
-    // NEW: Check and handle trial expiry automatically
-    if (userData.onTrial && userData.trialEndDate) {
-      const now = new Date();
-      const trialEnd = new Date(userData.trialEndDate);
-      
-      if (now > trialEnd) {
-        console.log("Trial has expired, updating user to paid subscription");
-        
-        // Update user document to transition from trial to paid
-        await updateDoc(userRef, {
-          onTrial: false,
-          trialEndDate: null,
-          trialCompleted: true
-        });
-        
-        // Update local userData for return
-        userData = {
-          ...userData,
-          onTrial: false,
-          trialEndDate: null,
-          trialCompleted: true
-        };
-        
-        console.log("User transitioned from trial to paid subscription");
-      }
-    }
-
-    let subscriptionData = null;
-    let subscriptionDocId = null;
-
-    if (userData.subscriptionId) {
-      try {
-        const subscriptionRef = doc(db, "subscriptions", userData.subscriptionId);
-        const subSnap = await getDoc(subscriptionRef);
-
-        if (subSnap.exists()) {
-          subscriptionData = subSnap.data();
-          subscriptionDocId = userData.subscriptionId;
-          
-          // NEW: Also update subscription document if trial expired
-          if (subscriptionData.status === "trial" && userData.trialCompleted) {
-            await updateDoc(subscriptionRef, {
-              status: "active",
-              trialCompletedAt: new Date().toISOString()
-            });
-            subscriptionData = { ...subscriptionData, status: "active" };
-          }
-        }
-      } catch (err) {
-        console.warn("Error fetching subscription details:", err);
-      }
-    }
-
-    if (!subscriptionData && (userData.subscribed || userData.onTrial)) {
-      try {
-        const subQuery = query(
-          collection(db, "subscriptions"),
-          where("userId", "==", userId),
-          where("status", "in", ["active", "trial"])
-        );
-
-        const querySnap = await getDocs(subQuery);
-
-        if (!querySnap.empty) {
-          const docSnap = querySnap.docs[0];
-          subscriptionData = docSnap.data();
-          subscriptionDocId = docSnap.id;
-          
-          // NEW: Update subscription document status if trial expired
-          if (subscriptionData.status === "trial" && userData.trialCompleted) {
-            await updateDoc(docSnap.ref, {
-              status: "active",
-              trialCompletedAt: new Date().toISOString()
-            });
-            subscriptionData = { ...subscriptionData, status: "active" };
-          }
-        }
-      } catch (err) {
-        console.warn("Error querying subscriptions:", err);
-      }
-    }
-
-    console.log("User Subscription Details:", {
+    console.log("User Subscription Details (FREE MODE):", {
       exists: true,
-      userData: userData,
-      subscriptionData: subscriptionData,
-      userId
+      userId,
+      accessGranted: true
     });
 
+    // FREE ACCESS MODE: Return full access for all users
     return {
-      subscribed: !!userData.subscribed,
-      onTrial: !!userData.onTrial,
-      hasSubscription: !!userData.subscribed || !!userData.onTrial,
-      isOnTrial: !!userData.onTrial,
-      trialEndDate: userData.trialEndDate || null,
+      subscribed: true,
+      onTrial: false,
+      hasSubscription: true,
+      isOnTrial: false,
+      trialEndDate: null,
       hadPreviousSubscription: !!userData.hadPreviousSubscription,
+      isFreeAccess: true,
       userData: userData,
-      subscriptionData: subscriptionData,
-      subscriptionDocId: subscriptionDocId
+      subscriptionData: null,
+      subscriptionDocId: null
     };
   } catch (error) {
     console.error("Error checking subscription status:", error);
+    // FREE MODE: Even on error, grant access
     return {
-      subscribed: false,
+      subscribed: true,
       hadPreviousSubscription: false,
       onTrial: false,
-      hasSubscription: false,
+      hasSubscription: true,
+      isFreeAccess: true,
       error: error.message || "Unknown error checking subscription"
     };
   }

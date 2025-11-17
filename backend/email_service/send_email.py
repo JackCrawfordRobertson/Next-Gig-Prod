@@ -102,7 +102,12 @@ def get_platform_icon(platform):
     return icons.get(platform, "🌐")
 
 def get_subscribed_users():
-    users_ref = db.collection("users").where("subscribed", "==", True).stream()
+    """
+    FREE ACCESS MODE: Fetch all users with job preferences (no subscription check).
+    Previously only fetched subscribed users, now fetches all users.
+    """
+    # FREE MODE: Get ALL users with job preferences
+    users_ref = db.collection("users").stream()
     return [
         {
             "id": user.id,
@@ -111,6 +116,8 @@ def get_subscribed_users():
             "jobLocations": user.to_dict().get("jobLocations", [])
         }
         for user in users_ref
+        # Only include users with job preferences
+        if user.to_dict().get("jobTitles") and user.to_dict().get("jobLocations")
     ]
 
 def generate_html_email(jobs_by_platform, job_count):

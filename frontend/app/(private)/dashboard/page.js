@@ -325,7 +325,7 @@ useEffect(() => {
 
           {/* Search Bar with Dropdown */}
           <div className="relative">
-            <div className="relative bg-white rounded-md h-[3rem]">
+            <div className="relative bg-background border border-input rounded-md h-[3rem]">
               <Search className="absolute left-2.5 top-3.5 h-4 w-4 text-muted-foreground" />
               <Input
                 ref={searchInputRef}

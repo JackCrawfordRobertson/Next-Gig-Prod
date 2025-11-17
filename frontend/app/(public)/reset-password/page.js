@@ -90,8 +90,8 @@ export default function ResetPasswordPage() {
             <Image
               src="/nextgig-logo.svg"
               alt="Next Gig Logo"
-              width={140}
-              height={50}
+              width={100}
+              height={36}
               priority
             />
           </div>

@@ -53,7 +53,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { showToast } from "@/lib/utils/toast";
-import { SubscriptionModal } from "@/components/subscription/SubscriptionModal";
 import { isDevelopmentMode } from "@/lib/utils/environment";
 import { TesterIndicator } from '@/components/shared/TesterIndicator';
 
@@ -72,7 +71,9 @@ const profileFormSchema = z.object({
     message: "Please enter a valid email address.",
   }),
   jobTitles: z.array(z.string()).optional(),
-  jobLocations: z.array(z.string()).optional(),
+  jobLocations: z.array(z.string()).max(1, {
+    message: "You can only select 1 location.",
+  }).optional(),
   address: z
     .object({
       firstLine: z.string().optional(),
@@ -654,7 +655,7 @@ export default function ProfileSettingsPage() {
           onValueChange={handleTabChange}
           className="w-full flex flex-col "
         >
-          <TabsList className="grid w-full grid-cols-4 overflow-x-auto ">
+          <TabsList className="grid w-full grid-cols-3 overflow-x-auto ">
             <TabsTrigger
               value="general"
               className="text-xs sm:text-sm px-1 sm:px-3"
@@ -666,13 +667,6 @@ export default function ProfileSettingsPage() {
               className="text-xs sm:text-sm px-1 sm:px-3"
             >
               Address
-            </TabsTrigger>
-            <TabsTrigger
-              value="subscription"
-              className="text-xs sm:text-sm px-1 sm:px-3"
-            >
-              <span className="hidden sm:inline">Subscription</span>
-              <span className="inline sm:hidden">Subs</span>
             </TabsTrigger>
             <TabsTrigger
               value="privacy"
@@ -718,7 +712,7 @@ export default function ProfileSettingsPage() {
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>First Name</FormLabel>
-                                  <FormControl className="bg-white">
+                                  <FormControl>
                                     <Input
                                       placeholder="Enter your first name"
                                       {...field}
@@ -735,7 +729,7 @@ export default function ProfileSettingsPage() {
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>Last Name</FormLabel>
-                                  <FormControl className="bg-white">
+                                  <FormControl>
                                     <Input
                                       placeholder="Enter your last name"
                                       {...field}
@@ -752,7 +746,7 @@ export default function ProfileSettingsPage() {
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>Email</FormLabel>
-                                  <FormControl className="bg-white">
+                                  <FormControl>
                                     <Input
                                       type="email"
                                       placeholder="name@example.com"
@@ -816,7 +810,7 @@ export default function ProfileSettingsPage() {
                               <div className="flex flex-col sm:flex-row gap-2">
                                 <Input
                                   placeholder="Add a job title"
-                                  className="bg-white flex-1"
+                                  className="flex-1"
                                   id="newJobTitle"
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") {
@@ -862,7 +856,7 @@ export default function ProfileSettingsPage() {
                           name="jobLocations"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Job Locations</FormLabel>
+                              <FormLabel>Job Location ({field.value?.length || 0}/1)</FormLabel>
                               <div className="flex flex-wrap gap-2 mb-2">
                                 {field.value?.map((location, index) => (
                                   <div
@@ -888,16 +882,18 @@ export default function ProfileSettingsPage() {
                               </div>
                               <div className="flex flex-col sm:flex-row gap-2">
                                 <Input
-                                  className="bg-white flex-1"
+                                  className="flex-1"
                                   placeholder="Add a job location"
                                   id="newJobLocation"
+                                  disabled={field.value?.length >= 1}
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") {
                                       e.preventDefault();
                                       const value = e.target.value.trim();
                                       if (
                                         value &&
-                                        !field.value.includes(value)
+                                        !field.value.includes(value) &&
+                                        field.value.length < 1
                                       ) {
                                         field.onChange([...field.value, value]);
                                         e.target.value = "";
@@ -909,11 +905,12 @@ export default function ProfileSettingsPage() {
                                   type="button"
                                   variant="outline"
                                   className="sm:w-auto w-full"
+                                  disabled={field.value?.length >= 1}
                                   onClick={() => {
                                     const input =
                                       document.getElementById("newJobLocation");
                                     const value = input.value.trim();
-                                    if (value && !field.value.includes(value)) {
+                                    if (value && !field.value.includes(value) && field.value.length < 1) {
                                       field.onChange([...field.value, value]);
                                       input.value = "";
                                     }
@@ -923,7 +920,7 @@ export default function ProfileSettingsPage() {
                                 </Button>
                               </div>
                               <FormDescription>
-                                Press Enter or click Add to add a job location
+                                Add 1 location you're interested in
                               </FormDescription>
                               <FormMessage />
                             </FormItem>
@@ -966,7 +963,7 @@ export default function ProfileSettingsPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Address Line 1</FormLabel>
-                            <FormControl className="bg-white">
+                            <FormControl>
                               <Input placeholder="123 Main Street" {...field} />
                             </FormControl>
                             <FormMessage />
@@ -980,7 +977,7 @@ export default function ProfileSettingsPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Address Line 2</FormLabel>
-                            <FormControl className="bg-white">
+                            <FormControl>
                               <Input
                                 placeholder="Apartment, suite, etc. (optional)"
                                 {...field}
@@ -998,7 +995,7 @@ export default function ProfileSettingsPage() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>City</FormLabel>
-                              <FormControl className="bg-white">
+                              <FormControl>
                                 <Input placeholder="London" {...field} />
                               </FormControl>
                               <FormMessage />
@@ -1012,7 +1009,7 @@ export default function ProfileSettingsPage() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Postcode</FormLabel>
-                              <FormControl className="bg-white">
+                              <FormControl>
                                 <Input placeholder="SW1A 1AA" {...field} />
                               </FormControl>
                               <FormMessage />
@@ -1036,206 +1033,6 @@ export default function ProfileSettingsPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="subscription" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Subscription Management</CardTitle>
-                  <CardDescription>
-                    Manage your subscription plan and billing information
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4 overflow-auto">
-                  {isLoading ? (
-                    <div className="border rounded-lg p-4 text-center">
-                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto"></div>
-                      <p className="mt-4 text-muted-foreground">
-                        Loading subscription information...
-                      </p>
-                    </div>
-                  ) : error ? (
-                    <div className="border rounded-lg p-6 text-center bg-red-50">
-                      <h3 className="font-semibold mb-2 text-red-600">
-                        Error Loading Subscription
-                      </h3>
-                      <p className="text-muted-foreground mb-4">{error}</p>
-                      <Button onClick={() => fetchUserData()}>Try Again</Button>
-                    </div>
-                  ) : subscriptionData &&
-                    subscriptionData.status === "cancelled" ? (
-                    <div className="border rounded-lg p-4 sm:p-8 text-center">
-                      <h3 className="font-semibold mb-2 sm:mb-4">
-                        Subscription Cancelled
-                      </h3>
-                      <p className="text-muted-foreground mb-4 sm:mb-6">
-                        Your subscription has been cancelled. Reactivate to
-                        continue enjoying our services.
-                      </p>
-                      <Button onClick={() => handleResubscribe()}>
-                        Resubscribe Now
-                      </Button>
-                    </div>
-                  ) : subscriptionData ? (
-                    <>
-                      <div className="border rounded-lg p-4 bg-white">
-                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2">
-                          <h3 className="font-semibold mb-1 sm:mb-0">
-                            Current Plan
-                          </h3>
-                          <span
-                            className={`text-sm rounded-full px-3 py-1 w-fit ${
-                              subscriptionData.status === "trial"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-green-100 text-green-800"
-                            }`}
-                          >
-                            {subscriptionData.status === "trial"
-                              ? "Trial"
-                              : "Active"}
-                          </span>
-                        </div>
-                        <p className="text-2xl font-bold capitalize">
-                          {subscriptionData.plan} Plan
-                        </p>
-                        <p className="text-muted-foreground">
-                          {subscriptionData.currency === "GBP" ? "£" : ""}
-                          {subscriptionData.price} per month
-                        </p>
-
-                        {subscriptionData.status === "trial" &&
-                          subscriptionData.trialEndDate && (
-                            <TrialProgressBar
-                              startDate={subscriptionData.startDate}
-                              endDate={subscriptionData.trialEndDate}
-                              trialEligibility={
-                                subscriptionData.trialEligibility
-                              }
-                            />
-                          )}
-
-                        <p className="text-muted-foreground text-sm mt-4">
-                          Subscription started on{" "}
-                          {(() => {
-                            try {
-                              return new Date(
-                                subscriptionData.startDate
-                              ).toLocaleDateString("en-GB");
-                            } catch (e) {
-                              return "N/A";
-                            }
-                          })()}
-                        </p>
-                        <p className="text-muted-foreground text-sm">
-                          {subscriptionData.status === "trial" &&
-                          subscriptionData.trialEndDate
-                            ? `Trial ends on ${new Date(
-                                subscriptionData.trialEndDate
-                              ).toLocaleDateString("en-GB")}`
-                            : `Next billing date: ${(() => {
-                                try {
-                                  const nextBillingDate = new Date(
-                                    subscriptionData.startDate
-                                  );
-                                  nextBillingDate.setMonth(
-                                    nextBillingDate.getMonth() + 1
-                                  );
-                                  return nextBillingDate.toLocaleDateString(
-                                    "en-GB"
-                                  );
-                                } catch (e) {
-                                  return "N/A";
-                                }
-                              })()}`}
-                        </p>
-                      </div>
-
-                      <div className="border rounded-lg p-4 bg-white">
-                        <h3 className="font-semibold mb-2">Payment Method</h3>
-                        <div className="flex items-center gap-2">
-                          <div className="bg-gray-100 rounded p-1">
-                            {subscriptionData.paymentMethod === "paypal" ? (
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="text-blue-600"
-                              >
-                                <path d="M22 8c0 3.5-2 4.5-3.5 4.5h-4c-1.5 0-2.5-1-2.5-2.5s1-2.5 2.5-2.5H19" />
-                                <path d="M22 2v3" />
-                                <path d="M17 15h-5.5c-1.5 0-2.5-1-2.5-2.5 0-1.5 1-2.5 2.5-2.5H17" />
-                                <path d="M22 9v6" />
-                              </svg>
-                            ) : (
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <rect
-                                  width="20"
-                                  height="14"
-                                  x="2"
-                                  y="5"
-                                  rx="2"
-                                />
-                                <line x1="2" x2="22" y1="10" y2="10" />
-                              </svg>
-                            )}
-                          </div>
-                          <div>
-                            <p className="font-medium capitalize">
-                              {subscriptionData.paymentMethod || "PayPal"}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {subscriptionData.subscriptionId
-                                ? `ID: ${subscriptionData.subscriptionId.substring(
-                                    0,
-                                    8
-                                  )}...`
-                                : "Subscription ID not available"}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="border rounded-lg p-4 sm:p-8 text-center">
-                      <h3 className="font-semibold mb-2 sm:mb-4">
-                        No Active Subscription
-                      </h3>
-                      <p className="text-muted-foreground mb-4 sm:mb-6">
-                        You don't currently have an active subscription.
-                      </p>
-                      <Button onClick={handleSubscribe}>Subscribe Now</Button>
-                    </div>
-                  )}
-                </CardContent>
-
-                {subscriptionData &&
-                  subscriptionData.status !== "cancelled" && (
-                    <CardFooter className="flex justify-between">
-                      <Button
-                        variant="destructive"
-                        onClick={handleCancelSubscription}
-                        className="w-full sm:w-auto"
-                      >
-                        Cancel Subscription
-                      </Button>
-                    </CardFooter>
-                  )}
-              </Card>
-            </TabsContent>
 
             <TabsContent value="privacy" className="space-y-4">
               <Card className="flex flex-col">
@@ -1382,12 +1179,6 @@ export default function ProfileSettingsPage() {
             </TabsContent>
           </div>
         </Tabs>
-        <SubscriptionModal
-  isOpen={subscriptionModalOpen}
-  onClose={() => setSubscriptionModalOpen(false)}
-  userId={session?.user?.id}
-  onSuccess={handleProfileSubscriptionSuccess} 
-/>
         {/* Render the ExistingSubscriptionsModal with the needed props */}
         <ExistingSubscriptionsModal
           existingSubscriptions={existingSubscriptions}

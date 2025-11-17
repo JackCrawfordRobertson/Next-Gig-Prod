@@ -5,14 +5,20 @@ def get_unmatched_jobs():
     return [job.to_dict() for job in unmatched_jobs_query.stream()]
 
 def get_active_users():
-    # Fetch subscribed users with job preferences
-    users_ref = db.collection("users").where("subscribed", "==", True)
+    """
+    FREE ACCESS MODE: Fetch all users with job preferences (no subscription check).
+    Previously only fetched subscribed users, now fetches all users.
+    """
+    # FREE MODE: Get ALL users with job preferences
+    users_ref = db.collection("users").stream()
     return [
         {
             "id": user.id,
             **user.to_dict()
-        } 
-        for user in users_ref.stream()
+        }
+        for user in users_ref
+        # Only include users with job preferences
+        if user.to_dict().get("jobTitles") and user.to_dict().get("jobLocations")
     ]
 
 def filter_jobs_for_user(user, unmatched_jobs):

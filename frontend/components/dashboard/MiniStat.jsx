@@ -19,24 +19,24 @@ export default function MiniStat({ title, count }) {
     }
   };
 
-  // Choose background color based on title
+  // Choose background color based on title - supports both light and dark mode
   const getBgColor = (title) => {
     switch (title) {
       case "LinkedIn":
-        return "bg-blue-100";
+        return "bg-blue-100 dark:bg-blue-900/30";
       case "Workable":
-        return "bg-purple-100";
+        return "bg-purple-100 dark:bg-purple-900/30";
       case "If You Could":
-        return "bg-green-100";
+        return "bg-green-100 dark:bg-green-900/30";
       case "UN Jobs":
-        return "bg-orange-100";
+        return "bg-orange-100 dark:bg-orange-900/30";
       default:
-        return "bg-blue-100";
+        return "bg-blue-100 dark:bg-blue-900/30";
     }
   };
 
   return (
-    <Card className="bg-white shadow-sm">
+    <Card className="bg-card shadow-sm hover:shadow-md transition-shadow">
       <CardContent className="p-3 flex flex-col items-center justify-center">
         <div
           className={`w-8 h-8 rounded-full ${getBgColor(
@@ -45,7 +45,7 @@ export default function MiniStat({ title, count }) {
         >
           {getIcon(title)}
         </div>
-        <p className="text-2xl font-semibold">{count}</p>
+        <p className="text-2xl font-semibold text-foreground">{count}</p>
         <p className="text-xs text-muted-foreground text-center">{title}</p>
       </CardContent>
     </Card>

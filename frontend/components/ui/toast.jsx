@@ -28,9 +28,9 @@ const toastVariants = cva(
       variant: {
         default: "border bg-background text-foreground",
         destructive: "destructive group border-destructive bg-destructive text-destructive-foreground",
-        success: "success group border-green-500 bg-green-100 text-green-800",
-        warning: "warning group border-yellow-500 bg-yellow-100 text-yellow-800",
-        info: "info group border-blue-500 bg-blue-100 text-blue-800",
+        success: "success group border-green-600 dark:border-green-500 bg-green-50 dark:bg-green-950 text-green-900 dark:text-green-100",
+        warning: "warning group border-amber-600 dark:border-amber-500 bg-amber-50 dark:bg-amber-950 text-amber-900 dark:text-amber-100",
+        info: "info group border-blue-600 dark:border-blue-500 bg-blue-50 dark:bg-blue-950 text-blue-900 dark:text-blue-100",
       },
     },
     defaultVariants: {
@@ -63,9 +63,9 @@ const ToastAction = React.forwardRef(({ className, ...props }, ref) => (
     ref={ref}
     className={cn(
       "inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium transition-colors hover:bg-secondary focus:outline-none focus:ring-1 focus:ring-ring disabled:pointer-events-none disabled:opacity-50 group-[.destructive]:border-muted/40 group-[.destructive]:hover:border-destructive/30 group-[.destructive]:hover:bg-destructive group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive",
-      "group-[.success]:border-green-500 group-[.success]:text-green-800 group-[.success]:hover:bg-green-100",
-      "group-[.warning]:border-yellow-500 group-[.warning]:text-yellow-800 group-[.warning]:hover:bg-yellow-100",
-      "group-[.info]:border-blue-500 group-[.info]:text-blue-800 group-[.info]:hover:bg-blue-100",
+      "group-[.success]:border-green-600 dark:group-[.success]:border-green-500 group-[.success]:text-green-900 dark:group-[.success]:text-green-100 group-[.success]:hover:bg-green-100 dark:group-[.success]:hover:bg-green-900",
+      "group-[.warning]:border-amber-600 dark:group-[.warning]:border-amber-500 group-[.warning]:text-amber-900 dark:group-[.warning]:text-amber-100 group-[.warning]:hover:bg-amber-100 dark:group-[.warning]:hover:bg-amber-900",
+      "group-[.info]:border-blue-600 dark:group-[.info]:border-blue-500 group-[.info]:text-blue-900 dark:group-[.info]:text-blue-100 group-[.info]:hover:bg-blue-100 dark:group-[.info]:hover:bg-blue-900",
       className
     )}
     {...props} />

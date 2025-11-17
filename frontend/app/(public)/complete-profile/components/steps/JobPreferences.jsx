@@ -24,7 +24,7 @@ export default function JobPreferences({
       {/* Job Titles */}
       <div>
         <Label htmlFor="job-search" className="text-xs">
-          Job Titles You Want to Search ({jobTitles.length}/3) <span aria-hidden="true">*</span>
+          Job titles you want to search ({jobTitles.length}/3) <span aria-hidden="true">*</span>
         </Label>
         <div className="flex space-x-2">
           <Input
@@ -52,8 +52,8 @@ export default function JobPreferences({
             <Plus className="w-4 h-4" />
           </Button>
         </div>
-        <p id="job-titles-hint" className="text-xs text-gray-500 mt-1">
-          Add up to 3 job titles you're interested in.
+        <p id="job-titles-hint" className="text-xs text-muted-foreground mt-1">
+          Add up to 3 job you're interested in.
         </p>
         
         <div 
@@ -63,7 +63,7 @@ export default function JobPreferences({
           {jobTitles.map((title) => (
             <div
               key={title}
-              className="flex items-center space-x-1 bg-gray-200 px-2 py-0.5 rounded text-xs"
+              className="flex items-center space-x-1 bg-secondary px-2 py-0.5 rounded text-xs"
             >
               <span>{title}</span>
               <button 
@@ -81,7 +81,7 @@ export default function JobPreferences({
       {/* Job Locations */}
       <div>
         <Label htmlFor="location-input" className="text-xs">
-          Locations You Want to Search <span aria-hidden="true">*</span>
+          Location you want to search ({jobLocations.length}/1) <span aria-hidden="true">*</span>
         </Label>
         <div className="flex space-x-2">
           <Input
@@ -97,17 +97,21 @@ export default function JobPreferences({
             }}
             className="h-10"
             aria-required="true"
+            disabled={jobLocations.length >= 1}
           />
           <Button
             type="button"
             onClick={onAddJobLocation}
             className="h-10 px-3"
             aria-label="Add location"
-            disabled={!locationInput.trim()}
+            disabled={!locationInput.trim() || jobLocations.length >= 1}
           >
             <Plus className="w-4 h-4" />
           </Button>
         </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Add 1 location you're interested in.
+        </p>
         
         <div 
           className="flex flex-wrap gap-1 mt-2"
@@ -116,7 +120,7 @@ export default function JobPreferences({
           {jobLocations.map((loc) => (
             <div
               key={loc}
-              className="flex items-center space-x-1 bg-gray-200 px-2 py-0.5 rounded text-xs"
+              className="flex items-center space-x-1 bg-secondary px-2 py-0.5 rounded text-xs"
             >
               <span>{loc}</span>
               <button 

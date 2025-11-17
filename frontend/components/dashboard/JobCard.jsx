@@ -24,12 +24,12 @@ export default function JobCard({ job, compact = false, onClick }) {
   if (compact) {
     return (
       <Card
-        className="hover:shadow-md transition-shadow bg-white cursor-pointer"
+        className="hover:shadow-md transition-shadow bg-card cursor-pointer"
         onClick={onClick}
       >
         <CardContent className="p-4">
           <div className="flex justify-between items-start mb-2">
-            <h3 className="font-medium text-sm line-clamp-1">{title}</h3>
+            <h3 className="font-medium text-sm line-clamp-1 text-foreground">{title}</h3>
             <Badge variant="outline" className="text-xs">
               {source}
             </Badge>
@@ -47,12 +47,12 @@ export default function JobCard({ job, compact = false, onClick }) {
 
   return (
     <Card
-      className="hover:shadow-md transition-shadow bg-white cursor-pointer"
+      className="hover:shadow-md transition-shadow bg-card cursor-pointer"
       onClick={onClick}
     >
       <CardContent className="p-4">
         <div className="flex justify-between items-start mb-3">
-          <h3 className="font-medium">{title}</h3>
+          <h3 className="font-medium text-foreground">{title}</h3>
           <Badge variant="outline">{source}</Badge>
         </div>
 

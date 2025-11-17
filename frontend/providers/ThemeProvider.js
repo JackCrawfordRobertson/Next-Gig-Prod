@@ -12,5 +12,14 @@ export function ThemeProvider({ children }) {
 
   if (!mounted) return <>{children}</>;
 
-  return <NextThemesProvider attribute="class">{children}</NextThemesProvider>;
+  return (
+    <NextThemesProvider
+      attribute="class"
+      defaultTheme="light"
+      enableSystem={true}
+      storageKey="next-gig-theme"
+    >
+      {children}
+    </NextThemesProvider>
+  );
 }

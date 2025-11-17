@@ -211,6 +211,17 @@ export function useProfileForm() {
 
   const addJobLocation = () => {
     const loc = formState.locationInput.trim();
+
+    // Maximum of 1 location
+    if (formState.jobLocations.length >= 1) {
+      showToast({
+        title: "Maximum Reached",
+        description: "You can add only 1 location.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (loc && !formState.jobLocations.includes(loc)) {
       setFormState({
         ...formState,
@@ -270,27 +281,25 @@ export function useProfileForm() {
     setLoading(true);
   
     try {
-      // Check if user is a tester
-      const isATester = await isUserTester(formState.email.toLowerCase());
-      
       // Hash password
       const hashedPassword = await hash(formState.password, 12);
-      
+
       // Create user in Firestore directly
       const usersRef = collection(db, "users");
-      
+
       // Check if email already exists
       const q = query(usersRef, where("email", "==", formState.email.toLowerCase()));
       const existingUserSnapshot = await getDocs(q);
-      
+
       if (!existingUserSnapshot.empty) {
         throw new Error("Email already registered");
       }
-      
+
       // Create new user document
       const newUserRef = doc(collection(db, "users"));
       const userId = newUserRef.id;
-      
+
+      // FREE ACCESS MODE: All users get immediate access
       const userData = {
         email: formState.email.toLowerCase(),
         password: hashedPassword,
@@ -301,9 +310,9 @@ export function useProfileForm() {
         profilePicture: formState.profilePicture,
         jobTitles: formState.jobTitles,
         jobLocations: formState.jobLocations,
-        subscribed: isATester,
-        onTrial: isATester,
-        isTester: isATester,
+        subscribed: true,  // FREE MODE: All users get full access
+        onTrial: false,
+        isTester: false,
         userIP: formState.userIP || "unknown",
         deviceFingerprint: formState.deviceFingerprint || "unknown",
         createdAt: new Date().toISOString(),
@@ -318,36 +327,21 @@ export function useProfileForm() {
         email: formState.email,
         password: formState.password,
       });
-      
+
       if (signInResult?.error) {
         throw new Error("Failed to sign in after registration");
       }
-      
-      // Show success message
-      if (isATester) {
-        showToast({
-          title: "Tester Account Created",
-          description: "Your tester account has been created with full access.",
-          variant: "success",
-        });
-        
-        // Wait for session to be established
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        router.push("/dashboard");
-      } else {
-        showToast({
-          title: "Account Created",
-          description: "Please set up a subscription to continue.",
-          variant: "success",
-        });
-        
-        // Store user ID for subscription page
-        localStorage.setItem('pendingUserId', userId);
-        
-        // Wait for session to be established
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        router.push(`/subscription?userId=${userId}&new=true`);
-      }
+
+      // FREE ACCESS MODE: All users get immediate full access
+      showToast({
+        title: "Account Created Successfully!",
+        description: "You now have full access to Next Gig.",
+        variant: "success",
+      });
+
+      // Wait for session to be established
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      router.push("/dashboard");
       
     } catch (error) {
       console.error("Registration error:", error);

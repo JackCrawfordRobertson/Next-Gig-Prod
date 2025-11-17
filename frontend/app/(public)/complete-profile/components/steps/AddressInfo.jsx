@@ -27,7 +27,7 @@ export default function AddressInfo({
         </div>
         <div className="col-span-2">
           <Label htmlFor="address-line2" className="text-xs">
-            Address Line 2 <span className="text-gray-400">(Optional)</span>
+            Address Line 2 <span className="text-muted-foreground">(Optional)</span>
           </Label>
           <Input
             id="address-line2"

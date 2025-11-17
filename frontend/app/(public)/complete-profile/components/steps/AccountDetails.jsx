@@ -89,7 +89,7 @@ export default function AccountDetails({
       </div>
       
       {/* Password help text */}
-      <div className="text-xs text-gray-500">
+      <div className="text-xs text-muted-foreground">
         <p>Password must contain:</p>
         <ul className="list-disc pl-5 mt-1 space-y-0.5">
           <li>At least 8 characters</li>

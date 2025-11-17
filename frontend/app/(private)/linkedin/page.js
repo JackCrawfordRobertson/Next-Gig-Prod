@@ -276,8 +276,8 @@ export default function LinkedInPage() {
         <div className="grid grid-cols-2 gap-6 h-28">
           <Card className="flex items-center justify-between px-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                <Building className="w-6 h-6 text-blue-600" />
+              <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                <Building className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Jobs</p>
@@ -285,11 +285,11 @@ export default function LinkedInPage() {
               </div>
             </div>
           </Card>
-          
+
           <Card className="flex items-center justify-between px-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-                <CheckCircle2 className="w-6 h-6 text-green-600" />
+              <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Applied</p>
@@ -307,7 +307,7 @@ export default function LinkedInPage() {
           <CardContent className="px-6 pt-0 pb-3">
             {jobs.length > 0 ? (
               <>
-                <div className="w-full h-3 bg-gray-100 rounded-full mb-2">
+                <div className="w-full h-3 bg-muted rounded-full mb-2">
                   <div
                     className="h-3 bg-chart-1 rounded-full"
                     style={{
@@ -462,10 +462,10 @@ export default function LinkedInPage() {
           <div className="grid grid-cols-1 gap-4">
             {/* Job Activity Stats Cards */}
             <div className="grid grid-cols-2 gap-3">
-              <Card className="bg-white shadow-sm">
+              <Card className="bg-card shadow-sm">
                 <CardContent className="p-3 flex flex-col items-center justify-center">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mb-1">
-                    <Building className="w-4 h-4 text-blue-600" />
+                  <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-1">
+                    <Building className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                   </div>
                   <p className="text-2xl font-semibold">{jobs.length}</p>
                   <p className="text-xs text-muted-foreground text-center">
@@ -473,11 +473,11 @@ export default function LinkedInPage() {
                   </p>
                 </CardContent>
               </Card>
-  
-              <Card className="bg-white shadow-sm">
+
+              <Card className="bg-card shadow-sm">
                 <CardContent className="p-3 flex flex-col items-center justify-center">
-                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mb-1">
-                    <CheckCircle2 className="w-4 h-4 text-green-600" />
+                  <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-1">
+                    <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
                   </div>
                   <p className="text-2xl font-semibold">
                     {jobs.filter((job) => job.has_applied).length}
@@ -594,7 +594,7 @@ export default function LinkedInPage() {
               <CardContent className="px-3 pb-3 pt-0">
                 {jobs.length > 0 ? (
                   <>
-                    <div className="w-full h-3 bg-gray-100 rounded-full mb-2">
+                    <div className="w-full h-3 bg-muted rounded-full mb-2">
                       <div
                         className="h-3 bg-primary rounded-full"
                         style={{

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTheme } from "next-themes";
 import gsap from "gsap";
 import { ARROW_PATHS_DESK } from "./arrowsData";
 
@@ -8,14 +9,29 @@ const SVG_VIEWBOX = "0 0 1822.91 1033.12";
 
 const getRandomStrokeWidth = () => Math.floor(Math.random() * 25) + 15;
 
-const ArrowSVG = ({ id }) => {
+// Map colors to lighter versions for dark mode
+const getArrowColor = (originalColor, isDark) => {
+    if (!isDark) return originalColor;
+
+    const colorMap = {
+        "#1E90FF": "#60A5FA",  // Dodger Blue -> Light Blue
+        "#ff008c": "#FF5DA8",  // Deep Pink -> Light Pink
+        "#D6FF33": "#EFEF1E",  // Chartreuse -> Bright Yellow
+        "#FF8C00": "#FFAA33",  // Dark Orange -> Light Orange
+    };
+
+    return colorMap[originalColor] || originalColor;
+};
+
+const ArrowSVG = ({ id, isDark }) => {
     const { body, head, color } = ARROW_PATHS_DESK[id] || {};
     if (!body || !head) return null; // Prevent errors if ID is missing
 
     const [strokeWidth, setStrokeWidth] = useState(20); // Default width for SSR
+    const arrowColor = getArrowColor(color, isDark);
 
     useEffect(() => {
-        setStrokeWidth(getRandomStrokeWidth()); 
+        setStrokeWidth(getRandomStrokeWidth());
     }, []);
 
     return (
@@ -23,8 +39,8 @@ const ArrowSVG = ({ id }) => {
             <path
                 id={`${id}_body`}
                 fill="none"
-                stroke={color}
-                strokeWidth={strokeWidth} 
+                stroke={arrowColor}
+                strokeWidth={strokeWidth}
                 strokeLinecap="round"
                 strokeMiterlimit="10"
                 strokeDasharray="1000"
@@ -34,8 +50,8 @@ const ArrowSVG = ({ id }) => {
             <path
                 id={`${id}_head`}
                 fill="none"
-                stroke={color}
-                strokeWidth={strokeWidth} 
+                stroke={arrowColor}
+                strokeWidth={strokeWidth}
                 strokeLinecap="round"
                 strokeMiterlimit="10"
                 strokeDasharray="500"
@@ -49,9 +65,31 @@ const ArrowSVG = ({ id }) => {
 export default function ArrowsBackground() {
   const arrowsRef = useRef(null);
   const animationsRef = useRef([]);
+  const bgRef = useRef(null);
+  const { theme, systemTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // Get the actual theme (handle system preference)
+  const isDark = mounted && (theme === "dark" || (theme === "system" && systemTheme === "dark"));
 
   useEffect(() => {
-      if (!arrowsRef.current) return;
+    setMounted(true);
+  }, []);
+
+  // Update background based on theme - only for dark mode
+  useEffect(() => {
+    if (!bgRef.current || !mounted) return;
+
+    if (isDark) {
+      bgRef.current.style.backgroundColor = "hsl(222.2, 84%, 4.9%)";
+    } else {
+      // Let Tailwind handle light mode through bg-white class
+      bgRef.current.style.backgroundColor = "";
+    }
+  }, [isDark, mounted]);
+
+  useEffect(() => {
+      if (!arrowsRef.current || !mounted) return;
 
       // Grab all bodies and heads
       const arrowBodies = arrowsRef.current.querySelectorAll("path[id$='_body']");
@@ -64,7 +102,7 @@ export default function ArrowsBackground() {
 
       // Main timeline
       const timeline = gsap.timeline();
-      
+
       // Store the timeline for cleanup
       animationsRef.current.push(timeline);
 
@@ -83,18 +121,18 @@ export default function ArrowsBackground() {
           duration: 4,
           ease: "power2.inOut",
           stagger: {
-            each: staggerTime, 
+            each: staggerTime,
             grid: "auto",
             from: "random",
             onComplete: function() {
               // Safely animate the head only if component is still mounted
               if (!arrowsRef.current) return;
-              
+
               // For each body that finishes, find its matching head
-              const body = this.targets()[0]; 
+              const body = this.targets()[0];
               const headId = body.id.replace("_body","_head");
               const headEl = arrowsRef.current.querySelector(`#${headId}`);
-              
+
               // Only proceed if we found the head element
               if (headEl) {
                 const headAnim = gsap.to(headEl, {
@@ -103,7 +141,7 @@ export default function ArrowsBackground() {
                   duration: 1,
                   ease: "power2.inOut"
                 });
-                
+
                 // Store for cleanup
                 animationsRef.current.push(headAnim);
               }
@@ -121,15 +159,21 @@ export default function ArrowsBackground() {
         });
         animationsRef.current = [];
       };
-  }, []);
+  }, [mounted]);
 
   return (
-      <div ref={arrowsRef} className="fixed inset-0 w-full h-full bg-transparent z-[-1]">
-          <svg viewBox={SVG_VIEWBOX} width="100%" height="100%">
-              {Object.keys(ARROW_PATHS_DESK).map((id) => (
-                  <ArrowSVG key={id} id={id} />
-              ))}
-          </svg>
+      <div
+        ref={bgRef}
+        className="fixed inset-0 w-full h-full transition-colors duration-300 z-[-1] bg-white dark:bg-slate-950"
+        style={{}}
+      >
+          <div ref={arrowsRef} className="w-full h-full">
+            <svg viewBox={SVG_VIEWBOX} width="100%" height="100%">
+                {Object.keys(ARROW_PATHS_DESK).map((id) => (
+                    <ArrowSVG key={id} id={id} isDark={isDark} />
+                ))}
+            </svg>
+          </div>
       </div>
   );
 }

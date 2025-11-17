@@ -39,7 +39,18 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        throw new Error(result.error);
+        // Map NextAuth error codes to user-friendly messages
+        if (result.error === "CredentialsSignin") {
+          setError("Invalid email or password. Please try again.");
+        } else {
+          setError(result.error || "Login failed. Please try again.");
+        }
+        return;
+      }
+
+      if (!result?.ok) {
+        setError("Login failed. Please try again.");
+        return;
       }
 
       showToast({
@@ -52,7 +63,7 @@ export default function LoginPage() {
     } catch (error) {
       console.error("Login error:", error);
       setError(
-        "Login failed. Please check your email and password and try again."
+        "An unexpected error occurred. Please try again."
       );
     } finally {
       setIsLoading(false);
@@ -105,10 +116,10 @@ export default function LoginPage() {
   if (showResetForm) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-transparent p-6">
-        <div className="w-full max-w-md shadow-lg bg-white rounded-lg p-6">
+        <div className="w-full max-w-md shadow-lg bg-background rounded-lg p-6 border border-border">
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold">Reset Password</h2>
-            <p className="text-gray-500 text-sm">
+            <h2 className="text-2xl font-bold text-foreground">Reset Password</h2>
+            <p className="text-muted-foreground text-sm">
               Enter your email to receive a password reset link
             </p>
           </div>
@@ -155,18 +166,19 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-transparent p-6">
-<div className="w-full max-w-md shadow-lg bg-white/70 backdrop-blur-md rounded-lg p-6 border border-white/20">
+<div className="w-full max-w-md shadow-lg bg-background/80 dark:bg-background/95 backdrop-blur-md rounded-lg p-6 border border-border">
 <div className="text-center mb-6">
           <div className="flex justify-center">
             <Image
               src="/nextgig-logo.svg"
               alt="Next Gig Logo"
-              width={140}
-              height={50}
+              width={100}
+              height={36}
               priority
+              style={{ width: "200px", height: "auto" }}
             />
           </div>
-          <p className="text-gray-700 mt-2">
+          <p className="text-foreground mt-2">
             Dream gigs delivered. Not searched for.
           </p>
         </div>
@@ -223,12 +235,12 @@ export default function LoginPage() {
               Create Account
             </Button>
           </div>
-          <div className="text-center mt-6 text-xs text-gray-500">
+          <div className="text-center mt-6 text-xs text-muted-foreground">
             <div className="flex justify-center space-x-4">
-              <Link href="/privacy" className="hover:underline">
+              <Link href="/privacy" className="hover:underline text-muted-foreground">
                 Privacy Policy
               </Link>
-              <Link href="/terms" className="hover:underline">
+              <Link href="/terms" className="hover:underline text-muted-foreground">
                 Terms of Service
               </Link>
             </div>

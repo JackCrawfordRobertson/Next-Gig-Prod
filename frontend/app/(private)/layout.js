@@ -29,9 +29,9 @@ export default async function PrivateLayout({ children, params }) {
         <PrivateRoute>
             <ErrorBoundary>
                 <SessionVerifier />
-                <div className="relative min-h-screen">
+                <div className="relative min-h-screen bg-background">
                     <ArrowsBackgroundWrapper />
-                    <div className="absolute inset-0 bg-white/30 backdrop-blur-lg w-screen h-screen" />
+                    <div className="absolute inset-0 bg-white/20 dark:bg-black/40 backdrop-blur-lg w-screen h-screen pointer-events-none" />
                     <div className="relative z-10">
                         <SidebarLayout>{children}</SidebarLayout>
                     </div>

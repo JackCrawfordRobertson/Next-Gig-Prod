@@ -33,7 +33,7 @@ export default function PersonalInfo({
         {/* Profile Picture */}
         <div className="flex flex-col items-center space-y-2 p-2 rounded-lg">
           <div className="relative">
-            <Avatar className="w-20 h-20 border border-gray-300 shadow-md overflow-hidden">
+            <Avatar className="w-20 h-20 border border-border shadow-md overflow-hidden">
               <AvatarImage 
                 src={profilePicture} 
                 alt="Profile" 
@@ -48,8 +48,8 @@ export default function PersonalInfo({
               </AvatarFallback>
             </Avatar>
             {!hasUploadedPicture && (
-              <div 
-                className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 rounded-full text-amber-600 text-xs font-medium"
+              <div
+                className="absolute inset-0 flex items-center justify-center bg-background/80 dark:bg-background/95 rounded-full text-amber-600 text-xs font-medium"
                 aria-label="Profile picture required"
               >
                 Required
@@ -141,7 +141,7 @@ export default function PersonalInfo({
                 }}
                 aria-label="Open date picker"
               >
-                <Calendar className="h-4 w-4 text-gray-400" />
+                <Calendar className="h-4 w-4 text-muted-foreground" />
               </div>
               <input
                 id="dateOfBirth-hidden"

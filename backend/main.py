@@ -22,9 +22,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def get_subscribed_users():
-    """Fetch all users who are actively subscribed."""
+    """
+    FREE ACCESS MODE: Fetch all users (no subscription check).
+    Previously only fetched subscribed users, now fetches all active users.
+    """
     try:
-        users_ref = db.collection("users").where("subscribed", "==", True).stream()
+        # FREE MODE: Get ALL users, not just subscribed ones
+        users_ref = db.collection("users").stream()
         users = [
             {
                 "id": user.id,
@@ -33,11 +37,13 @@ def get_subscribed_users():
                 "email": user.to_dict().get("email", "")
             }
             for user in users_ref
+            # Only include users with job preferences set
+            if user.to_dict().get("jobTitles") and user.to_dict().get("jobLocations")
         ]
-        logger.info(f"🔍 Found {len(users)} subscribed users in database")
+        logger.info(f"🔍 Found {len(users)} users with job preferences in database (FREE MODE - all users included)")
         return users
     except Exception as e:
-        logger.error(f"Error fetching subscribed users: {e}")
+        logger.error(f"Error fetching users: {e}")
         return []
 
 def get_unique_job_location_pairs(users):
