@@ -2,7 +2,9 @@ import sys
 import os
 import time
 import random
-import cloudscraper
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
 from datetime import datetime
 import logging
@@ -30,7 +32,9 @@ import config
 BASE_URL = "https://unjobs.org/search/{query}"
 CACHE_FILE = "unjobs_cache.json"
 CACHE_EXPIRY_HOURS = 24  # Cache results for 24 hours
-MAX_WORKERS = 3  # Number of concurrent workers (keep low to avoid triggering CloudFlare)
+MAX_WORKERS = 3  # Number of concurrent workers
+REQUEST_TIMEOUT = 15  # HTTP request timeout in seconds
+RETRY_ATTEMPTS = 3  # Number of retry attempts
 
 # Location aliases for better matching
 LOCATION_ALIASES = {
@@ -141,63 +145,69 @@ def adaptive_delay(request_type="page"):
     else:
         return random.uniform(1.0, 2.0)   # Default delay
 
-# Thread-safe scraper creation
-def create_safe_scraper():
-    """Create a cloudscraper instance with compatible browser settings"""
-    # Use only validated browser and platform combinations
-    browsers = ['chrome', 'firefox']
-    platforms = ['windows', 'linux']
-    
-    return cloudscraper.create_scraper(
-        browser={
-            'browser': random.choice(browsers),
-            'platform': random.choice(platforms),
-            'desktop': True
-        },
-        delay=3  # Reduced base delay
+# Session creation with retry logic and connection pooling
+def create_requests_session():
+    """
+    Create a requests session with automatic retries and connection pooling.
+    This replaces cloudscraper for better reliability and performance.
+    """
+    session = requests.Session()
+
+    # Retry strategy: retry on connection errors, timeouts, and specific HTTP codes
+    retry_strategy = Retry(
+        total=RETRY_ATTEMPTS,
+        backoff_factor=1,  # 1s, 2s, 4s delays
+        status_forcelist=[429, 500, 502, 503, 504],  # Retry on these HTTP codes
+        allowed_methods=["GET", "HEAD"]
     )
 
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+
+    return session
+
 # Optimised job details fetching
-def fetch_job_details(url, scraper, headers, cache):
+def fetch_job_details(url, session, headers, cache):
     """Fetch detailed job information with improved caching"""
     cache_key = create_cache_key(url)
     cached_data = cache.get(cache_key)
-    
+
     if cached_data:
         logger.debug(f"Using cached job details for: {url}")
         return cached_data
-    
+
     try:
         logger.info(f"Fetching job details: {url}")
-        
+
         # Use adaptive delay for detail pages
         time.sleep(adaptive_delay("detail"))
-        
-        response = scraper.get(url, headers=headers)
-        
+
+        response = session.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
+
         if response.status_code != 200:
             logger.warning(f"Failed to get job details: {url} (Status: {response.status_code})")
             return {}
-        
+
         soup = BeautifulSoup(response.text, "html.parser")
-        
+
         # Extract detailed information
         details = {}
-        
+
         # Try to get better location information
         location_elem = soup.select_one("div.location") or soup.select_one("span.location")
         if location_elem:
             details["location"] = location_elem.text.strip()
-        
+
         # Get job description
         description_elem = soup.select_one("div.description") or soup.select_one("div.content")
         if description_elem:
             details["description"] = description_elem.text.strip()
-        
+
         # Cache the results
         cache.set(cache_key, details)
         return details
-        
+
     except Exception as e:
         logger.error(f"Error fetching job details: {e}")
         return {}
@@ -215,9 +225,9 @@ def process_job_keyword(job_keyword, locations, shared_cache, shared_visited_url
     # Copy already visited URLs to avoid duplicates
     with shared_visited_urls[0]:
         local_visited_job_urls = shared_visited_urls[1].copy()
-    
-    # Create a unique scraper for this thread
-    scraper = create_safe_scraper()
+
+    # Create a unique session for this thread
+    session = create_requests_session()
     
     query = job_keyword.lower().replace(" ", "-")
     search_url = BASE_URL.format(query=query)
@@ -253,21 +263,21 @@ def process_job_keyword(job_keyword, locations, shared_cache, shared_visited_url
         try:
             # Use adaptive delay for page requests
             time.sleep(adaptive_delay("page"))
-            
-            response = scraper.get(current_page, headers=headers)
+
+            response = session.get(current_page, headers=headers, timeout=REQUEST_TIMEOUT)
             
             if response.status_code == 403:
                 logger.warning(f"Forbidden (403) when accessing {current_page}")
                 logger.info("Adding longer delay and retrying...")
-                
+
                 # Add a longer delay before retry
                 time.sleep(random.uniform(20.0, 30.0))
-                
-                # Create a new scraper instance with different settings
-                scraper = create_safe_scraper()
-                
-                # Retry with new scraper
-                response = scraper.get(current_page, headers=headers)
+
+                # Create a new session instance with different settings
+                session = create_requests_session()
+
+                # Retry with new session
+                response = session.get(current_page, headers=headers, timeout=REQUEST_TIMEOUT)
                 
                 if response.status_code == 403:
                     logger.error(f"Still forbidden after retry. Skipping search term: {job_keyword}")
@@ -317,7 +327,7 @@ def process_job_keyword(job_keyword, locations, shared_cache, shared_visited_url
                 }
                 
                 # Get additional details
-                details = fetch_job_details(url, scraper, headers, shared_cache)
+                details = fetch_job_details(url, session, headers, shared_cache)
                 
                 # Update with any additional details found
                 job.update(details)
