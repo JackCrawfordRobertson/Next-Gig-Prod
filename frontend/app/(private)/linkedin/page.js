@@ -749,7 +749,7 @@ function JobColumn({ title, jobs, onJobClick }) {
               jobs.map((job, index) => (
                 <Card
                   key={index}
-                  className="hover:shadow-md transition-shadow bg-white cursor-pointer"
+                  className="hover:shadow-md transition-shadow bg-card cursor-pointer"
                   onClick={() => onJobClick(job)}
                 >
                   <CardContent className="p-4">
@@ -827,7 +827,7 @@ function JobColumn({ title, jobs, onJobClick }) {
 function MobileJobCard({ job, onClick }) {
   return (
     <Card
-      className="hover:shadow-sm active:shadow-inner transition-shadow bg-white cursor-pointer touch-manipulation"
+      className="hover:shadow-sm active:shadow-inner transition-shadow bg-card cursor-pointer touch-manipulation"
       onClick={onClick}
     >
       <CardContent className="p-3">
