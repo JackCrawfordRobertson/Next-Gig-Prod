@@ -1,7 +1,7 @@
 # fetch/run_scrapers.py
 
 import json
-from fetch import ifyoucould, unjobs, workable, linkedin, ziprecruiter
+from fetch import ifyoucould, unjobs, workable, linkedin, ziprecruiter, glassdoor
 
 def fetch_jobs(job_location_pairs):
     print(f"\n⏳ Running job scrapers for {len(job_location_pairs)} job title + location combinations...")
@@ -10,6 +10,7 @@ def fetch_jobs(job_location_pairs):
         "linkedin": [],
         "ifyoucould": [],
         "unjobs": [],
+        "glassdoor": [],
         # "ziprecruiter": [],
         # "workable": [],
     }
@@ -33,6 +34,14 @@ def fetch_jobs(job_location_pairs):
                 print(f"⚠️ UN job missing correct source: {job.get('title')}")
                 job['source'] = 'unjobs'
         jobs["unjobs"].extend(un_results)
+
+        # Fetch and validate Glassdoor jobs
+        gd_results = glassdoor.fetch_glassdoor_jobs([job_title], [location])
+        for job in gd_results:
+            if job.get('source') != 'glassdoor':
+                print(f"⚠️ Glassdoor job missing correct source: {job.get('title')}")
+                job['source'] = 'glassdoor'
+        jobs["glassdoor"].extend(gd_results)
 
         # # Uncomment to enable ZipRecruiter
         # zip_results = ziprecruiter.fetch_ziprecruiter_jobs(job_title, location)

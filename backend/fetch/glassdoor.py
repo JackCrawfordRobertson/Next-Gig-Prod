@@ -26,13 +26,13 @@ logger = logging.getLogger("GlassdoorScraper")
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import config
 
-# Constants
+# Constants - OPTIMIZED FOR SPEED
 BASE_URL = "https://www.glassdoor.com/Job/jobs.htm"
 SEARCH_URL = "https://www.glassdoor.com/Job/{title}-jobs-SRCH_KO0,{title_len}.htm"
-REQUEST_TIMEOUT = 20
-RETRY_ATTEMPTS = 5  # Increased for Glassdoor's aggressive blocking
-MIN_DELAY = 3.0  # Increased base delay
-MAX_DELAY = 8.0  # Increased max delay
+REQUEST_TIMEOUT = 15  # Reduced timeout
+RETRY_ATTEMPTS = 2  # Only 2 retries max (Glassdoor is very aggressive)
+MIN_DELAY = 0.5  # Minimal delay
+MAX_DELAY = 1.5  # Fast requests
 
 # User-Agent Rotation
 USER_AGENTS = [
@@ -243,92 +243,54 @@ def fetch_glassdoor_jobs(job_titles: Optional[List[str]] = None, locations: Opti
     all_jobs = []
 
     for job_title in job_titles:
-        retry_count = 0
-        max_retries = 5
-        success = False
+        try:
+            session = create_session()
 
-        while retry_count < max_retries and not success:
-            try:
-                # Create fresh session for each retry
+            logger.info(f"Searching for '{job_title}' on Glassdoor")
+
+            # Format search URL
+            title_slug = job_title.lower().replace(" ", "-")
+            url = SEARCH_URL.format(title=title_slug, title_len=len(job_title))
+
+            # Minimal delay
+            time.sleep(random.uniform(MIN_DELAY, MAX_DELAY))
+
+            response = session.get(url, headers=get_headers(), timeout=REQUEST_TIMEOUT)
+
+            # Fail fast - only retry once on 403
+            if response.status_code == 403:
+                logger.warning(f"Got 403 - Glassdoor blocking. Retrying once...")
+                time.sleep(random.uniform(5.0, 10.0))  # Short wait
                 session = create_session()
+                response = session.get(url, headers=get_headers(), timeout=REQUEST_TIMEOUT)
 
-                logger.info(f"Searching for '{job_title}' on Glassdoor (attempt {retry_count + 1}/{max_retries})")
-
-                # Format search URL
-                title_slug = job_title.lower().replace(" ", "-")
-                url = SEARCH_URL.format(title=title_slug, title_len=len(job_title))
-
-                logger.info(f"Fetching: {url}")
-
-                # Add delay - longer on retries
-                base_delay = random.uniform(MIN_DELAY, MAX_DELAY)
-                retry_delay = base_delay * (retry_count + 1)  # Exponential backoff
-                logger.debug(f"Waiting {retry_delay:.2f}s before request")
-                time.sleep(retry_delay)
-
-                # Fetch with fresh headers
-                response = session.get(url, headers=get_headers(), timeout=REQUEST_TIMEOUT, allow_redirects=True)
-
-                if response.status_code == 403:
-                    logger.warning(f"Got 403 Forbidden. This means Glassdoor detected the scraper.")
-                    retry_count += 1
-
-                    if retry_count < max_retries:
-                        # Long exponential backoff
-                        wait_time = random.uniform(60.0, 120.0) * (2 ** (retry_count - 1))
-                        logger.info(f"Waiting {wait_time:.1f}s before next attempt...")
-                        time.sleep(min(wait_time, 300.0))  # Cap at 5 minutes
+                if response.status_code != 200:
+                    logger.warning(f"Still blocked. Skipping '{job_title}'")
                     continue
 
-                elif response.status_code == 429:
-                    # Rate limited
-                    logger.warning(f"Got 429 Too Many Requests")
-                    retry_count += 1
+            if response.status_code != 200:
+                logger.warning(f"HTTP {response.status_code} for '{job_title}' - skipping")
+                continue
 
-                    if retry_count < max_retries:
-                        wait_time = random.uniform(120.0, 300.0)
-                        logger.info(f"Waiting {wait_time:.1f}s for rate limit reset...")
-                        time.sleep(wait_time)
-                    continue
+            # Extract and filter jobs
+            page_jobs = extract_jobs_from_page(response.text)
+            logger.info(f"Extracted {len(page_jobs)} jobs for '{job_title}'")
 
-                elif response.status_code != 200:
-                    logger.error(f"HTTP {response.status_code} for '{job_title}'")
-                    retry_count += 1
-                    continue
+            filtered_jobs = []
+            for job in page_jobs:
+                if location_matches(job.get("location", ""), normalized_locations):
+                    filtered_jobs.append(job)
+                    logger.info(f"✅ {job['title']} @ {job['location']}")
 
-                logger.info(f"✅ Successfully fetched page for '{job_title}'")
-                success = True
+            all_jobs.extend(filtered_jobs)
+            logger.info(f"Found {len(filtered_jobs)} matching jobs")
 
-                # Extract jobs from page
-                page_jobs = extract_jobs_from_page(response.text)
-                logger.info(f"Extracted {len(page_jobs)} total jobs from page")
-
-                # Filter by location
-                filtered_jobs = []
-                for job in page_jobs:
-                    if location_matches(job.get("location", ""), normalized_locations):
-                        filtered_jobs.append(job)
-                        logger.info(f"✅ Job Match: {job['title']} @ {job['location']}")
-                    else:
-                        logger.debug(f"❌ Location mismatch: {job['title']} @ {job['location']}")
-
-                all_jobs.extend(filtered_jobs)
-                logger.info(f"Found {len(filtered_jobs)} matching jobs for '{job_title}'")
-
-            except requests.exceptions.Timeout:
-                logger.warning(f"Timeout while fetching '{job_title}'")
-                retry_count += 1
-
-            except requests.exceptions.ConnectionError:
-                logger.warning(f"Connection error for '{job_title}'")
-                retry_count += 1
-
-            except Exception as e:
-                logger.error(f"Error processing '{job_title}': {e}")
-                retry_count += 1
-
-        if not success:
-            logger.error(f"Failed to fetch '{job_title}' after {max_retries} retries")
+        except requests.exceptions.Timeout:
+            logger.warning(f"Timeout for '{job_title}' - skipping")
+        except requests.exceptions.ConnectionError:
+            logger.warning(f"Connection error for '{job_title}' - skipping")
+        except Exception as e:
+            logger.error(f"Error processing '{job_title}': {e}")
 
     logger.info(f"Finished scraping. Total jobs found: {len(all_jobs)}")
     return all_jobs
