@@ -27,13 +27,14 @@ def fetch_jobs(job_location_pairs):
                 job['source'] = 'linkedin'
         jobs["linkedin"].extend(linkedin_results)
         
-        # Fetch and validate UN jobs
-        un_results = unjobs.fetch_unjobs_parallel([job_title], [location])
-        for job in un_results:
-            if job.get('source') != 'unjobs':
-                print(f"⚠️ UN job missing correct source: {job.get('title')}")
-                job['source'] = 'unjobs'
-        jobs["unjobs"].extend(un_results)
+        # # Temporarily disabled: UN Jobs is for international organizations, not UK-based roles
+        # # Most results are from developing countries, not matching London location filters
+        # un_results = unjobs.fetch_unjobs_parallel([job_title], [location])
+        # for job in un_results:
+        #     if job.get('source') != 'unjobs':
+        #         print(f"⚠️ UN job missing correct source: {job.get('title')}")
+        #         job['source'] = 'unjobs'
+        # jobs["unjobs"].extend(un_results)
 
         # # Temporarily disabled: Glassdoor is blocking requests and HTML parsing is unreliable
         # # TODO: Investigate alternative Glassdoor API or scraping method
