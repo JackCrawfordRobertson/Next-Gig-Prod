@@ -124,11 +124,11 @@ export default function UNJobsPage() {
           if (userEmail) {
             const { getUserByEmail, getUserJobs } = await import("@/lib/data/jobDataUtils");
             const user = await getUserByEmail(userEmail);
-            
+
             if (user) {
-              // Get only LinkedIn jobs
-              jobsData = await getUserJobs(user.id, { source: "linkedin" });
-              console.log(`Found ${jobsData.length} LinkedIn jobs`);
+              // Get only UN jobs
+              jobsData = await getUserJobs(user.id, { source: "unjobs" });
+              console.log(`Found ${jobsData.length} UN jobs`);
             }
           }
         }
