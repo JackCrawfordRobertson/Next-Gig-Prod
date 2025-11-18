@@ -7,6 +7,28 @@ import { mockSession } from "@/app/mock/auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { isDevelopmentMode } from "@/lib/utils/environment";
 
+/**
+ * Serialize Firestore data to plain objects
+ * Converts Timestamps to ISO strings
+ */
+function serializeFirestoreData(data) {
+  if (!data) return data;
+
+  const serialized = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value && typeof value === 'object' && value.toDate) {
+      // Firestore Timestamp
+      serialized[key] = value.toDate().toISOString();
+    } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+      // Nested object
+      serialized[key] = serializeFirestoreData(value);
+    } else {
+      serialized[key] = value;
+    }
+  }
+  return serialized;
+}
+
 export async function GET(req) {
   // Get the URL hostname for logging purposes
   const url = new URL(req.url);
@@ -138,13 +160,17 @@ export async function GET(req) {
     if (!userDoc.exists()) {
       console.warn(`No user document found for ID: ${userId}`);
       return new Response(
-        JSON.stringify({ error: "User data not found" }), 
+        JSON.stringify({ error: "User data not found" }),
         { status: 404, headers: { 'Content-Type': 'application/json' } }
       );
     }
-    
+
+    // Serialize the user data to convert Firestore Timestamps
+    const userData = userDoc.data() || {};
+    const serializedUserData = serializeFirestoreData(userData);
+
     return new Response(
-      JSON.stringify(userDoc.data() || {}), 
+      JSON.stringify(serializedUserData),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (error) {

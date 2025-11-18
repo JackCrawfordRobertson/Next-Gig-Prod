@@ -1,7 +1,4 @@
 // app/private/layout.js
-import { redirect } from 'next/navigation';
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import SidebarLayout from "@/components/Sidebar";
 import ArrowsBackgroundWrapper from "@/components/AnimatedBlocks/ArrowsBackgroundCompiler";
 import PrivateRoute from "@/components/routing/PrivateRoute";
@@ -12,19 +9,8 @@ export const metadata = {
     title: "Next Gig",
 };
 
-export default async function PrivateLayout({ children, params }) {
-    // Server-side session check with Next-Auth
-    const session = await getServerSession(authOptions);
-  
-    if (!session) {
-        // Create the login URL with a return path
-        const returnUrl = encodeURIComponent(process.env.NEXT_PUBLIC_BASE_URL || 'https://next-gig.co.uk');
-        const loginUrl = `/login?callbackUrl=${returnUrl}`;
-        
-        // Use the Response.redirect for more reliable redirects
-        return Response.redirect(new URL(loginUrl, 'https://next-gig.co.uk'));
-    }
-  
+export default function PrivateLayout({ children }) {
+    // Client-side session check is handled by PrivateRoute component
     return (
         <PrivateRoute>
             <ErrorBoundary>

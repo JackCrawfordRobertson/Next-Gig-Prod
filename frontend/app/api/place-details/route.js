@@ -1,11 +1,19 @@
 export async function POST(req) {
   try {
-    const { placeId, apiKey } = await req.json();
+    const { placeId } = await req.json();
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY;
 
-    if (!placeId || !apiKey) {
+    if (!placeId) {
       return Response.json(
-        { error: "Place ID and API key are required" },
+        { error: "Place ID is required" },
         { status: 400 }
+      );
+    }
+
+    if (!apiKey) {
+      return Response.json(
+        { error: "Google Places API key not configured" },
+        { status: 500 }
       );
     }
 
@@ -20,7 +28,9 @@ export async function POST(req) {
       status: data.status
     });
   } catch (error) {
-    console.error("Place details error:", error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error("Place details error:", error);
+    }
     return Response.json(
       { error: "Failed to fetch place details" },
       { status: 500 }

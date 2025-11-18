@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Eye, EyeOff, Check, X } from "lucide-react";
@@ -54,6 +54,7 @@ export default function AccountDetails({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [emailExists, setEmailExists] = useState(null);
   const [checkingEmail, setCheckingEmail] = useState(false);
+  const emailCheckTimeoutRef = useRef(null);
 
   const passwordStrength = getPasswordStrength(password);
 
@@ -68,12 +69,12 @@ export default function AccountDetails({
     }
 
     // Debounce: only check after user stops typing for 800ms
-    if (window.emailCheckTimeout) {
-      clearTimeout(window.emailCheckTimeout);
+    if (emailCheckTimeoutRef.current) {
+      clearTimeout(emailCheckTimeoutRef.current);
     }
 
     setCheckingEmail(true);
-    window.emailCheckTimeout = setTimeout(async () => {
+    emailCheckTimeoutRef.current = setTimeout(async () => {
       try {
         const response = await fetch("/api/check-email", {
           method: "POST",

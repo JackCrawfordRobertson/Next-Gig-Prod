@@ -1,5 +1,4 @@
-import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { db, collection, query, where, getDocs } from "@/lib/data/firebase";
 
 export async function POST(req) {
   try {

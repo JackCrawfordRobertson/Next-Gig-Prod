@@ -43,8 +43,6 @@ import MiniStat from "@/components/dashboard/MiniStat";
 import JobCard from "@/components/dashboard/JobCard";
 
 export default function DashboardPage() {
-  console.log("Dashboard component rendering started");
-  
   // Session and router
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -66,18 +64,15 @@ export default function DashboardPage() {
 
   // Check for subscription success flag
   useEffect(() => {
-    console.log("Checking subscription status");
     // Check if we're coming from a successful subscription
-    const subscriptionSuccess = typeof window !== "undefined" 
-      ? localStorage.getItem('subscriptionSuccess') 
+    const subscriptionSuccess = typeof window !== "undefined"
+      ? localStorage.getItem('subscriptionSuccess')
       : null;
-    
+
     if (status === 'unauthenticated' && !subscriptionSuccess) {
-      console.log("Not authenticated, redirecting to login");
       // No session and no successful subscription, redirect to login
       router.push('/login');
     } else if (subscriptionSuccess) {
-      console.log("Subscription success, clearing flag");
       // Clear the subscription success flag
       localStorage.removeItem('subscriptionSuccess');
     }
@@ -115,23 +110,13 @@ export default function DashboardPage() {
 
   // Handle visibility change (user returns from external link)
   const handleVisibilityChange = () => {
-    console.log("Visibility changed:", document.visibilityState);
-    console.log("Last click time:", lastClickTimeRef.current);
-    console.log("Selected job:", selectedJobRef.current);
-
     if (document.visibilityState === "visible" && lastClickTimeRef.current) {
       const timeAway = Date.now() - lastClickTimeRef.current;
-      console.log("Time away (ms):", timeAway);
 
       // If they spent enough time on the job page (5+ seconds), probably viewed it in detail
       if (timeAway > 5000 && selectedJobRef.current) {
-        console.log("Showing apply dialog");
         setSelectedJob(selectedJobRef.current);
         setShowApplyDialog(true);
-      } else {
-        console.log(
-          "Not showing dialog - time threshold not met or no job selected"
-        );
       }
 
       lastClickTimeRef.current = null;
@@ -156,12 +141,10 @@ export default function DashboardPage() {
 
   // Set up visibility change listener
   useEffect(() => {
-    console.log("Setting up visibility change listener");
     // Monitor visibility changes to detect when user returns from a job link
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      console.log("Cleaning up visibility change listener");
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
@@ -210,47 +193,33 @@ useEffect(() => {
   fetchUserData();
 }, [status, isDev, session]);
 
-  // Log jobs data for debugging
+  // Jobs data loaded effect (for future monitoring hooks)
   useEffect(() => {
-    if (jobs.length > 0) {
-      console.log("Jobs loaded:", jobs.length);
-    } else {
-      console.log("No jobs found after setting state");
-    }
+    // Jobs state updated - can add monitoring here if needed
   }, [jobs]);
 
   // Handle job card click to open URL
   const handleJobClick = (job) => {
-    console.log("Job clicked:", job.title);
-
     if (job.url) {
-      console.log("Opening URL:", job.url);
       selectedJobRef.current = job;
       lastClickTimeRef.current = Date.now();
-      console.log("Set lastClickTime:", lastClickTimeRef.current);
       window.open(job.url, "_blank");
-    } else {
-      console.log("No URL found for job");
     }
   };
 
   // Handle marking job as applied
   const handleMarkApplied = async (applied) => {
     if (!selectedJob) {
-      console.log("No selected job to mark as applied");
       return;
     }
-  
-    console.log("Marking job as applied:", selectedJob.title, applied);
-  
+
     try {
       // Update the local state
       const updatedJobs = jobs.map((job) =>
         job.id === selectedJob.id ? { ...job, has_applied: applied } : job
       );
       setJobs(updatedJobs);
-      console.log("Updated local state");
-  
+
       // Update Firestore if in production
       if (!isDev && selectedJob.id) {
         const { updateJobAppliedStatus } = await import("@/lib/utils/updateJobApplied");
@@ -259,10 +228,11 @@ useEffect(() => {
           jobId: selectedJob.id,
           applied
         });
-        console.log("Firestore updated successfully");
       }
     } catch (error) {
-      console.error("Error updating application status:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Error updating application status:", error);
+      }
     } finally {
       setShowApplyDialog(false);
       setSelectedJob(null);
@@ -284,14 +254,6 @@ useEffect(() => {
   // Get filtered job lists
   const recentJobs = getRecentJobs();
   const filteredJobs = getFilteredJobs();
-
-  console.log("Rendering dashboard with state:", { 
-    loading, 
-    loadError, 
-    jobsCount: jobs.length,
-    recentJobsCount: recentJobs.length,
-    filteredJobsCount: filteredJobs.length
-  });
 
   // Final render
   return (
@@ -474,7 +436,7 @@ useEffect(() => {
                   className="mt-0 h-full overflow-auto"
                 >
                   <Card className="flex flex-col h-full bg-muted/20 border-0">
-                    <CardContent className="p-2 pb-16 flex-1 overflow-auto">
+                    <CardContent className="p-2 pb-[calc(4rem+env(safe-area-inset-bottom))] flex-1 overflow-auto">
                       {recentJobs.length > 0 ? (
                         <div className="flex flex-col gap-3">
                           {recentJobs.map((job, index) => (
@@ -498,7 +460,7 @@ useEffect(() => {
 
                 <TabsContent value="all" className="mt-0 h-full overflow-auto">
                   <Card className="flex flex-col h-full bg-muted/20 border-0">
-                    <CardContent className="p-2 pb-16 flex-1 overflow-auto">
+                    <CardContent className="p-2 pb-[calc(4rem+env(safe-area-inset-bottom))] flex-1 overflow-auto">
                       {jobs.length > 0 ? (
                         <div className="flex flex-col gap-3">
                           {jobs.map((job, index) => (

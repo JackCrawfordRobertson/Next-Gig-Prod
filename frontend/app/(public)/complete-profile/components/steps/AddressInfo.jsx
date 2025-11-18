@@ -13,10 +13,9 @@ export default function AddressInfo({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [autocompleteInput, setAutocompleteInput] = useState("");
   const suggestionsRef = useRef(null);
-  const googleApiKey = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY;
 
   const { suggestions, isLoading, getAddressSuggestions, parseAddressFromPlace, clearSuggestions } =
-    useGooglePlaces(googleApiKey);
+    useGooglePlaces();
 
   const handleAddressInput = async (value) => {
     setAutocompleteInput(value);

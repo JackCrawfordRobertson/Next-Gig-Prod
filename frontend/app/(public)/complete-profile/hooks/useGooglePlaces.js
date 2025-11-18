@@ -6,7 +6,7 @@ import { useState, useCallback } from "react";
  * Custom hook for Address Autocomplete
  * Uses OpenStreetMap Nominatim API (free, no API key required)
  */
-export function useGooglePlaces(apiKey) {
+export function useGooglePlaces() {
   const [suggestions, setSuggestions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -21,16 +21,11 @@ export function useGooglePlaces(apiKey) {
       setIsLoading(true);
 
       try {
-        console.log("🔍 Fetching address suggestions for:", input);
-
         // Check if input looks like a postcode (alphanumeric, typically 6-7 chars)
         const isPostcode = /^[A-Z0-9]{2,4}\s?[A-Z0-9]{2,3}$/i.test(input.trim());
 
         // Build search query - if it's a postcode, search more specifically
         let searchQuery = input;
-        if (isPostcode) {
-          console.log("📮 Searching for postcode:", input);
-        }
 
         // Use OpenStreetMap Nominatim API
         const response = await fetch(
@@ -67,10 +62,11 @@ export function useGooglePlaces(apiKey) {
           type: result.type,
         }));
 
-        console.log("✅ Got suggestions:", predictions.length);
         setSuggestions(predictions);
       } catch (error) {
-        console.error("❌ Error fetching address suggestions:", error);
+        if (process.env.NODE_ENV === 'development') {
+          console.error("Error fetching address suggestions:", error);
+        }
         setSuggestions([]);
       } finally {
         setIsLoading(false);
@@ -84,7 +80,6 @@ export function useGooglePlaces(apiKey) {
     if (!place) return null;
 
     try {
-      console.log("📍 Parsing place details:", place);
 
       // Parse formatted_address to extract components
       // Format: "street, suburb/district, postcode, city, county, state, country"
@@ -126,10 +121,11 @@ export function useGooglePlaces(apiKey) {
         longitude: place.lon,
       };
 
-      console.log("✅ Place details parsed:", addressComponents);
       return addressComponents;
     } catch (error) {
-      console.error("❌ Error parsing place details:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Error parsing place details:", error);
+      }
       return null;
     }
   }, []);

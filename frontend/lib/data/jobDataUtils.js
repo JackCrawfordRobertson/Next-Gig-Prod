@@ -1,5 +1,26 @@
 import { db, collection, query, getDocs, getDoc, doc, where, limit } from "@/lib/data/firebase";
 
+/**
+ * Serialize Firestore data to plain objects
+ * Converts Timestamps to ISO strings
+ */
+function serializeFirestoreData(data) {
+  if (!data) return data;
+
+  const serialized = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value && typeof value === 'object' && value.toDate) {
+      // Firestore Timestamp
+      serialized[key] = value.toDate().toISOString();
+    } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+      // Nested object
+      serialized[key] = serializeFirestoreData(value);
+    } else {
+      serialized[key] = value;
+    }
+  }
+  return serialized;
+}
 
 /**
  * Get a user document by email
@@ -17,9 +38,10 @@ export async function getUserByEmail(email) {
       return null;
     }
     
+    const userData = snapshot.docs[0].data();
     return {
       id: snapshot.docs[0].id,
-      ...snapshot.docs[0].data()
+      ...serializeFirestoreData(userData)
     };
   } catch (error) {
     console.error("Error getting user by email:", error);
@@ -60,10 +82,13 @@ export async function getUserJobs(userId, options = {}) {
     }
     
     // Simple mapping - no additional queries needed
-    const jobs = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const jobs = snapshot.docs.map(doc => {
+      const jobData = doc.data();
+      return {
+        id: doc.id,
+        ...serializeFirestoreData(jobData)
+      };
+    });
     
     console.log(`Fetched ${jobs.length} jobs successfully`);
     return jobs;
