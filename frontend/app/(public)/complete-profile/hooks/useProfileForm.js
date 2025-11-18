@@ -31,9 +31,18 @@ const initialFormState = {
   confirmPasswordError: "",
   firstName: "",
   lastName: "",
+  firstNameError: "",
+  lastNameError: "",
+  dateOfBirth: "",
+  dateOfBirthError: "",
   address: {
     firstLine: "",
     secondLine: "",
+    city: "",
+    postcode: "",
+  },
+  addressErrors: {
+    firstLine: "",
     city: "",
     postcode: "",
   },
@@ -41,7 +50,6 @@ const initialFormState = {
   hasUploadedPicture: false,
   jobTitles: [],
   jobLocations: [],
-  dateOfBirth: "",
   // UI state
   jobSearch: "",
   locationInput: "",
@@ -54,18 +62,33 @@ const initialFormState = {
   deviceFingerprint: null,
 };
 
+const STORAGE_KEY = "nextGig_profileForm";
+
 export function useProfileForm() {
   const [formState, setFormState] = useState(initialFormState);
   const [loading, setLoading] = useState(false);
   const [registrationError, setRegistrationError] = useState(null);
+  const [isHydrated, setIsHydrated] = useState(false);
   const validation = useFormValidation();
   const router = useRouter();
   const isDev = isDevelopmentMode();
 
-  // Fetch security data on mount
+  // Load form state from localStorage and fetch security data on mount
   useEffect(() => {
-    const fetchSecurityData = async () => {
+    const initializeForm = async () => {
       try {
+        // Try to restore form state from localStorage
+        const savedFormState = localStorage.getItem(STORAGE_KEY);
+        if (savedFormState) {
+          const parsedState = JSON.parse(savedFormState);
+          setFormState(state => ({
+            ...parsedState,
+            loading: false,
+            registrationError: null
+          }));
+        }
+
+        // Fetch security data
         const ip = await getUserIP();
         setFormState(state => ({
           ...state,
@@ -73,20 +96,33 @@ export function useProfileForm() {
           deviceFingerprint: getDeviceFingerprint()
         }));
       } catch (error) {
-        console.error("Error fetching security data:", error);
+        console.error("Error initializing form:", error);
         // Still continue - this shouldn't block the form
+      } finally {
+        setIsHydrated(true);
       }
     };
 
-    fetchSecurityData();
+    initializeForm();
   }, []);
 
+
+  // Save form state to localStorage whenever it changes (only after hydration)
+  useEffect(() => {
+    if (isHydrated) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(formState));
+      } catch (error) {
+        console.error("Error saving form state to localStorage:", error);
+      }
+    }
+  }, [formState, isHydrated]);
 
   // Update form completion whenever form state changes
   useEffect(() => {
     const { percentage, missingFields } = calculateFormCompletion(formState);
     setFormState(state => ({
-      ...state, 
+      ...state,
       formCompletion: percentage,
       incompleteFields: missingFields
     }));
@@ -106,7 +142,31 @@ export function useProfileForm() {
 
   // Field update handlers
   const handleInputChange = (field) => (e) => {
-    setFormState({ ...formState, [field]: e.target.value });
+    const value = e.target.value;
+
+    // Validate name fields
+    if (field === 'firstName') {
+      const error = validation.validateName(value, 'First name');
+      setFormState({
+        ...formState,
+        [field]: value,
+        firstNameError: error
+      });
+      return;
+    }
+
+    if (field === 'lastName') {
+      const error = validation.validateName(value, 'Last name');
+      setFormState({
+        ...formState,
+        [field]: value,
+        lastNameError: error
+      });
+      return;
+    }
+
+    // Default for other fields
+    setFormState({ ...formState, [field]: value });
   };
 
   const handlePasswordChange = (e) => {
@@ -153,7 +213,21 @@ export function useProfileForm() {
   };
 
   const handleDateOfBirthChange = (value) => {
-    setFormState({ ...formState, dateOfBirth: value });
+    // Convert DD/MM/YYYY to YYYY-MM-DD for validation
+    let dateForValidation = value;
+    if (value && value.includes('/')) {
+      const [day, month, year] = value.split('/');
+      if (day && month && year && year.length === 4) {
+        dateForValidation = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
+    }
+
+    const error = validation.validateDateOfBirth(dateForValidation);
+    setFormState({
+      ...formState,
+      dateOfBirth: value,
+      dateOfBirthError: error
+    });
   };
 
   // Job titles and locations handlers
@@ -339,6 +413,13 @@ export function useProfileForm() {
         variant: "success",
       });
 
+      // Clear saved form state from localStorage after successful signup
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (error) {
+        console.error("Error clearing form state from localStorage:", error);
+      }
+
       // Wait for session to be established
       await new Promise(resolve => setTimeout(resolve, 1000));
       router.push("/dashboard");
@@ -360,6 +441,43 @@ export function useProfileForm() {
   // Check if form is valid for submission
   const isFormValid = () => formState.incompleteFields.length === 0;
 
+  // Helper function to clear saved form state
+  const clearSavedForm = () => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      setFormState(initialFormState);
+      showToast({
+        title: "Form Cleared",
+        description: "Your saved form has been reset.",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error("Error clearing saved form:", error);
+    }
+  };
+
+  // Helper function to check if there's a saved form
+  const hasSavedForm = () => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) return false;
+      const parsed = JSON.parse(saved);
+      // Check if any meaningful data is saved (not empty form)
+      return !!(
+        parsed.email ||
+        parsed.firstName ||
+        parsed.lastName ||
+        parsed.password ||
+        (parsed.address && (parsed.address.firstLine || parsed.address.city)) ||
+        parsed.jobTitles?.length > 0 ||
+        parsed.jobLocations?.length > 0
+      );
+    } catch (error) {
+      console.error("Error checking saved form:", error);
+      return false;
+    }
+  };
+
   return {
     ...formState,
     loading,
@@ -380,6 +498,9 @@ export function useProfileForm() {
     prevStep,
     goToStep,
     handleSignUp,
-    isFormValid
+    isFormValid,
+    clearSavedForm,
+    hasSavedForm,
+    isHydrated
   };
 }
