@@ -88,10 +88,16 @@ export default function DashboardPage() {
     const oneDayAgo = new Date();
     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
 
-    return jobs.filter((job) => {
-      const jobDate = job.date ? new Date(job.date) : new Date();
-      return jobDate >= oneDayAgo;
-    });
+    return jobs
+      .filter((job) => {
+        const jobDate = job.date ? new Date(job.date) : new Date();
+        return jobDate >= oneDayAgo;
+      })
+      .sort((a, b) => {
+        const dateA = a.date ? new Date(a.date) : new Date();
+        const dateB = b.date ? new Date(b.date) : new Date();
+        return dateB - dateA; // Newest first
+      });
   };
 
   // Filter jobs based on search query
