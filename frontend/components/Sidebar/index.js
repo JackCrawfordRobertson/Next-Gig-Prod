@@ -170,7 +170,7 @@ export default function SidebarLayout({ children }) {
               className="flex items-center px-4 py-2 text-foreground hover:bg-accent rounded-md transition-colors"
             >
               <Palette className="w-4 h-4 mr-3 text-gray-500" />
-              <span>If You Could</span>
+              <span>If You Could Jobs</span>
               <ChevronRight className="w-5 h-5 text-gray-400 ml-auto" />
             </Link>
           </SidebarMenuItem>

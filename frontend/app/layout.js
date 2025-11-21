@@ -12,22 +12,22 @@ const inter = Inter({
 
 export const metadata = {
   title: {
-    default: "Next Gig - Automated Job Alerts | Get Jobs Delivered to Your Inbox",
+    default: "Next Gig | Job Hunting Finally Organised",
     template: "%s | Next Gig"
   },
   description:
-    "Next Gig delivers relevant job listings straight to your inbox every 8 hours. No more endless scrolling through job boards. Find your next opportunity effortlessly.",
+    "Job hunting shouldn't be a full-time job. Next Gig does the hunting for you. We find the jobs that match what you're after and deliver them straight to your inbox every 8 hours. Finally, job hunting organised.",
   keywords: [
-    "job alerts",
+    "job alerts UK",
+    "job hunting organised",
     "automated job search",
-    "job notifications",
-    "career opportunities",
-    "job board",
-    "employment alerts",
-    "job matching",
-    "job finder",
-    "UK jobs",
-    "remote jobs"
+    "jobs delivered email",
+    "curated job listings",
+    "UK job board",
+    "job finder UK",
+    "personalized job alerts",
+    "job hunting made easy",
+    "job matching platform"
   ],
   authors: [{ name: "Next Gig" }],
   creator: "Next Gig",
@@ -37,9 +37,9 @@ export const metadata = {
     canonical: "/",
   },
   openGraph: {
-    title: "Next Gig - Automated Job Alerts",
+    title: "Next Gig | Job Hunting Finally Organised",
     description:
-      "Receive tailored job listings via email every 8 hours. Let the jobs find you.",
+      "Job hunting shouldn't eat up your time. Next Gig finds the jobs that match what you're after and delivers them straight to your inbox every 8 hours. That's it.",
     url: "https://next-gig.co.uk",
     siteName: "Next Gig",
     locale: "en_GB",
@@ -49,14 +49,14 @@ export const metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Next Gig - Automated Job Alerts Platform"
+        alt: "Next Gig - Job Hunting Finally Organised"
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Next Gig - Automated Job Alerts",
-    description: "Receive tailored job listings via email every 8 hours. Let the jobs find you.",
+    title: "Next Gig | Job Hunting Finally Organised",
+    description: "Job hunting shouldn't be a full-time job. We do the hunting, you get the jobs delivered every 8 hours.",
     images: ["/og-image.png"],
     creator: "@nextgig",
     site: "@nextgig"
@@ -127,7 +127,7 @@ export default function RootLayout({ children }) {
     "name": "Next Gig",
     "applicationCategory": "BusinessApplication",
     "operatingSystem": "Any",
-    "description": "Automated job alert platform that delivers relevant job listings straight to your inbox every 8 hours.",
+    "description": "Job hunting finally organised. Next Gig hunts down the jobs that match what you're after and delivers them straight to your inbox every 8 hours. No endless scrolling, no wasted time.",
     "url": "https://next-gig.co.uk",
     "author": {
       "@type": "Organization",
@@ -146,11 +146,11 @@ export default function RootLayout({ children }) {
       "worstRating": "1"
     },
     "featureList": [
-      "Automated job alerts every 8 hours",
-      "Personalized job matching",
-      "Multiple job board integration",
-      "Email notifications",
-      "Job application tracking"
+      "Job alerts delivered every 8 hours - automated and curated",
+      "Match jobs to your exact criteria and preferences",
+      "Jobs from LinkedIn, IfYouCould, UN Jobs and more",
+      "Straight to your inbox - no scrolling through job boards",
+      "Track and manage all your job applications"
     ]
   };
 
