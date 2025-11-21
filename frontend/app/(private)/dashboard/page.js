@@ -61,6 +61,8 @@ export default function DashboardPage() {
   const searchInputRef = useRef(null);
   const [activeTab, setActiveTab] = useState("recent");
   const [loadError, setLoadError] = useState(null);
+  const [recentAppliedFilter, setRecentAppliedFilter] = useState("all");
+  const [allAppliedFilter, setAllAppliedFilter] = useState("all");
 
   // Check for subscription success flag
   useEffect(() => {
@@ -93,11 +95,27 @@ export default function DashboardPage() {
         const jobDate = job.date ? new Date(job.date) : new Date();
         return jobDate >= oneDayAgo;
       })
+      .filter((job) => {
+        if (recentAppliedFilter === "all") return true;
+        if (recentAppliedFilter === "applied") return job.has_applied;
+        if (recentAppliedFilter === "not-applied") return !job.has_applied;
+        return true;
+      })
       .sort((a, b) => {
         const dateA = a.date ? new Date(a.date) : new Date();
         const dateB = b.date ? new Date(b.date) : new Date();
         return dateB - dateA; // Newest first
       });
+  };
+
+  // Get all jobs with filter
+  const getFilteredAllJobs = () => {
+    return jobs.filter((job) => {
+      if (allAppliedFilter === "all") return true;
+      if (allAppliedFilter === "applied") return job.has_applied;
+      if (allAppliedFilter === "not-applied") return !job.has_applied;
+      return true;
+    });
   };
 
   // Filter jobs based on search query
@@ -260,6 +278,7 @@ useEffect(() => {
   // Get filtered job lists
   const recentJobs = getRecentJobs();
   const filteredJobs = getFilteredJobs();
+  const allJobsFiltered = getFilteredAllJobs();
 
   // Final render
   return (
@@ -363,7 +382,41 @@ useEffect(() => {
               <CardHeader className="py-4 px-3">
                 <CardTitle className="flex items-center justify-between">
                   <span>Last 24 Hours</span>
-                  <Badge variant="outline">{recentJobs.length}</Badge>
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1 bg-muted rounded-md p-1">
+                      <button
+                        onClick={() => setRecentAppliedFilter("all")}
+                        className={`px-2 py-1 rounded text-xs transition ${
+                          recentAppliedFilter === "all"
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        All
+                      </button>
+                      <button
+                        onClick={() => setRecentAppliedFilter("applied")}
+                        className={`px-2 py-1 rounded text-xs transition ${
+                          recentAppliedFilter === "applied"
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        Applied
+                      </button>
+                      <button
+                        onClick={() => setRecentAppliedFilter("not-applied")}
+                        className={`px-2 py-1 rounded text-xs transition ${
+                          recentAppliedFilter === "not-applied"
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        Not Applied
+                      </button>
+                    </div>
+                    <Badge variant="outline">{recentJobs.length}</Badge>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex-1 pl-2 pr-0 pb-0 md:overflow-hidden">
@@ -394,14 +447,48 @@ useEffect(() => {
               <CardHeader className="py-4 px-3">
                 <CardTitle className="flex items-center justify-between">
                   <span>All Jobs</span>
-                  <Badge variant="outline">{jobs.length}</Badge>
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1 bg-muted rounded-md p-1">
+                      <button
+                        onClick={() => setAllAppliedFilter("all")}
+                        className={`px-2 py-1 rounded text-xs transition ${
+                          allAppliedFilter === "all"
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        All
+                      </button>
+                      <button
+                        onClick={() => setAllAppliedFilter("applied")}
+                        className={`px-2 py-1 rounded text-xs transition ${
+                          allAppliedFilter === "applied"
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        Applied
+                      </button>
+                      <button
+                        onClick={() => setAllAppliedFilter("not-applied")}
+                        className={`px-2 py-1 rounded text-xs transition ${
+                          allAppliedFilter === "not-applied"
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        Not Applied
+                      </button>
+                    </div>
+                    <Badge variant="outline">{allJobsFiltered.length}</Badge>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex-1 pl-2 pr-0 pb-0 md:overflow-hidden">
                 <ScrollArea className="h-full">
                   <div className="flex flex-col gap-3 pr-4 pb-2">
-                    {jobs.length > 0 ? (
-                      jobs.map((job, index) => (
+                    {allJobsFiltered.length > 0 ? (
+                      allJobsFiltered.map((job, index) => (
                         <JobCard
                           key={index}
                           job={job}
@@ -432,7 +519,7 @@ useEffect(() => {
                   Last 24 Hours ({recentJobs.length})
                 </TabsTrigger>
                 <TabsTrigger value="all" className="text-sm py-1">
-                  All Jobs ({jobs.length})
+                  All Jobs ({allJobsFiltered.length})
                 </TabsTrigger>
               </TabsList>
 
@@ -442,6 +529,40 @@ useEffect(() => {
                   className="mt-0 h-full overflow-auto"
                 >
                   <Card className="flex flex-col h-full bg-muted/20 border-0">
+                    <CardHeader className="py-2 px-3">
+                      <div className="flex gap-1 bg-muted rounded-md p-1">
+                        <button
+                          onClick={() => setRecentAppliedFilter("all")}
+                          className={`px-2 py-1 rounded text-xs transition ${
+                            recentAppliedFilter === "all"
+                              ? "bg-primary text-primary-foreground"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          All
+                        </button>
+                        <button
+                          onClick={() => setRecentAppliedFilter("applied")}
+                          className={`px-2 py-1 rounded text-xs transition ${
+                            recentAppliedFilter === "applied"
+                              ? "bg-primary text-primary-foreground"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          Applied
+                        </button>
+                        <button
+                          onClick={() => setRecentAppliedFilter("not-applied")}
+                          className={`px-2 py-1 rounded text-xs transition ${
+                            recentAppliedFilter === "not-applied"
+                              ? "bg-primary text-primary-foreground"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          Not Applied
+                        </button>
+                      </div>
+                    </CardHeader>
                     <CardContent className="p-2 pb-[calc(4rem+env(safe-area-inset-bottom))] flex-1 overflow-auto">
                       {recentJobs.length > 0 ? (
                         <div className="flex flex-col gap-3">
@@ -466,10 +587,44 @@ useEffect(() => {
 
                 <TabsContent value="all" className="mt-0 h-full overflow-auto">
                   <Card className="flex flex-col h-full bg-muted/20 border-0">
+                    <CardHeader className="py-2 px-3">
+                      <div className="flex gap-1 bg-muted rounded-md p-1">
+                        <button
+                          onClick={() => setAllAppliedFilter("all")}
+                          className={`px-2 py-1 rounded text-xs transition ${
+                            allAppliedFilter === "all"
+                              ? "bg-primary text-primary-foreground"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          All
+                        </button>
+                        <button
+                          onClick={() => setAllAppliedFilter("applied")}
+                          className={`px-2 py-1 rounded text-xs transition ${
+                            allAppliedFilter === "applied"
+                              ? "bg-primary text-primary-foreground"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          Applied
+                        </button>
+                        <button
+                          onClick={() => setAllAppliedFilter("not-applied")}
+                          className={`px-2 py-1 rounded text-xs transition ${
+                            allAppliedFilter === "not-applied"
+                              ? "bg-primary text-primary-foreground"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          Not Applied
+                        </button>
+                      </div>
+                    </CardHeader>
                     <CardContent className="p-2 pb-[calc(4rem+env(safe-area-inset-bottom))] flex-1 overflow-auto">
-                      {jobs.length > 0 ? (
+                      {allJobsFiltered.length > 0 ? (
                         <div className="flex flex-col gap-3">
-                          {jobs.map((job, index) => (
+                          {allJobsFiltered.map((job, index) => (
                             <JobCard
                               key={index}
                               job={job}

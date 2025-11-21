@@ -67,6 +67,7 @@ export default function UNJobsPage() {
   const lastClickTimeRef = useRef(null);
   const selectedJobRef = useRef(null);
   const [activeTab, setActiveTab] = useState("jobs");
+  const [appliedFilter, setAppliedFilter] = useState("all");
 
   // Handle visibility change (user returns from external link)
   const handleVisibilityChange = () => {
@@ -225,6 +226,16 @@ export default function UNJobsPage() {
   };
   
 
+  // Filter jobs based on applied status
+  const getFilteredJobs = () => {
+    return jobs.filter((job) => {
+      if (appliedFilter === "all") return true;
+      if (appliedFilter === "applied") return job.has_applied;
+      if (appliedFilter === "not-applied") return !job.has_applied;
+      return true;
+    });
+  };
+
   // Navigation Functions for Weekly View
   const goToPreviousWeek = () => setCurrentWeek(subWeeks(currentWeek, 1));
   const goToNextWeek = () => setCurrentWeek(addWeeks(currentWeek, 1));
@@ -278,14 +289,127 @@ export default function UNJobsPage() {
   }
 
   // Desktop layout with added stats widgets
-  const DesktopLayout = () => (
+  const DesktopLayout = () => {
+    const filteredJobs = getFilteredJobs();
+    return (
     <div className="hidden md:flex h-full w-full flex-row gap-6">
       <div className="w-1/3 h-full">
-        <JobColumn
-          title="UN Jobs"
-          jobs={jobs}
-          onJobClick={handleJobClick}
-        />
+        <Card className="h-full flex flex-col">
+          <CardHeader className="py-2 px-4">
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-lg">UN Jobs</CardTitle>
+              <div className="flex gap-1 bg-muted rounded-md p-1">
+                <button
+                  onClick={() => setAppliedFilter("all")}
+                  className={`px-2 py-1 rounded text-xs transition ${
+                    appliedFilter === "all"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setAppliedFilter("applied")}
+                  className={`px-2 py-1 rounded text-xs transition ${
+                    appliedFilter === "applied"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Applied
+                </button>
+                <button
+                  onClick={() => setAppliedFilter("not-applied")}
+                  className={`px-2 py-1 rounded text-xs transition ${
+                    appliedFilter === "not-applied"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Not Applied
+                </button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="flex-1 pl-2 pr-0 pb-0 overflow-hidden">
+            <ScrollArea className="h-full">
+              <div className="flex flex-col gap-3 pr-4 pb-2">
+                {filteredJobs.length > 0 ? (
+                  filteredJobs.map((job, index) => (
+                    <Card
+                      key={index}
+                      className="hover:shadow-md transition-shadow bg-card cursor-pointer"
+                      onClick={() => handleJobClick(job)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start mb-3">
+                          <h3 className="font-medium w-[70%]">{job.title}</h3>
+                          <Badge variant="outline">UN Jobs</Badge>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-2 mb-3">
+                          <div className="flex items-center text-sm text-muted-foreground">
+                            <Building className="h-4 w-4 mr-1" />{" "}
+                            {job.company || "United Nations"}
+                          </div>
+                          <div className="flex items-center text-sm text-muted-foreground">
+                            <MapPin className="h-4 w-4 mr-1" />{" "}
+                            {job.location || "Not specified"}
+                          </div>
+                          {job.date_added && (
+                            <div className="flex items-center text-sm text-muted-foreground">
+                              <Clock className="h-4 w-4 mr-1" />{" "}
+                              {formatDate(job.date_added)}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex justify-between items-center mt-2 pt-2 border-t border-border/40">
+                          <div
+                            className={`flex items-center text-sm ${
+                              job.has_applied ? "text-green-500" : "text-red-500"
+                            }`}
+                          >
+                            {job.has_applied ? (
+                              <span className="flex items-center">
+                                <CheckCircle2 className="h-4 w-4 mr-1" /> Applied
+                              </span>
+                            ) : (
+                              <span className="flex items-center">
+                                <XCircle className="h-4 w-4 mr-1" /> Not Applied
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-primary hover:underline">
+                            Click to view details
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <div className="flex items-center justify-center h-auto min-h-40 bg-muted/50 rounded-lg p-6">
+                    <div className="text-center max-w-sm">
+                      <h3 className="font-semibold text-base mb-3">
+                        No jobs available yet
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        As a new account holder, your first jobs will be added
+                        within 8 hours of account creation.
+                      </p>
+                      <div className="mt-4 pt-3 border-t border-border">
+                        <p className="text-sm text-muted-foreground italic">
+                          If you don't see any jobs within 24 hours, consider widening your job queries and/or location search.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="w-2/3 h-full flex flex-col gap-6">
@@ -415,6 +539,7 @@ export default function UNJobsPage() {
       </div>
     </div>
   );
+  };
 
   // Mobile layout (optimised with tabs)
   const MobileLayout = () => (
@@ -438,13 +563,47 @@ export default function UNJobsPage() {
         <TabsContent value="jobs" className="flex-1">
           <Card className="h-full border-0 shadow-none">
             <CardHeader className="py-2 px-3">
-              <CardTitle className="text-lg">UN Jobs</CardTitle>
+              <div className="flex justify-between items-center mb-2">
+                <CardTitle className="text-lg">UN Jobs</CardTitle>
+              </div>
+              <div className="flex gap-1 bg-muted rounded-md p-1">
+                <button
+                  onClick={() => setAppliedFilter("all")}
+                  className={`px-2 py-1 rounded text-xs transition ${
+                    appliedFilter === "all"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setAppliedFilter("applied")}
+                  className={`px-2 py-1 rounded text-xs transition ${
+                    appliedFilter === "applied"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Applied
+                </button>
+                <button
+                  onClick={() => setAppliedFilter("not-applied")}
+                  className={`px-2 py-1 rounded text-xs transition ${
+                    appliedFilter === "not-applied"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Not Applied
+                </button>
+              </div>
             </CardHeader>
             <CardContent className="flex-1  p-0 pt-2">
               <ScrollArea className="h-full pb-8">
                 <div className="flex flex-col gap-3 px-3 pb-16">
-                  {jobs.length > 0 ? (
-                    jobs.map((job, index) => (
+                  {getFilteredJobs().length > 0 ? (
+                    getFilteredJobs().map((job, index) => (
                       <MobileJobCard
                         key={index}
                         job={job}
