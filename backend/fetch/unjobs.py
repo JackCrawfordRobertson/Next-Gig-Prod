@@ -32,7 +32,7 @@ import config
 BASE_URL = "https://unjobs.org/search/{query}"
 CACHE_FILE = "unjobs_cache.json"
 CACHE_EXPIRY_HOURS = 24  # Cache results for 24 hours
-MAX_WORKERS = 3  # Number of concurrent workers
+MAX_WORKERS = 10  # Number of concurrent workers (OPTIMIZED: increased from 3 to 10)
 REQUEST_TIMEOUT = 15  # HTTP request timeout in seconds
 RETRY_ATTEMPTS = 3  # Number of retry attempts
 
@@ -194,13 +194,13 @@ def create_cache_key(url):
 
 # Adaptive delay function to reduce waiting time while avoiding 403s
 def adaptive_delay(request_type="page"):
-    """More intelligent delay based on request type"""
+    """More intelligent delay based on request type - OPTIMIZED for speed"""
     if request_type == "page":
-        return random.uniform(5.0, 10.0)  # Shorter delay for main pages
+        return random.uniform(1.0, 2.0)  # OPTIMIZED: reduced from 5-10s to 1-2s
     elif request_type == "detail":
-        return random.uniform(2.0, 4.0)   # Even shorter for detail pages
+        return random.uniform(0.5, 1.0)   # OPTIMIZED: reduced from 2-4s to 0.5-1s
     else:
-        return random.uniform(1.0, 2.0)   # Default delay
+        return random.uniform(0.3, 0.6)   # Default delay
 
 # Session creation with retry logic and connection pooling
 def create_requests_session():
@@ -368,10 +368,17 @@ def process_job_keyword(job_keyword, locations, shared_cache, shared_visited_url
                 # Check if title matches the search term
                 if job_keyword.lower() not in title.lower():
                     continue
-                
+
                 # Get location from title
                 extracted_location = extract_location_from_title(title)
-                
+
+                # OPTIMIZATION: Pre-filter by location using title only
+                # Only fetch full details if title suggests location match
+                quick_check_text = f"{title} {extracted_location}"
+                if not location_matches(quick_check_text, normalized_locations):
+                    logger.debug(f"⚡ Skipping detail fetch (title location mismatch): {title}")
+                    continue
+
                 # Create initial job object
                 job = {
                     "title": title,
@@ -382,22 +389,22 @@ def process_job_keyword(job_keyword, locations, shared_cache, shared_visited_url
                     "source": "unjobs",
                     "has_applied": False
                 }
-                
-                # Get additional details
+
+                # Get additional details (only for jobs that passed pre-filter)
                 details = fetch_job_details(url, session, headers, shared_cache)
-                
+
                 # Update with any additional details found
                 job.update(details)
-                
-                # Check if location matches using both title and description
+
+                # Final location check using full details
                 combined_text = f"{title} {job['location']} {job.get('description', '')}"
                 location_match = location_matches(combined_text, normalized_locations)
-                
+
                 if location_match:
                     logger.info(f"✅ Job Found: {title} @ {job['location']}")
                     jobs_found.append(job)
                 else:
-                    logger.debug(f"❌ Location mismatch: {title} @ {job['location']}")
+                    logger.debug(f"❌ Location mismatch after detail fetch: {title} @ {job['location']}")
             
             # Check for pagination
             next_button = soup.select_one("a.ts")
@@ -430,7 +437,9 @@ def process_job_keyword(job_keyword, locations, shared_cache, shared_visited_url
 def fetch_unjobs_parallel(job_titles=None, locations=None, max_workers=MAX_WORKERS):
     """
     Scrape UN Jobs in parallel using multiple threads
-    
+
+    OPTIMIZED: 10 workers (up from 3), reduced delays, pre-filtering before detail fetches
+
     :param job_titles: List of job titles to search for
     :param locations: List of locations to filter by
     :param max_workers: Maximum number of concurrent workers
@@ -439,48 +448,58 @@ def fetch_unjobs_parallel(job_titles=None, locations=None, max_workers=MAX_WORKE
     # Use provided parameters or defaults
     job_titles = job_titles or config.JOB_KEYWORDS
     locations = locations or ['london', 'remote', 'uk']
-    
-    logger.info(f"Starting parallel UN Jobs scraping with {max_workers} workers")
+
+    logger.info(f"🔍 Starting OPTIMIZED UN Jobs scraping with {max_workers} workers")
     logger.info(f"Job titles: {job_titles}")
     logger.info(f"Locations: {locations}")
-    
+
+    # Start timing
+    start_time = time.time()
+
     # Initialize thread-safe cache
     shared_cache = ThreadSafeCache(CACHE_FILE)
-    
+
     # Shared visited URLs with lock
     shared_visited_urls = (Lock(), set())
-    
+
     all_jobs = []
-    
+
     # Use appropriate number of workers (don't exceed number of job titles)
     actual_workers = min(max_workers, len(job_titles))
-    
+    logger.info(f"⚡ Using {actual_workers} concurrent workers for {len(job_titles)} job titles")
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=actual_workers) as executor:
         # Submit all jobs to the executor
         future_to_keyword = {
             executor.submit(
-                process_job_keyword, 
-                job_keyword, 
-                locations, 
-                shared_cache, 
+                process_job_keyword,
+                job_keyword,
+                locations,
+                shared_cache,
                 shared_visited_urls
             ): job_keyword for job_keyword in job_titles
         }
-        
+
         # Process results as they complete
         for future in concurrent.futures.as_completed(future_to_keyword):
             job_keyword = future_to_keyword[future]
             try:
                 jobs = future.result()
                 all_jobs.extend(jobs)
-                logger.info(f"Completed processing for '{job_keyword}': found {len(jobs)} jobs")
+                logger.info(f"✅ Completed processing for '{job_keyword}': found {len(jobs)} jobs")
             except Exception as e:
-                logger.error(f"Error processing '{job_keyword}': {e}")
-    
+                logger.error(f"❌ Error processing '{job_keyword}': {e}")
+
     # Save cache when everything is done
     shared_cache.save_cache()
-    
-    logger.info(f"Finished parallel scraping. Total jobs found: {len(all_jobs)}")
+
+    # Calculate performance metrics
+    elapsed_time = time.time() - start_time
+    throughput = len(job_titles) / elapsed_time if elapsed_time > 0 else 0
+
+    logger.info(f"✅ Finished UN Jobs scraping. Total jobs found: {len(all_jobs)}")
+    logger.info(f"⚡ Scraping time: {elapsed_time:.2f}s ({throughput:.1f} searches/sec)")
+
     return all_jobs
 
 # Maintain backward compatibility with old function
