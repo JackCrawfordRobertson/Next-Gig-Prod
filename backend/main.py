@@ -70,33 +70,38 @@ def get_unique_job_location_pairs(users):
 
 def simple_job_matching(all_jobs, user):
     """
-    Simple job matching based on title and location text matching
-    
+    Simple job matching based on title and location text matching.
+
+    UPDATED: Now properly filters IfYouCould jobs by BOTH title and location.
+    The IfYouCould scraper has been enhanced to fetch actual job titles from detail pages.
+
     :param all_jobs: Dictionary of jobs from all sources
     :param user: User dictionary
     :return: Matched jobs for the user
     """
     user_titles = [t.lower() for t in user.get('jobTitles', [])]
     user_locations = [l.lower() for l in user.get('jobLocations', [])]
-    
+
     matched_jobs = []
-    
+
     for source, source_jobs in all_jobs.items():
         for job in source_jobs:
             job_title = job.get('title', '').lower()
             job_location = job.get('location', '').lower()
-            
-            # Check if title matches
+
+            # Match both title and location for ALL sources (including IfYouCould)
             title_match = any(title in job_title for title in user_titles)
-            
-            # Check if location matches
             location_match = any(loc in job_location for loc in user_locations)
-            
+
+            # Enhanced location matching: also accept "remote", "uk", or "united kingdom" jobs for UK locations
+            if not location_match and any(loc in job_location for loc in ['remote', 'uk', 'united kingdom']):
+                location_match = any('uk' in user_loc or 'united kingdom' in user_loc or 'london' in user_loc for user_loc in user_locations)
+
             if title_match and location_match:
                 job_with_source = job.copy()
                 job_with_source['source'] = source
                 matched_jobs.append(job_with_source)
-    
+
     logger.info(f"User {user.get('email')} - Found {len(matched_jobs)} matched jobs")
     return matched_jobs
 
