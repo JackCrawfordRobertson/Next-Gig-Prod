@@ -121,7 +121,7 @@ def get_subscribed_users():
 def generate_html_email(jobs_by_platform, job_count):
     """Generate a nicely formatted HTML email in John Hegley style with logo."""
     current_date = datetime.now().strftime("%d %B %Y")
-    logo_url = "https://res.cloudinary.com/dfsznxwhz/image/upload/v1742992744/nextgig-logo_nqjhvq.svg"
+    logo_url = "https://res.cloudinary.com/dfsznxwhz/image/upload/f_png,w_300,q_auto/v1742992744/nextgig-logo_nqjhvq.png"
     website_url = "https://next-gig.co.uk"
     
     # John Hegley-inspired witty intro lines
@@ -259,8 +259,8 @@ def generate_html_email(jobs_by_platform, job_count):
     <body>
         <div class="header">
             <img src="{logo_url}" alt="Next Gig Logo" class="logo">
-            <h1>Job Alert Spectacular</h1>
-            <div class="tagline">Dream gigs delivered. Not searched for.</div>
+        <h1>Your Job Alerts</h1>
+        <div class="tagline">Job Hunting Finally Organised</div>
             <p>{current_date}</p>
         </div>
         <div class="content">
@@ -293,10 +293,10 @@ def generate_html_email(jobs_by_platform, job_count):
             <a href="{website_url}" class="main-cta">Visit Next Gig</a>
             
             <p>May your applications be swift and your interviews be splendid!</p>
-            <p>Cheerfully yours,<br>The Next Gig Bunch</p>
+            <p>Cheerfully yours,<br>The Next Gig Team </p>
         </div>
         <div class="footer">
-            <p>© 2025 Next Gig - Dream gigs delivered. Not searched for.</p>
+            <p>© 2025 Next Gig - Job Hunting Finally Organised.</p>
             <p>You're receiving this because you rather cleverly subscribed to our job alerts.</p>
         </div>
     </body>

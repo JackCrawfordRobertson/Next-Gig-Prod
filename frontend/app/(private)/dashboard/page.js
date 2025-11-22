@@ -42,7 +42,16 @@ import { isDevelopmentMode } from "@/lib/utils/environment";
 import MiniStat from "@/components/dashboard/MiniStat";
 import JobCard from "@/components/dashboard/JobCard";
 
+// Animated title hook
+import { useAnimatedTitle } from "@/hooks/useAnimatedTitle";
+
 export default function DashboardPage() {
+  // ✨ Typewriter animation in browser tab
+  useAnimatedTitle({
+    animation: "typewriter",
+    interval: 300,
+  });
+
   // Session and router
   const { data: session, status } = useSession();
   const router = useRouter();

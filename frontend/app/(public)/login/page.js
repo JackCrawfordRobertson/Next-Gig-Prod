@@ -11,8 +11,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { showToast } from "@/lib/utils/toast";
 import Link from "next/link";
 import Image from "next/image";
+import { useAnimatedTitle } from "@/hooks/useAnimatedTitle";
 
 export default function LoginPage() {
+  // ✨ Typewriter animation in browser tab
+  useAnimatedTitle({
+    animation: "typewriter",
+    interval: 300, // Speed of typing
+  });
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

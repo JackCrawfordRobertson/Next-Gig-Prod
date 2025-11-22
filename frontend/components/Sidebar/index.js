@@ -125,16 +125,16 @@ export default function SidebarLayout({ children }) {
   const DesktopSidebar = () => (
     <Sidebar className="h-full w-64 flex flex-col border-r max-md:hidden bg-background">
       <SidebarContent className="flex flex-col flex-1 bg-background">
-        {/* Company section */}
+        {/* Company section - Clickable logo */}
         <div className="p-6 flex justify-center items-center">
-          <div>
+          <Link href="/dashboard" className="cursor-pointer hover:opacity-80 transition-opacity">
             <Image
               src="/nextgig-logo.svg"
-              alt="Logo"
+              alt="Next Gig Logo"
               width={150}
               height={100}
             />
-          </div>
+          </Link>
         </div>
 
         {/* Main navigation */}
