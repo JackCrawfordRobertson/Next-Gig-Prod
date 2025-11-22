@@ -10,6 +10,7 @@ schedule
 
 # Email handling
 sendgrid
+resend
 
 # Firebase database
 firebase-admin
