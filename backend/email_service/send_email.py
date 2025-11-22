@@ -101,10 +101,10 @@ def get_platform_icon(platform):
 
 def get_subscribed_users():
     """
-    FREE ACCESS MODE: Fetch all users with job preferences (no subscription check).
-    Previously only fetched subscribed users, now fetches all users.
+    FREE ACCESS MODE: Fetch all users with job preferences who have email notifications enabled.
+    Filters by emailNotificationsEnabled field (defaults to true if field doesn't exist).
     """
-    # FREE MODE: Get ALL users with job preferences
+    # FREE MODE: Get ALL users with job preferences and email notifications enabled
     users_ref = db.collection("users").stream()
     return [
         {
@@ -114,15 +114,18 @@ def get_subscribed_users():
             "jobLocations": user.to_dict().get("jobLocations", [])
         }
         for user in users_ref
-        # Only include users with job preferences
-        if user.to_dict().get("jobTitles") and user.to_dict().get("jobLocations")
+        # Only include users with job preferences AND email notifications enabled
+        if (user.to_dict().get("jobTitles") and
+            user.to_dict().get("jobLocations") and
+            user.to_dict().get("emailNotificationsEnabled", True))  # Default to True if field missing
     ]
 
-def generate_html_email(jobs_by_platform, job_count):
+def generate_html_email(jobs_by_platform, job_count, recipient_email):
     """Generate a nicely formatted HTML email in John Hegley style with logo."""
     current_date = datetime.now().strftime("%d %B %Y")
     logo_url = "https://res.cloudinary.com/dfsznxwhz/image/upload/f_png,w_300,q_auto/v1742992744/nextgig-logo_nqjhvq.png"
     website_url = "https://next-gig.co.uk"
+    unsubscribe_url = f"https://next-gig.co.uk/unsubscribe?email={recipient_email}"
     
     # John Hegley-inspired witty intro lines
     witty_intros = [
@@ -298,6 +301,7 @@ def generate_html_email(jobs_by_platform, job_count):
         <div class="footer">
             <p>© 2025 Next Gig - Job Hunting Finally Organised.</p>
             <p>You're receiving this because you rather cleverly subscribed to our job alerts.</p>
+            <p><a href="{unsubscribe_url}" style="color: #999; text-decoration: underline;">Unsubscribe from job alerts</a></p>
         </div>
     </body>
     </html>
@@ -336,7 +340,7 @@ Visit https://next-gig.co.uk to view full details and apply.
 Best regards,
 Next Gig Team
 
-Unsubscribe: https://next-gig.co.uk/unsubscribe
+Unsubscribe: https://next-gig.co.uk/unsubscribe?email={recipient_email}
 """
 
     try:
@@ -352,7 +356,7 @@ Unsubscribe: https://next-gig.co.uk/unsubscribe
             "text": plain_text,
             "reply_to": display_email,
             "headers": {
-                "List-Unsubscribe": "<https://next-gig.co.uk/unsubscribe>",
+                "List-Unsubscribe": f"<https://next-gig.co.uk/unsubscribe?email={recipient_email}>",
                 "Precedence": "bulk",
                 "Message-ID": f"<{generate_document_id(recipient_email + str(datetime.now()))}@next-gig.co.uk>"
             }
@@ -409,7 +413,7 @@ def send_job_emails():
             company = job_details.get("company", "Unknown Company")
             jobs_by_platform[platform][company].append(job_details)
 
-        html_content = generate_html_email(jobs_by_platform, len(user_jobs))
+        html_content = generate_html_email(jobs_by_platform, len(user_jobs), user["email"])
         success = send_email_to_user(user["email"], html_content, len(user_jobs), jobs_by_platform)
 
         if success:

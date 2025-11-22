@@ -1048,6 +1048,64 @@ export default function ProfileSettingsPage() {
                       onSubmit={form.handleSubmit(onSubmit)}
                       className="space-y-6"
                     >
+                      {/* Email Notifications Toggle */}
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="font-medium mb-2">Email Notifications</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Control whether you receive job alert emails
+                          </p>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium">Job Alert Emails</p>
+                            <p className="text-xs text-muted-foreground">
+                              {userData?.emailNotificationsEnabled !== false
+                                ? "You're currently receiving email notifications for new job matches"
+                                : "Email notifications are disabled"}
+                            </p>
+                          </div>
+                          <Switch
+                            checked={userData?.emailNotificationsEnabled !== false}
+                            onCheckedChange={async (checked) => {
+                              try {
+                                const userId = session?.user?.id;
+                                if (!userId) return;
+
+                                const userDocRef = doc(db, "users", userId);
+                                await updateDoc(userDocRef, {
+                                  emailNotificationsEnabled: checked,
+                                  emailNotificationsUpdatedAt: new Date().toISOString(),
+                                });
+
+                                // Update local state
+                                setUserData((prev) => ({
+                                  ...prev,
+                                  emailNotificationsEnabled: checked,
+                                }));
+
+                                showToast({
+                                  title: checked ? "Email Notifications Enabled" : "Email Notifications Disabled",
+                                  description: checked
+                                    ? "You'll now receive job alert emails"
+                                    : "You won't receive job alert emails anymore",
+                                  variant: "success",
+                                });
+                              } catch (error) {
+                                console.error("Error updating email notifications:", error);
+                                showToast({
+                                  title: "Update Failed",
+                                  description: "Failed to update email notification settings",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <Separator />
 
 <div>
   <h3 className="font-medium mb-2">Data Management</h3>
