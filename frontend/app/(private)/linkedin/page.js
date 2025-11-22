@@ -26,10 +26,11 @@ import {
   BarChart3,
   List,
   DollarSign,
+  Archive,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {startOfWeek, endOfWeek, format, subWeeks, addWeeks} from "date-fns";
-import { 
+import {
   AlertDialog,
   AlertDialogContent,
   AlertDialogHeader,
@@ -42,6 +43,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { updateJobAppliedStatus } from "@/lib/utils/updateJobApplied";
 import { isDevelopmentMode } from "@/lib/utils/environment";
+import { showToast } from "@/lib/utils/toast";
+import { archiveJob } from "@/lib/utils/archiveJob";
 
 
 
@@ -64,6 +67,7 @@ export default function LinkedInPage() {
   const selectedJobRef = useRef(null);
   const [activeTab, setActiveTab] = useState("jobs");
   const [appliedFilter, setAppliedFilter] = useState("all");
+  const [archiving, setArchiving] = useState(null);
 
   // Handle visibility change (user returns from external link)
   const handleVisibilityChange = () => {
@@ -180,16 +184,16 @@ export default function LinkedInPage() {
 
   const handleMarkApplied = async (applied) => {
     if (!selectedJob || !session?.user?.email) return;
-  
+
     console.log("Marking job as applied:", selectedJob.title, applied);
-  
+
     try {
       // 1. Update local state
       const updatedJobs = jobs.map((job) =>
         job.id === selectedJob.id ? { ...job, has_applied: applied } : job
       );
       setJobs(updatedJobs);
-  
+
       // 2. Firestore update
       if (!isDev && selectedJob?.source) {
         await updateJobAppliedStatus({
@@ -206,8 +210,38 @@ export default function LinkedInPage() {
       setSelectedJob(null);
     }
   };
-  
-  
+
+  const handleArchive = async (job, e) => {
+    e.stopPropagation(); // Prevent card click from triggering
+
+    setArchiving(job.id);
+
+    try {
+      const userId = session?.user?.id;
+
+      if (!userId) {
+        showToast({
+          title: "Error",
+          description: "User ID not found. Please try logging in again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const success = await archiveJob(userId, job.id, showToast);
+
+      if (success) {
+        // Remove from local jobs list
+        setJobs((prevJobs) => prevJobs.filter((j) => j.id !== job.id));
+      }
+    } catch (error) {
+      console.error("Error archiving job:", error);
+    } finally {
+      setArchiving(null);
+    }
+  };
+
+
 
   // Filter jobs based on applied status
   const getFilteredJobs = () => {
@@ -364,9 +398,22 @@ export default function LinkedInPage() {
                               </span>
                             )}
                           </div>
-                          <div className="text-xs text-primary hover:underline">
-                            Click to view details
-                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={(e) => handleArchive(job, e)}
+                            disabled={archiving === job.id}
+                            className="gap-1 h-8"
+                          >
+                            {archiving === job.id ? (
+                              <>Archiving...</>
+                            ) : (
+                              <>
+                                <Archive className="h-4 w-4" />
+                                Archive
+                              </>
+                            )}
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -591,6 +638,8 @@ export default function LinkedInPage() {
                         key={index}
                         job={job}
                         onClick={() => handleJobClick(job)}
+                        onArchive={(e) => handleArchive(job, e)}
+                        archiving={archiving === job.id}
                       />
                     ))
                   ) : (
@@ -983,7 +1032,7 @@ function JobColumn({ title, jobs, onJobClick }) {
 }
 
 // Mobile optimised job card
-function MobileJobCard({ job, onClick }) {
+function MobileJobCard({ job, onClick, onArchive, archiving }) {
   return (
     <Card
       className="hover:shadow-sm active:shadow-inner transition-shadow bg-card cursor-pointer touch-manipulation"
@@ -1032,7 +1081,22 @@ function MobileJobCard({ job, onClick }) {
               </span>
             )}
           </div>
-          <div className="text-xs text-primary">View</div>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onArchive}
+            disabled={archiving}
+            className="gap-1 h-7 text-xs px-2"
+          >
+            {archiving ? (
+              <>Archiving...</>
+            ) : (
+              <>
+                <Archive className="h-3 w-3" />
+                Archive
+              </>
+            )}
+          </Button>
         </div>
       </CardContent>
     </Card>

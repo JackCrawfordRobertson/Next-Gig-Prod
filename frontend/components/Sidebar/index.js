@@ -28,6 +28,7 @@ import {
   Palette,
   Moon,
   Sun,
+  Archive,
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
@@ -182,6 +183,17 @@ export default function SidebarLayout({ children }) {
             >
               <Globe className="w-4 h-4 mr-3 text-gray-500" />
               <span>UN Jobs</span>
+              <ChevronRight className="w-5 h-5 text-gray-400 ml-auto" />
+            </Link>
+          </SidebarMenuItem>
+
+          <SidebarMenuItem>
+            <Link
+              href="/applied-jobs"
+              className="flex items-center px-4 py-2 text-foreground hover:bg-accent rounded-md transition-colors"
+            >
+              <Archive className="w-4 h-4 mr-3 text-gray-500" />
+              <span>Applied Jobs</span>
               <ChevronRight className="w-5 h-5 text-gray-400 ml-auto" />
             </Link>
           </SidebarMenuItem>
@@ -357,6 +369,14 @@ export default function SidebarLayout({ children }) {
               <Settings className="w-4 h-4" />
               Profile Settings
             </button>
+            <Link
+              href="/applied-jobs"
+              className="flex items-center gap-2 px-4 py-3 hover:bg-accent text-sm border-b w-full text-left text-foreground transition-colors"
+              onClick={() => setMobileUserMenuOpen(false)}
+            >
+              <Archive className="w-4 h-4" />
+              Applied Jobs
+            </Link>
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               className="w-full flex items-center gap-2 px-4 py-3 hover:bg-accent text-sm border-b text-foreground transition-colors text-left"

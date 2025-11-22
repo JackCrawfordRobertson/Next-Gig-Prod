@@ -51,13 +51,19 @@ export async function getUserByEmail(email) {
 
 /**
  * Fetch jobs from a user's job subcollection
+ * @param {string} userId - User ID
+ * @param {Object} options - Query options
+ * @param {string} options.source - Filter by job source (linkedin, ifyoucould, etc)
+ * @param {number} options.limit - Limit number of results
+ * @param {boolean} options.includeArchived - Include archived jobs (default: false)
+ * @param {boolean} options.archivedOnly - Only return archived jobs (default: false)
  */
 export async function getUserJobs(userId, options = {}) {
   if (!userId) {
     console.warn("getUserJobs called with no userId");
     return [];
   }
-  
+
   try {
     console.log(`Fetching jobs for user: ${userId}`);
 
@@ -75,12 +81,12 @@ export async function getUserJobs(userId, options = {}) {
 
     const jobsQuery = constraints.length > 0 ? query(jobsRef, ...constraints) : jobsRef;
     const snapshot = await getDocs(jobsQuery);
-    
+
     if (snapshot.empty) {
       console.log("No jobs found for user");
       return [];
     }
-    
+
     // Simple mapping - no additional queries needed
     const jobs = snapshot.docs.map(doc => {
       const jobData = doc.data();
@@ -89,10 +95,22 @@ export async function getUserJobs(userId, options = {}) {
         ...serializeFirestoreData(jobData)
       };
     });
-    
-    console.log(`Fetched ${jobs.length} jobs successfully`);
-    return jobs;
-    
+
+    // Filter archived jobs based on options
+    let filteredJobs = jobs;
+
+    if (options.archivedOnly) {
+      // Only return archived jobs
+      filteredJobs = jobs.filter(job => job.archived === true);
+    } else if (!options.includeArchived) {
+      // Default: exclude archived jobs (return only non-archived)
+      filteredJobs = jobs.filter(job => job.archived !== true);
+    }
+    // If includeArchived is true, return all jobs (no filtering)
+
+    console.log(`Fetched ${filteredJobs.length} jobs successfully (${jobs.length} total)`);
+    return filteredJobs;
+
   } catch (error) {
     console.error("Error in getUserJobs:", error);
     return [];
@@ -106,9 +124,16 @@ export async function getRecentJobs(userId) {
   const allJobs = await getUserJobs(userId);
   const oneDayAgo = new Date();
   oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-  
+
   return allJobs.filter(job => {
     const jobDate = job.date_added ? new Date(job.date_added) : new Date();
     return jobDate >= oneDayAgo;
   });
+}
+
+/**
+ * Get archived jobs (jobs user has applied to or wants to focus on)
+ */
+export async function getArchivedJobs(userId) {
+  return await getUserJobs(userId, { archivedOnly: true });
 }
