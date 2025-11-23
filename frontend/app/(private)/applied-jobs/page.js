@@ -157,9 +157,9 @@ export default function AppliedJobsPage() {
                   <Briefcase className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="text-2xl">Applied Jobs</CardTitle>
+                  <CardTitle className="text-2xl">Archived Jobs</CardTitle>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Jobs you've archived to focus on
+                    Jobs you've saved for later review
                   </p>
                 </div>
               </div>
@@ -267,9 +267,9 @@ export default function AppliedJobsPage() {
                         No Archived Jobs
                       </h3>
                       <p className="text-sm text-muted-foreground mb-4">
-                        You haven't archived any jobs yet. Archive jobs from the
-                        LinkedIn, If You Could, or UN Jobs pages to focus on the
-                        ones you've applied to.
+                        You haven't archived any jobs yet. Use the archive feature to
+                        save jobs you're interested in, declutter your main job boards,
+                        or organize jobs you want to review later.
                       </p>
                       <p className="text-xs text-muted-foreground italic">
                         Archived jobs won't appear in your main job lists but will

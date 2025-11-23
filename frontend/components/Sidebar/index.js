@@ -31,7 +31,7 @@ import {
   Archive,
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/data/firebase'; // adjust path as needed
 
@@ -61,6 +61,9 @@ export default function SidebarLayout({ children }) {
   const [desktopUserMenuOpen, setDesktopUserMenuOpen] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
 
+  // Ref for mobile menu click-outside detection
+  const mobileMenuRef = useRef(null);
+
   // Fetch user profile from Firebase using NextAuth session
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -72,6 +75,23 @@ export default function SidebarLayout({ children }) {
 
     fetchUserProfile();
   }, [session]);
+
+  // Click-outside detection for mobile menu only
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target)) {
+        setMobileUserMenuOpen(false);
+      }
+    };
+
+    if (mobileUserMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [mobileUserMenuOpen]);
 
   // Get profile data with fallbacks
   const profilePicUrl = userProfile?.profilePicture || session?.user?.profilePicture || "/av.svg";
@@ -193,7 +213,7 @@ export default function SidebarLayout({ children }) {
               className="flex items-center px-4 py-2 text-foreground hover:bg-accent rounded-md transition-colors"
             >
               <Archive className="w-4 h-4 mr-3 text-gray-500" />
-              <span>Applied Jobs</span>
+              <span>Archived Jobs</span>
               <ChevronRight className="w-5 h-5 text-gray-400 ml-auto" />
             </Link>
           </SidebarMenuItem>
@@ -231,7 +251,10 @@ export default function SidebarLayout({ children }) {
         </div>
 
         {/* User section at bottom */}
-        <div className="relative">
+        <div
+          className="relative"
+          onMouseLeave={() => setDesktopUserMenuOpen(false)}
+        >
           <button
             onClick={() => setDesktopUserMenuOpen(!desktopUserMenuOpen)}
             className="w-full p-4 border-t flex justify-between items-center hover:bg-accent transition-colors"
@@ -340,7 +363,7 @@ export default function SidebarLayout({ children }) {
       </Link>
 
       {/* Profile with dropdown menu */}
-      <div className="relative">
+      <div className="relative" ref={mobileMenuRef}>
         <button
           onClick={() => setMobileUserMenuOpen(!mobileUserMenuOpen)}
           className={`flex flex-col items-center transition-colors ${
@@ -375,7 +398,7 @@ export default function SidebarLayout({ children }) {
               onClick={() => setMobileUserMenuOpen(false)}
             >
               <Archive className="w-4 h-4" />
-              Applied Jobs
+              Archived Jobs
             </Link>
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}

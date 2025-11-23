@@ -23,7 +23,7 @@ export async function archiveJob(userId, jobId, showToast = null) {
     if (showToast) {
       showToast({
         title: "Job Archived",
-        description: "Job moved to Applied Jobs",
+        description: "Job saved to your archive",
         variant: "success",
       });
     }

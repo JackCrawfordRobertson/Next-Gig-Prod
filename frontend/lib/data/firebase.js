@@ -1,18 +1,19 @@
 // lib/firebase.js
 import { initializeApp, getApps } from "firebase/app";
-import { 
-  getFirestore, 
-  doc, 
-  getDoc, 
-  setDoc, 
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
   updateDoc,
-  collection, 
-  query, 
-  where, 
+  collection,
+  query,
+  where,
   getDocs,
   addDoc,
   deleteDoc,
-  limit
+  limit,
+  serverTimestamp
 } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
@@ -66,5 +67,6 @@ export {
   getDocs,
   addDoc,
   deleteDoc,
-  limit
+  limit,
+  serverTimestamp
 };
