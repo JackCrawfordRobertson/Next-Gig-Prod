@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Next Gig!</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .logo {
+            max-width: 180px;
+            height: auto;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .greeting {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 20px;
+        }
+        .intro-text {
+            font-size: 16px;
+            color: #4a5568;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+        .feature-box {
+            background-color: #f7fafc;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .feature-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .feature-icon {
+            margin-right: 10px;
+            font-size: 24px;
+        }
+        .feature-description {
+            font-size: 14px;
+            color: #4a5568;
+            margin-left: 34px;
+        }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff !important;
+            text-decoration: none;
+            padding: 16px 40px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            margin: 30px 0;
+            text-align: center;
+        }
+        .cta-container {
+            text-align: center;
+        }
+        .tips-section {
+            background-color: #fffaf0;
+            border: 1px solid #fbd38d;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 8px;
+        }
+        .tips-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #744210;
+            margin-bottom: 15px;
+        }
+        .tip-item {
+            font-size: 14px;
+            color: #744210;
+            margin: 10px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+        .tip-item:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+        }
+        .footer {
+            background-color: #2d3748;
+            color: #cbd5e0;
+            padding: 30px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .footer-links {
+            margin: 20px 0;
+        }
+        .footer-link {
+            color: #90cdf4;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+        .social-links {
+            margin: 20px 0;
+        }
+        .social-link {
+            display: inline-block;
+            margin: 0 10px;
+            color: #90cdf4;
+            text-decoration: none;
+        }
+        .unsubscribe {
+            font-size: 12px;
+            color: #a0aec0;
+            margin-top: 20px;
+        }
+        .unsubscribe a {
+            color: #90cdf4;
+            text-decoration: none;
+        }
+        @media only screen and (max-width: 600px) {
+            .content {
+                padding: 30px 20px;
+            }
+            .greeting {
+                font-size: 22px;
+            }
+            .cta-button {
+                display: block;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- Header -->
+        <div class="header">
+            <img src="https://next-gig.co.uk/nextgig-logo-white.png" alt="Next Gig Logo" class="logo">
+        </div>
+
+        <!-- Main Content -->
+        <div class="content">
+            <div class="greeting">Welcome to Next Gig, {{first_name}}! 👋</div>
+
+            <p class="intro-text">
+                You've just taken the first step toward a smarter, more organized job search.
+                No more endless tab-switching or losing track of applications. We've got your back.
+            </p>
+
+            <p class="intro-text">
+                Here's what you can do right now:
+            </p>
+
+            <!-- Features -->
+            <div class="feature-box">
+                <div class="feature-title">
+                    <span class="feature-icon">📊</span>
+                    View Your Dashboard
+                </div>
+                <div class="feature-description">
+                    See all your jobs in one place. We aggregate from LinkedIn, If You Could Jobs, UN Jobs, and more.
+                </div>
+            </div>
+
+            <div class="feature-box">
+                <div class="feature-title">
+                    <span class="feature-icon">✅</span>
+                    Track Applications
+                </div>
+                <div class="feature-description">
+                    Mark jobs as applied and archive them. Never lose track of where you've applied again.
+                </div>
+            </div>
+
+            <div class="feature-box">
+                <div class="feature-title">
+                    <span class="feature-icon">📈</span>
+                    Analyze Trends
+                </div>
+                <div class="feature-description">
+                    See when jobs are posted most frequently. Plan your applications strategically.
+                </div>
+            </div>
+
+            <div class="feature-box">
+                <div class="feature-title">
+                    <span class="feature-icon">📧</span>
+                    Get Email Updates
+                </div>
+                <div class="feature-description">
+                    We'll send you new job matches every 8 hours. Stay ahead without the manual work.
+                </div>
+            </div>
+
+            <!-- CTA -->
+            <div class="cta-container">
+                <a href="https://next-gig.co.uk/dashboard" class="cta-button">
+                    Explore Your Dashboard →
+                </a>
+            </div>
+
+            <!-- Tips Section -->
+            <div class="tips-section">
+                <div class="tips-title">💡 Pro Tips to Get Started</div>
+                <div class="tip-item">Check your dashboard daily to see the freshest opportunities</div>
+                <div class="tip-item">Use the archive feature to keep track of jobs you've applied to</div>
+                <div class="tip-item">Browse the weekly charts to see hiring patterns</div>
+                <div class="tip-item">Enable dark mode in your profile settings for late-night searches</div>
+                <div class="tip-item">Filter by "Applied" or "Not Applied" to stay organized</div>
+            </div>
+
+            <p class="intro-text">
+                We're constantly improving Next Gig based on user feedback. If you have ideas,
+                questions, or just want to say hi, reply to this email - we read every message!
+            </p>
+
+            <p class="intro-text">
+                Good luck with your job search. We're here to help you find your next gig! 🚀
+            </p>
+
+            <p class="intro-text" style="margin-top: 40px;">
+                Best,<br>
+                <strong>The Next Gig Team</strong>
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-links">
+                <a href="https://next-gig.co.uk/profile-settings" class="footer-link">Profile Settings</a>
+                <a href="https://next-gig.co.uk/terms" class="footer-link">Terms</a>
+                <a href="https://next-gig.co.uk/privacy" class="footer-link">Privacy</a>
+            </div>
+
+            <div class="social-links">
+                <a href="https://linkedin.com/company/nextgig" class="social-link">LinkedIn</a>
+                <a href="https://twitter.com/nextgig" class="social-link">Twitter</a>
+            </div>
+
+            <p style="margin: 20px 0; font-size: 12px;">
+                © 2025 Next Gig. All rights reserved.<br>
+                Created with ❤️ to make job hunting less painful.
+            </p>
+
+            <div class="unsubscribe">
+                You're receiving this because you signed up for Next Gig.<br>
+                <a href="https://next-gig.co.uk/unsubscribe?email={{email}}">Manage email preferences</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
