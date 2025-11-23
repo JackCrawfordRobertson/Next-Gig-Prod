@@ -37,6 +37,7 @@ import {
 
 // Utility functions
 import { isDevelopmentMode } from "@/lib/utils/environment";
+import { openJobLink } from "@/lib/utils/openJobLink";
 
 // Custom components
 import MiniStat from "@/components/dashboard/MiniStat";
@@ -234,9 +235,12 @@ useEffect(() => {
   // Handle job card click to open URL
   const handleJobClick = (job) => {
     if (job.url) {
-      selectedJobRef.current = job;
-      lastClickTimeRef.current = Date.now();
-      window.open(job.url, "_blank");
+      openJobLink(job.url, {
+        onBeforeOpen: () => {
+          selectedJobRef.current = job;
+          lastClickTimeRef.current = Date.now();
+        }
+      });
     }
   };
 

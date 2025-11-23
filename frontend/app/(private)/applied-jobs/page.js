@@ -18,6 +18,7 @@ import { showToast } from "@/lib/utils/toast";
 import { unarchiveJob } from "@/lib/utils/archiveJob";
 import { getArchivedJobs } from "@/lib/data/jobDataUtils";
 import { isDevelopmentMode } from "@/lib/utils/environment";
+import { openJobLink } from "@/lib/utils/openJobLink";
 
 // Helper function to format date
 const formatDate = (dateString) => {
@@ -124,7 +125,7 @@ export default function AppliedJobsPage() {
 
   const handleJobClick = (job) => {
     if (job.url) {
-      window.open(job.url, "_blank", "noopener,noreferrer");
+      openJobLink(job.url);
     }
   };
 

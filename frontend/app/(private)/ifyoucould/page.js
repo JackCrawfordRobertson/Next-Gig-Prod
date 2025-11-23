@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { collection, getDocs } from "@/lib/data/firebase";
 import { updateJobAppliedStatus } from "@/lib/utils/updateJobApplied";
+import { openJobLink } from "@/lib/utils/openJobLink";
 
 import { useSession } from "next-auth/react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -195,10 +196,14 @@ export default function IfYouCouldPage() {
 
     if (job.url) {
       console.log("Opening URL:", job.url);
-      selectedJobRef.current = job;
-      lastClickTimeRef.current = Date.now();
-      console.log("Set lastClickTime:", lastClickTimeRef.current);
-      window.open(job.url, "_blank");
+
+      openJobLink(job.url, {
+        onBeforeOpen: () => {
+          selectedJobRef.current = job;
+          lastClickTimeRef.current = Date.now();
+          console.log("Set lastClickTime:", lastClickTimeRef.current);
+        }
+      });
     } else {
       console.log("No URL found for job");
     }

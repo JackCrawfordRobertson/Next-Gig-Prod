@@ -3,6 +3,7 @@
 import {useEffect, useState, useRef} from "react";
 import {db, collection, getDocs, doc, updateDoc} from "@/lib/data/firebase";
 import {useSession} from "next-auth/react";
+import {openJobLink} from "@/lib/utils/openJobLink";
 import {ScrollArea} from "@/components/ui/scroll-area";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {ChartContainer, ChartTooltip, ChartTooltipContent} from "@/components/ui/chart";
@@ -187,9 +188,14 @@ export default function LinkedInPage() {
   }, [currentWeek, status, isDev, session]);
 
   const handleJobClick = (job) => {
-    selectedJobRef.current = job;
-    lastClickTimeRef.current = Date.now();
-    window.open(job.url, "_blank");
+    if (!job.url) return;
+
+    openJobLink(job.url, {
+      onBeforeOpen: () => {
+        selectedJobRef.current = job;
+        lastClickTimeRef.current = Date.now();
+      }
+    });
   };
 
   const handleMarkApplied = async (applied) => {
