@@ -3,7 +3,7 @@
 import {useEffect, useState, useRef} from "react";
 import {db, collection, getDocs, doc, updateDoc} from "@/lib/data/firebase";
 import {useSession} from "next-auth/react";
-import {openJobLink} from "@/lib/utils/openJobLink";
+import {openJobLink, checkForJobReturn} from "@/lib/utils/openJobLink";
 import {ScrollArea} from "@/components/ui/scroll-area";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {ChartContainer, ChartTooltip, ChartTooltipContent} from "@/components/ui/chart";
@@ -97,11 +97,20 @@ export default function LinkedInPage() {
     console.log('Setting up visibility change listener');
     // Monitor visibility changes to detect when user returns from a job link
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    
+
     return () => {
       console.log('Cleaning up visibility change listener');
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
+  }, []);
+
+  // Check if user is returning from a job link (mobile navigation scenario)
+  useEffect(() => {
+    checkForJobReturn((job) => {
+      console.log('User returned from job link:', job.title);
+      setSelectedJob(job);
+      setShowApplyDialog(true);
+    });
   }, []);
 
   useEffect(() => {
@@ -191,6 +200,7 @@ export default function LinkedInPage() {
     if (!job.url) return;
 
     openJobLink(job.url, {
+      jobData: job, // Pass job data for mobile tracking
       onBeforeOpen: () => {
         selectedJobRef.current = job;
         lastClickTimeRef.current = Date.now();

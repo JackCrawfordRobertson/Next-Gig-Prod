@@ -37,7 +37,7 @@ import {
 
 // Utility functions
 import { isDevelopmentMode } from "@/lib/utils/environment";
-import { openJobLink } from "@/lib/utils/openJobLink";
+import { openJobLink, checkForJobReturn } from "@/lib/utils/openJobLink";
 
 // Custom components
 import MiniStat from "@/components/dashboard/MiniStat";
@@ -183,6 +183,14 @@ export default function DashboardPage() {
     };
   }, []);
 
+  // Check if user is returning from a job link (mobile navigation scenario)
+  useEffect(() => {
+    checkForJobReturn((job) => {
+      setSelectedJob(job);
+      setShowApplyDialog(true);
+    });
+  }, []);
+
   // Fetch user data and jobs
 useEffect(() => {
   async function fetchUserData() {
@@ -236,6 +244,7 @@ useEffect(() => {
   const handleJobClick = (job) => {
     if (job.url) {
       openJobLink(job.url, {
+        jobData: job, // Pass job data for mobile tracking
         onBeforeOpen: () => {
           selectedJobRef.current = job;
           lastClickTimeRef.current = Date.now();
