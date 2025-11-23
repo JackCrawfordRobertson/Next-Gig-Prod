@@ -139,7 +139,17 @@ export default function IfYouCouldPage() {
     
         setJobs(jobsData);
 
-        // Process job statistics
+        // Filter jobs by current week
+        const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
+        const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 });
+
+        const jobsInCurrentWeek = jobsData.filter((job) => {
+          if (!job.date_added) return false;
+          const jobDate = new Date(job.date_added);
+          return jobDate >= weekStart && jobDate <= weekEnd;
+        });
+
+        // Process job statistics for current week only
         const jobCountByWeekday = {
           Monday: 0,
           Tuesday: 0,
@@ -150,7 +160,7 @@ export default function IfYouCouldPage() {
           Sunday: 0,
         };
 
-        jobsData.forEach((job) => {
+        jobsInCurrentWeek.forEach((job) => {
           if (job.date_added) {
             const jobDate = new Date(job.date_added);
             const weekday = format(jobDate, "EEEE");
