@@ -274,7 +274,7 @@ export default function SidebarLayout({ children }) {
                   {getTimeBasedGreeting()}, {firstName}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {userEmail}
+                  Settings
                 </p>
               </div>
             </div>

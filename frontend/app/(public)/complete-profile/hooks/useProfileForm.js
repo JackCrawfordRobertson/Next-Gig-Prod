@@ -394,7 +394,20 @@ export function useProfileForm() {
       };
       
       await setDoc(newUserRef, userData);
-      
+
+      // Send welcome email (don't block on this)
+      fetch('/api/send-welcome-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formState.email,
+          firstName: formState.firstName
+        }),
+      }).catch(error => {
+        // Don't block signup if email fails
+        console.error('Failed to send welcome email:', error);
+      });
+
       // Sign in with NextAuth
       const signInResult = await signIn("credentials", {
         redirect: false,

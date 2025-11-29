@@ -42,6 +42,7 @@ import { openJobLink, checkForJobReturn } from "@/lib/utils/openJobLink";
 // Custom components
 import MiniStat from "@/components/dashboard/MiniStat";
 import JobCard from "@/components/dashboard/JobCard";
+import { NoRecentJobs, NoSearchResults } from "@/components/EmptyState";
 
 // Animated title hook
 import { useAnimatedTitle } from "@/hooks/useAnimatedTitle";
@@ -453,11 +454,7 @@ useEffect(() => {
                         />
                       ))
                     ) : (
-                      <div className="flex items-center justify-center h-32 bg-muted/50 rounded-lg">
-                        <p className="text-muted-foreground">
-                          No new jobs in the last 24 hours
-                        </p>
-                      </div>
+                      <NoRecentJobs onViewAllJobs={() => setActiveTab("all")} />
                     )}
                   </div>
                 </ScrollArea>
@@ -519,9 +516,9 @@ useEffect(() => {
                         />
                       ))
                     ) : (
-                      <div className="flex items-center justify-center h-32 bg-muted/50 rounded-lg">
-                        <p className="text-muted-foreground">No jobs found</p>
-                      </div>
+                      <NoSearchResults
+                        onClearFilters={() => setAllAppliedFilter("all")}
+                      />
                     )}
                   </div>
                 </ScrollArea>
@@ -597,11 +594,7 @@ useEffect(() => {
                           ))}
                         </div>
                       ) : (
-                        <div className="flex items-center justify-center h-32 bg-muted/50 rounded-lg">
-                          <p className="text-muted-foreground">
-                            No new jobs in the last 24 hours
-                          </p>
-                        </div>
+                        <NoRecentJobs onViewAllJobs={() => setActiveTab("all")} />
                       )}
                     </CardContent>
                   </Card>
@@ -656,9 +649,9 @@ useEffect(() => {
                           ))}
                         </div>
                       ) : (
-                        <div className="flex items-center justify-center h-32 bg-muted/50 rounded-lg">
-                          <p className="text-muted-foreground">No jobs found</p>
-                        </div>
+                        <NoSearchResults
+                          onClearFilters={() => setAllAppliedFilter("all")}
+                        />
                       )}
                     </CardContent>
                   </Card>
