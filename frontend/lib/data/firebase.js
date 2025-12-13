@@ -35,13 +35,15 @@ let storage;
 
 if (!getApps().length) {
   try {
+    console.log("Firebase config projectId:", firebaseConfig.projectId);
     app = initializeApp(firebaseConfig);
-    console.log("Firebase initialized successfully");
+    console.log("Firebase initialized successfully for project:", firebaseConfig.projectId);
   } catch (error) {
     console.error("Error initializing Firebase:", error);
   }
 } else {
   app = getApps()[0];
+  console.log("Firebase already initialized, reusing app");
 }
 
 // Initialize services
