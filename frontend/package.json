@@ -34,7 +34,7 @@
     "@types/react": "^18.2.67",
     "@types/react-dom": "^18.2.22",
     "@types/three": "^0.160.0",
-    "bcryptjs": "^3.0.2",
+    "bcryptjs": "^2.4.3",
     "buffer": "^6.0.3",
     "class-variance-authority": "^0.7.1",
     "classnames": "^2.5.1",
