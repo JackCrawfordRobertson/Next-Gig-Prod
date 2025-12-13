@@ -6,6 +6,8 @@ import { compare, hash } from "bcryptjs";
 const DEBUG = process.env.NODE_ENV === "development";
 
 export const authOptions = {
+  debug: true,
+  secret: process.env.NEXTAUTH_SECRET,
   providers: [
     CredentialsProvider({
       name: "credentials",
