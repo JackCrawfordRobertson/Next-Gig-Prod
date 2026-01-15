@@ -151,8 +151,9 @@ export default function LinkedInPage() {
         const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 });
 
         const jobsInCurrentWeek = jobsData.filter((job) => {
-          if (!job.date_added) return false;
-          const jobDate = new Date(job.date_added);
+          const dateField = job.added_at || job.date_added;
+          if (!dateField) return false;
+          const jobDate = new Date(dateField);
           return jobDate >= weekStart && jobDate <= weekEnd;
         });
 
@@ -168,8 +169,9 @@ export default function LinkedInPage() {
         };
 
         jobsInCurrentWeek.forEach((job) => {
-          if (job.date_added) {
-            const jobDate = new Date(job.date_added);
+          const dateField = job.added_at || job.date_added;
+          if (dateField) {
+            const jobDate = new Date(dateField);
             const weekday = format(jobDate, "EEEE");
             if (jobCountByWeekday[weekday] !== undefined) {
               jobCountByWeekday[weekday]++;
@@ -269,19 +271,42 @@ export default function LinkedInPage() {
 
 
 
-  // Filter jobs based on applied status
+  // Filter jobs based on applied status, sorted by newest first
   const getFilteredJobs = () => {
-    return jobs.filter((job) => {
-      if (appliedFilter === "all") return true;
-      if (appliedFilter === "applied") return job.has_applied;
-      if (appliedFilter === "not-applied") return !job.has_applied;
-      return true;
-    });
+    return jobs
+      .filter((job) => {
+        if (appliedFilter === "all") return true;
+        if (appliedFilter === "applied") return job.has_applied;
+        if (appliedFilter === "not-applied") return !job.has_applied;
+        return true;
+      })
+      .sort((a, b) => {
+        const dateA = a.added_at ? new Date(a.added_at) : (a.date_added ? new Date(a.date_added) : new Date());
+        const dateB = b.added_at ? new Date(b.added_at) : (b.date_added ? new Date(b.date_added) : new Date());
+        return dateB - dateA; // Newest first
+      });
   };
 
   // Navigation Functions for Weekly View
   const goToPreviousWeek = () => setCurrentWeek(subWeeks(currentWeek, 1));
-  const goToNextWeek = () => setCurrentWeek(addWeeks(currentWeek, 1));
+
+  // Check if we can navigate to next week (don't allow future weeks)
+  const canGoToNextWeek = () => {
+    const nextWeekStart = startOfWeek(addWeeks(currentWeek, 1), { weekStartsOn: 1 });
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return nextWeekStart.getTime() <= today.getTime();
+  };
+
+  const goToNextWeek = () => {
+    if (canGoToNextWeek()) {
+      setCurrentWeek(addWeeks(currentWeek, 1));
+    }
+  };
+
+  const goToToday = () => {
+    setCurrentWeek(new Date());
+  };
 
   if (loading) {
     return <div className="flex items-center justify-center h-full">
@@ -400,10 +425,10 @@ export default function LinkedInPage() {
                             <MapPin className="h-4 w-4 mr-1" />{" "}
                             {job.location || "Not specified"}
                           </div>
-                          {job.date_added && (
+                          {(job.added_at || job.date_added) && (
                             <div className="flex items-center text-sm text-muted-foreground">
                               <Clock className="h-4 w-4 mr-1" />{" "}
-                              {formatDate(job.date_added)}
+                              {formatDate(job.added_at || job.date_added)}
                             </div>
                           )}
                         </div>
@@ -551,16 +576,26 @@ export default function LinkedInPage() {
               </p>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <button
                 onClick={goToPreviousWeek}
                 className="p-2 rounded-full bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition"
+                title="Previous week"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <button
+                onClick={goToToday}
+                className="px-3 py-2 rounded-md text-sm font-medium bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition"
+                title="Go to current week"
+              >
+                Today
+              </button>
+              <button
                 onClick={goToNextWeek}
-                className="p-2 rounded-full bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition"
+                disabled={!canGoToNextWeek()}
+                className="p-2 rounded-full bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition disabled:opacity-50 disabled:cursor-not-allowed"
+                title={canGoToNextWeek() ? "Next week" : "Cannot navigate to future weeks"}
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
@@ -743,16 +778,26 @@ export default function LinkedInPage() {
                   </p>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
                   <button
                     onClick={goToPreviousWeek}
                     className="p-1.5 rounded-full bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition"
+                    title="Previous week"
                   >
                     <ChevronLeft className="w-3.5 h-3.5" />
                   </button>
                   <button
+                    onClick={goToToday}
+                    className="px-2 py-1.5 rounded text-xs font-medium bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition"
+                    title="Go to current week"
+                  >
+                    Today
+                  </button>
+                  <button
                     onClick={goToNextWeek}
-                    className="p-1.5 rounded-full bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition"
+                    disabled={!canGoToNextWeek()}
+                    className="p-1.5 rounded-full bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    title={canGoToNextWeek() ? "Next week" : "Cannot navigate to future weeks"}
                   >
                     <ChevronRight className="w-3.5 h-3.5" />
                   </button>
@@ -1001,10 +1046,10 @@ function JobColumn({ title, jobs, onJobClick }) {
                         <MapPin className="h-4 w-4 mr-1" />{" "}
                         {job.location || "Not specified"}
                       </div>
-                      {job.date_added && (
+                      {(job.added_at || job.date_added) && (
                         <div className="flex items-center text-sm text-muted-foreground">
                           <Clock className="h-4 w-4 mr-1" />{" "}
-                          {formatDate(job.date_added)}
+                          {formatDate(job.added_at || job.date_added)}
                         </div>
                       )}
                     </div>
@@ -1083,10 +1128,10 @@ function MobileJobCard({ job, onClick, onArchive, archiving }) {
             <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
             <span className="truncate">{job.location || "Not specified"}</span>
           </div>
-          {job.date_added && (
+          {(job.added_at || job.date_added) && (
             <div className="flex items-center text-xs text-muted-foreground">
               <Clock className="h-3 w-3 mr-1 flex-shrink-0" />{" "}
-              {formatDate(job.date_added)}
+              {formatDate(job.added_at || job.date_added)}
             </div>
           )}
         </div>

@@ -103,7 +103,7 @@ export default function DashboardPage() {
 
     return jobs
       .filter((job) => {
-        const jobDate = job.date ? new Date(job.date) : new Date();
+        const jobDate = job.added_at ? new Date(job.added_at) : new Date();
         return jobDate >= oneDayAgo;
       })
       .filter((job) => {
@@ -113,20 +113,26 @@ export default function DashboardPage() {
         return true;
       })
       .sort((a, b) => {
-        const dateA = a.date ? new Date(a.date) : new Date();
-        const dateB = b.date ? new Date(b.date) : new Date();
+        const dateA = a.added_at ? new Date(a.added_at) : new Date();
+        const dateB = b.added_at ? new Date(b.added_at) : new Date();
         return dateB - dateA; // Newest first
       });
   };
 
-  // Get all jobs with filter
+  // Get all jobs with filter, sorted by newest first
   const getFilteredAllJobs = () => {
-    return jobs.filter((job) => {
-      if (allAppliedFilter === "all") return true;
-      if (allAppliedFilter === "applied") return job.has_applied;
-      if (allAppliedFilter === "not-applied") return !job.has_applied;
-      return true;
-    });
+    return jobs
+      .filter((job) => {
+        if (allAppliedFilter === "all") return true;
+        if (allAppliedFilter === "applied") return job.has_applied;
+        if (allAppliedFilter === "not-applied") return !job.has_applied;
+        return true;
+      })
+      .sort((a, b) => {
+        const dateA = a.added_at ? new Date(a.added_at) : new Date();
+        const dateB = b.added_at ? new Date(b.added_at) : new Date();
+        return dateB - dateA; // Newest first
+      });
   };
 
   // Filter jobs based on search query

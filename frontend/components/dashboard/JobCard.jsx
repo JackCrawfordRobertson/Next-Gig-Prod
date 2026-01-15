@@ -8,7 +8,7 @@ export default function JobCard({ job, compact = false, onClick }) {
     title = "Job Title",
     company = "Company Name",
     location = "Location",
-    date = new Date().toISOString(),
+    added_at = new Date().toISOString(),
     salary = "Competitive",
     source = "Source",
     url = "#",
@@ -64,7 +64,7 @@ export default function JobCard({ job, compact = false, onClick }) {
             <MapPin className="h-4 w-4 mr-1" /> {location}
           </div>
           <div className="flex items-center text-sm text-muted-foreground">
-            <Clock className="h-4 w-4 mr-1" /> {formatDate(date)}
+            <Clock className="h-4 w-4 mr-1" /> {formatDate(added_at)}
           </div>
         </div>
 
