@@ -7,6 +7,7 @@ from collections import defaultdict
 from datetime import datetime
 import random
 from resend import Emails, Email
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 # Load environment variables
 load_dotenv()
@@ -27,7 +28,7 @@ def generate_document_id(job_url):
 
 def get_unsent_jobs():
     jobs_collection = db.collection("jobs_compiled")
-    unsent_jobs_query = jobs_collection.where("sent", "==", False)
+    unsent_jobs_query = jobs_collection.where(filter=FieldFilter("sent", "==", False))
     unsent_jobs = unsent_jobs_query.stream()
     jobs = [job.to_dict() for job in unsent_jobs]
     print(f"📋 Found {len(jobs)} unsent jobs")
@@ -35,8 +36,8 @@ def get_unsent_jobs():
 
 def get_unnotified_jobs_for_user(user_id):
     matches_ref = db.collection("user_job_matches") \
-        .where("user_id", "==", user_id) \
-        .where("notified", "==", False)
+        .where(filter=FieldFilter("user_id", "==", user_id)) \
+        .where(filter=FieldFilter("notified", "==", False))
     return [
         {
             "id": match.id,
