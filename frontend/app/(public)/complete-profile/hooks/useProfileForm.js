@@ -285,8 +285,22 @@ export function useProfileForm() {
 
   const addJobLocation = () => {
     const loc = formState.locationInput.trim();
+    const locLower = loc.toLowerCase();
 
-    // Maximum of 1 location
+    // 1. Define Banned Generic Terms
+    const bannedTerms = ["global", "remote", "united kingdom", "uk", "usa", "worldwide", "anywhere"];
+
+    // 2. Check for broad terms
+    if (bannedTerms.includes(locLower)) {
+      showToast({
+        title: "Location Too Broad",
+        description: "Please enter a specific city. Global or Country-wide searches are too large for our scraper.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // 3. Maximum of 1 location
     if (formState.jobLocations.length >= 1) {
       showToast({
         title: "Maximum Reached",
