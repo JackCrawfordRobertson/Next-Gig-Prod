@@ -1,7 +1,7 @@
 // frontend/app/(private)/profile-settings/page.js
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,6 +19,8 @@ import {
 } from "@/lib/data/firebase";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Button } from "@/components/ui/button";
+import { MapPin, Loader2 } from "lucide-react";
+import { useCitySearch } from "@/app/(public)/complete-profile/hooks/useCitySearch";
 import {
   Form,
   FormControl,
@@ -389,6 +391,21 @@ export default function ProfileSettingsPage() {
   };
 
   const [currentPlanType, setCurrentPlanType] = useState("standard");
+
+  const [cityInput, setCityInput] = useState("");
+  const [showCityDropdown, setShowCityDropdown] = useState(false);
+  const { suggestions: citySuggestions, isLoading: cityLoading, searchCities, clearSuggestions: clearCitySuggestions } = useCitySearch();
+
+  const handleCityInput = (value) => {
+    setCityInput(value);
+    if (value.length >= 2) {
+      setShowCityDropdown(true);
+      searchCities(value);
+    } else {
+      clearCitySuggestions();
+      setShowCityDropdown(false);
+    }
+  };
 
   const handleResubscribe = () => {
     if (status !== "authenticated") {
@@ -861,18 +878,17 @@ export default function ProfileSettingsPage() {
                                 {field.value?.map((location, index) => (
                                   <div
                                     key={index}
-                                    className="flex items-center bg-secondary text-secondary-foreground rounded-full px-3 py-1 text-sm"
+                                    className="flex items-center bg-secondary text-secondary-foreground rounded-full px-3 py-1 text-sm gap-1"
                                   >
+                                    <MapPin className="h-3 w-3 text-muted-foreground" />
                                     {location}
                                     <button
                                       type="button"
-                                      className="ml-2"
+                                      className="ml-1"
                                       onClick={() => {
-                                        const newJobLocations = [
-                                          ...field.value,
-                                        ];
-                                        newJobLocations.splice(index, 1);
-                                        field.onChange(newJobLocations);
+                                        const next = [...field.value];
+                                        next.splice(index, 1);
+                                        field.onChange(next);
                                       }}
                                     >
                                       ✕
@@ -880,47 +896,61 @@ export default function ProfileSettingsPage() {
                                   </div>
                                 ))}
                               </div>
-                              <div className="flex flex-col sm:flex-row gap-2">
+                              <div className="relative">
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                                  <MapPin className="h-4 w-4" />
+                                </div>
                                 <Input
-                                  className="flex-1"
-                                  placeholder="Add a job location"
-                                  id="newJobLocation"
+                                  className="pl-9"
+                                  placeholder={field.value?.length >= 1 ? "Location selected" : "Search for a city (e.g. 'London', 'New York')"}
+                                  value={cityInput}
                                   disabled={field.value?.length >= 1}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      e.preventDefault();
-                                      const value = e.target.value.trim();
-                                      if (
-                                        value &&
-                                        !field.value.includes(value) &&
-                                        field.value.length < 1
-                                      ) {
-                                        field.onChange([...field.value, value]);
-                                        e.target.value = "";
-                                      }
-                                    }
-                                  }}
+                                  onChange={(e) => handleCityInput(e.target.value)}
+                                  onFocus={() => cityInput && setShowCityDropdown(true)}
+                                  onBlur={() => setTimeout(() => setShowCityDropdown(false), 150)}
                                 />
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  className="sm:w-auto w-full"
-                                  disabled={field.value?.length >= 1}
-                                  onClick={() => {
-                                    const input =
-                                      document.getElementById("newJobLocation");
-                                    const value = input.value.trim();
-                                    if (value && !field.value.includes(value) && field.value.length < 1) {
-                                      field.onChange([...field.value, value]);
-                                      input.value = "";
-                                    }
-                                  }}
-                                >
-                                  Add
-                                </Button>
+                                {cityInput && field.value?.length < 1 && (
+                                  <button
+                                    type="button"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                    onClick={() => { setCityInput(""); clearCitySuggestions(); setShowCityDropdown(false); }}
+                                  >
+                                    ✕
+                                  </button>
+                                )}
+                                {showCityDropdown && (citySuggestions.length > 0 || cityLoading) && (
+                                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-border rounded-md shadow-lg z-50 max-h-52 overflow-y-auto">
+                                    {cityLoading && (
+                                      <div className="p-3 flex items-center gap-2 text-sm text-muted-foreground">
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Searching cities...
+                                      </div>
+                                    )}
+                                    {!cityLoading && citySuggestions.map((city) => (
+                                      <button
+                                        key={city.id}
+                                        type="button"
+                                        className="w-full text-left px-3 py-2 hover:bg-accent focus:bg-accent focus:outline-none transition-colors text-sm flex items-center gap-2"
+                                        onMouseDown={(e) => {
+                                          e.preventDefault();
+                                          if (!field.value?.includes(city.display) && field.value?.length < 1) {
+                                            field.onChange([...field.value, city.display]);
+                                          }
+                                          setCityInput("");
+                                          clearCitySuggestions();
+                                          setShowCityDropdown(false);
+                                        }}
+                                      >
+                                        <MapPin className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                        <span className="font-medium">{city.name}</span>
+                                        {city.country && <span className="text-muted-foreground text-xs">{city.country}</span>}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                               <FormDescription>
-                                Add 1 location you're interested in
+                                Search and select 1 city
                               </FormDescription>
                               <FormMessage />
                             </FormItem>
