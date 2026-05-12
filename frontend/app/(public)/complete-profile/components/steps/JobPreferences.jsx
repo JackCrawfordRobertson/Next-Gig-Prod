@@ -3,25 +3,28 @@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, X, Lightbulb } from "lucide-react";
+import { Plus, X, Lightbulb, MapPin, Loader2 } from "lucide-react";
 import { useJobSuggestions } from "../../hooks/useJobSuggestions";
+import { useCitySearch } from "../../hooks/useCitySearch";
 import { useState, useRef } from "react";
 
 export default function JobPreferences({
   jobTitles,
   jobLocations,
   jobSearch,
-  locationInput,
   onJobSearchChange,
-  onLocationInputChange,
   onAddJobTitle,
   onRemoveJobTitle,
   onAddJobLocation,
   onRemoveJobLocation
 }) {
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+  const [cityInput, setCityInput] = useState("");
   const suggestionsRef = useRef(null);
+  const citySuggestionsRef = useRef(null);
   const suggestions = useJobSuggestions(jobSearch);
+  const { suggestions: citySuggestions, isLoading: cityLoading, searchCities, clearSuggestions: clearCitySuggestions } = useCitySearch();
 
   const handleSuggestionSelect = (suggestion) => {
     onAddJobTitle(suggestion);
@@ -29,10 +32,29 @@ export default function JobPreferences({
   };
 
   const handleJobSearchBlur = () => {
-    // Delay to allow click event to fire on suggestion
-    setTimeout(() => {
-      setShowSuggestions(false);
-    }, 100);
+    setTimeout(() => setShowSuggestions(false), 100);
+  };
+
+  const handleCityInput = (value) => {
+    setCityInput(value);
+    if (value.length >= 2) {
+      setShowCitySuggestions(true);
+      searchCities(value);
+    } else {
+      clearCitySuggestions();
+      setShowCitySuggestions(false);
+    }
+  };
+
+  const handleCitySelect = (city) => {
+    onAddJobLocation(city.display);
+    setCityInput("");
+    clearCitySuggestions();
+    setShowCitySuggestions(false);
+  };
+
+  const handleCityBlur = () => {
+    setTimeout(() => setShowCitySuggestions(false), 150);
   };
   return (
     <div className="space-y-4" aria-labelledby="job-preferences-heading">
@@ -131,40 +153,82 @@ export default function JobPreferences({
 
       {/* Job Locations */}
       <div>
-        <Label htmlFor="location-input" className="text-xs">
+        <Label htmlFor="city-search" className="text-xs">
           Location you want to search ({jobLocations.length}/1) <span aria-hidden="true">*</span>
         </Label>
-        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+        <div className="relative">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+            <MapPin className="h-4 w-4" />
+          </div>
           <Input
-            id="location-input"
-            placeholder="Type a location"
-            value={locationInput}
-            onChange={onLocationInputChange}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && locationInput.trim() !== "") {
-                e.preventDefault();
-                onAddJobLocation();
-              }
-            }}
-            className="h-10"
+            id="city-search"
+            placeholder={jobLocations.length >= 1 ? "Location selected" : "Search for a city (e.g. 'London', 'New York')"}
+            value={cityInput}
+            onChange={(e) => handleCityInput(e.target.value)}
+            onFocus={() => cityInput && setShowCitySuggestions(true)}
+            onBlur={handleCityBlur}
+            className="pl-9 h-10"
             aria-required="true"
+            aria-autocomplete="list"
+            aria-expanded={showCitySuggestions && citySuggestions.length > 0}
+            aria-controls="city-suggestions"
             disabled={jobLocations.length >= 1}
           />
-          <Button
-            type="button"
-            onClick={onAddJobLocation}
-            className="h-10 px-3 w-full sm:w-auto"
-            aria-label="Add location"
-            disabled={!locationInput.trim() || jobLocations.length >= 1}
-          >
-            <Plus className="w-4 h-4" />
-          </Button>
+          {cityInput && !jobLocations.length && (
+            <button
+              type="button"
+              onClick={() => { setCityInput(""); clearCitySuggestions(); setShowCitySuggestions(false); }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label="Clear city search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+
+          {showCitySuggestions && (citySuggestions.length > 0 || cityLoading) && (
+            <div
+              ref={citySuggestionsRef}
+              id="city-suggestions"
+              className="absolute top-full left-0 right-0 mt-1 bg-white border border-border rounded-md shadow-lg z-50 max-h-52 overflow-y-auto"
+              role="listbox"
+            >
+              {cityLoading && (
+                <div className="p-3 flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Searching cities...
+                </div>
+              )}
+              {!cityLoading && citySuggestions.map((city) => (
+                <button
+                  key={city.id}
+                  type="button"
+                  onClick={() => handleCitySelect(city)}
+                  className="w-full text-left px-3 py-2 hover:bg-accent focus:bg-accent focus:outline-none transition-colors text-sm flex items-center gap-2"
+                  role="option"
+                  aria-selected={false}
+                >
+                  <MapPin className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                  <div>
+                    <span className="font-medium">{city.name}</span>
+                    {city.country && (
+                      <span className="text-muted-foreground text-xs ml-1">{city.country}</span>
+                    )}
+                  </div>
+                </button>
+              ))}
+              {!cityLoading && citySuggestions.length === 0 && cityInput.length >= 2 && (
+                <div className="p-3 text-sm text-muted-foreground text-center">
+                  No cities found. Try a different search.
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <p className="text-xs text-muted-foreground mt-1">
-          Add 1 location you're interested in.
+          Search and select 1 city. Must be a specific city, not a country or region.
         </p>
-        
-        <div 
+
+        <div
           className="flex flex-wrap gap-1 mt-2"
           aria-label={`Selected locations: ${jobLocations.join(", ")}`}
         >
@@ -173,9 +237,10 @@ export default function JobPreferences({
               key={loc}
               className="flex items-center space-x-1 bg-secondary px-2 py-0.5 rounded text-xs"
             >
+              <MapPin className="h-3 w-3 text-muted-foreground" />
               <span>{loc}</span>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => onRemoveJobLocation(loc)}
                 aria-label={`Remove ${loc}`}
               >

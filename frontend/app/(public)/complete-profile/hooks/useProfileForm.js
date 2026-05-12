@@ -191,11 +191,18 @@ export function useProfileForm() {
     });
   };
 
-  const handleAddressChange = (field, value) => {
-    setFormState({
-      ...formState,
-      address: { ...formState.address, [field]: value }
-    });
+  const handleAddressChange = (fieldOrFields, value) => {
+    if (typeof fieldOrFields === "object") {
+      setFormState((prev) => ({
+        ...prev,
+        address: { ...prev.address, ...fieldOrFields },
+      }));
+    } else {
+      setFormState((prev) => ({
+        ...prev,
+        address: { ...prev.address, [fieldOrFields]: value },
+      }));
+    }
   };
 
   const handleProfilePictureChange = (file) => {
@@ -283,8 +290,8 @@ export function useProfileForm() {
     setFormState({ ...formState, jobSearch: e.target.value });
   };
 
-  const addJobLocation = () => {
-    const loc = formState.locationInput.trim();
+  const addJobLocation = (directValue = null) => {
+    const loc = (directValue !== null ? directValue : formState.locationInput).trim();
     const locLower = loc.toLowerCase();
 
     // 1. Define Banned Generic Terms

@@ -31,11 +31,12 @@ export default function AddressInfo({
   const handleSuggestionSelect = async (suggestion) => {
     const addressData = await parseAddressFromPlace(suggestion);
     if (addressData) {
-      // Auto-populate all address fields from the search result
-      onAddressChange("firstLine", addressData.firstLine);
-      onAddressChange("secondLine", addressData.secondLine);
-      onAddressChange("city", addressData.city);
-      onAddressChange("postcode", addressData.postcode);
+      onAddressChange({
+        firstLine: addressData.firstLine,
+        secondLine: addressData.secondLine,
+        city: addressData.city,
+        postcode: addressData.postcode,
+      });
       setShowSuggestions(false);
     }
     setAutocompleteInput("");
